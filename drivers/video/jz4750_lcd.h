@@ -716,34 +716,33 @@ do { \
 	__gpio_as_output(GPIO_LCD_VCC_EN_N);	 \
 	__lcd_special_pin_init();	   \
 } while (0)
+
 #define __lcd_display_on() \
 do { \
 	__gpio_clear_pin(GPIO_LCD_VCC_EN_N);	\
 	__lcd_special_on();			\
-	__lcd_set_backlight_level(80);		\
 } while (0)
 
 #define __lcd_display_off() \
 do { \
-	__lcd_close_backlight();	   \
 	__lcd_special_off();	 \
 } while (0)
+
 #elif defined(CONFIG_JZ4750D_CETUS)/* board apus */
 #define __lcd_display_pin_init() \
 do { \
 	__gpio_as_output(GPIO_LCD_VCC_EN_N);	 \
 	__lcd_special_pin_init();	   \
 } while (0)
+
 #define __lcd_display_on() \
 do { \
 	__gpio_set_pin(GPIO_LCD_VCC_EN_N);	\
 	__lcd_special_on();			\
-	__lcd_set_backlight_level(80);		\
 } while (0)
 
 #define __lcd_display_off() \
 do { \
-	__lcd_close_backlight();	   \
 	__lcd_special_off();	 \
 } while (0)
 

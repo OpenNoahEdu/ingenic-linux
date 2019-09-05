@@ -12,6 +12,7 @@ obj-$(CONFIG_PROC_FS)		+= proc.o
 # board specific support
 
 obj-$(CONFIG_JZ4750L_F4750L)	+= board-f4750l.o
+obj-$(CONFIG_JZ4750L_VOLANS)	+= board-volans.o
 
 # PM support
 

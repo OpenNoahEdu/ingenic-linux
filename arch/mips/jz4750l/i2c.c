@@ -144,8 +144,10 @@ L_try_again:
 	__i2c_send_start();
 	if (i2c_put_data( (device << 1) | I2C_WRITE ) < 0)
 		goto device_werr;
+#ifndef CONFIG_TOUCHSCREEN_AK4183
 	if (i2c_put_data(address) < 0)
 		goto address_err;
+#endif
 
 	__i2c_send_start();
 	if (i2c_put_data( (device << 1) | I2C_READ ) < 0)
@@ -162,7 +164,9 @@ L_try_again:
 		cnt--;
 		buf++;
 	}
-
+#ifdef CONFIG_TOUCHSCREEN_AK4183
+	__i2c_send_nack();
+#endif
 	__i2c_send_stop();
 	return count - cnt;
  device_rerr:
@@ -237,8 +241,10 @@ int i2c_write(unsigned char device, unsigned char *buf,
 		}
 	}
 #else
+#ifndef CONFIG_TOUCHSCREEN_AK4183
 	if (i2c_put_data(tmpaddr) < 0)
 		goto address_err;
+#endif
 	while (cnt) {
 		if (++cnt_in_pg > 8) {
 			__i2c_send_stop();

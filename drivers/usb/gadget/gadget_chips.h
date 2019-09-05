@@ -11,6 +11,19 @@
  * Some are available on 2.4 kernels; several are available, but not
  * yet pushed in the 2.6 mainline tree.
  */
+
+#ifdef CONFIG_USB_GADGET_JZ4750D
+#define	gadget_is_jz4750d(g)	!strcmp("jz4740_udc", (g)->name)
+#else
+#define	gadget_is_jz4750d(g)	0
+#endif
+
+#ifdef CONFIG_USB_GADGET_JZ4750
+#define	gadget_is_jz4750(g)	!strcmp("jz4740_udc", (g)->name)
+#else
+#define	gadget_is_jz4750(g)	0
+#endif
+
 #ifdef CONFIG_USB_GADGET_JZ4740
 #define	gadget_is_jz4740(g)	!strcmp("jz4740_udc", (g)->name)
 #else
@@ -228,5 +241,10 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x22;
 	else if (gadget_is_jz4740(gadget))
 		return 0x23;
+	else if (gadget_is_jz4750(gadget))
+		return 0x24;
+	else if (gadget_is_jz4750d(gadget))
+		return 0x25;
+
 	return -ENOENT;
 }

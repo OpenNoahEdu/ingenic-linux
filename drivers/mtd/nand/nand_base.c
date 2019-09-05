@@ -57,6 +57,7 @@
 
 u8 nand_nce; /* indicates which chip select on JZSOC is used for current nand chip */
 int global_page; /* page index of large page used for nand with multiple planes */
+int global_mafid; /* ID of manufacture */
 struct mtd_info *jz_mtd1 = NULL; /* for 1 plane operation */
 
 /* indicates whether multiple planes operation is used  by all partitions 
@@ -259,7 +260,22 @@ static void nand_release_device(struct mtd_info *mtd)
 	wake_up(&chip->controller->wq);
 	spin_unlock(&chip->controller->lock);
 }
+#if 0
+static void dump_data(unsigned char * addr,int l)
+{
+	int i;
+	for (i = 0; i < l; i++)
+	{
+		if (i % 32 == 0) printk("\n");
+		printk("%2x ",addr[i]);
+	}
+	printk("\n");
+}
+#else
 
+#define dump_data(addr,l)
+
+#endif
 /**
  * nand_read_byte - [DEFAULT] read one byte from the chip
  * @mtd:	MTD device structure
@@ -1267,7 +1283,7 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_mtd_t from,
 					}
 				} else
 					buf = nand_transfer_oob(chip,
-						buf, ops, mtd->oobsize);
+						oob, ops, mtd->oobsize);
 			}
 
 			if (!(chip->options & NAND_NO_READRDY)) {
@@ -1895,7 +1911,7 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 	ops->retlen = 0;
 	if (!writelen)
 		return 0;
-
+	
 	/* reject writes, which are not page aligned */
 	if (NOTALIGNED(to) || NOTALIGNED(ops->len)) {
 		printk(KERN_NOTICE "nand_write: "
@@ -1926,7 +1942,7 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 		chip->pagebuf = -1;
 
 	/* If we're not given explicit OOB data, let it be 0xFF */
-	if (likely(!oob))
+	//if (likely(!oob))
 		memset(chip->oob_poi, 0xff, mtd->oobsize);
 
 	while(1) {
@@ -1946,7 +1962,7 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 
 		if (unlikely(oob))
 			oob = nand_fill_oob(chip, oob, ops);
-
+		
 		ret = chip->write_page(mtd, chip, wbuf, page, cached,
 				       (ops->mode == MTD_OOB_RAW));
 		if (ret)
@@ -2025,7 +2041,7 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_mtd_t to,
 {
 	int chipnr, page, status, len;
 	struct nand_chip *chip = mtd->priv;
-
+	
 	DEBUG(MTD_DEBUG_LEVEL3, "nand_write_oob: to = 0x%08x, len = %i\n",
 	      (unsigned int)to, (int)ops->ooblen);
 
@@ -2033,7 +2049,7 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_mtd_t to,
 		len = chip->ecc.layout->oobavail;
 	else
 		len = mtd->oobsize;
-
+	
 	/* Do not allow write past end of page */
 	if ((ops->ooboffs + ops->ooblen) > len) {
 		DEBUG(MTD_DEBUG_LEVEL0, "nand_write_oob: "
@@ -2081,6 +2097,7 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_mtd_t to,
 
 	memset(chip->oob_poi, 0xff, mtd->oobsize);
 	nand_fill_oob(chip, ops->oobbuf, ops);
+		
 	status = chip->ecc.write_oob(mtd, chip, page & chip->pagemask);
 	memset(chip->oob_poi, 0xff, mtd->oobsize);
 
@@ -2502,7 +2519,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	/* Read manufacturer and device IDs */
 	*maf_id = chip->read_byte(mtd);
 	dev_id = chip->read_byte(mtd);
-
+	
 	/* Lookup the flash id */
 	for (i = 0; nand_flash_ids[i].name != NULL; i++) {
 		if (dev_id == nand_flash_ids[i].id) {
@@ -2556,6 +2573,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		/*
 		 * Old devices have chip data hardcoded in the device id table
 		 */
+		chip->planenum = chip->realplanenum = 1;
 		mtd->erasesize = type->erasesize;
 		mtd->writesize = type->pagesize;
 		mtd->oobsize = mtd->writesize / 32;
@@ -2637,6 +2655,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
  *
  * The mtd->owner field must be set to the module of the caller.
  */
+
 int nand_scan_ident(struct mtd_info *mtd, int maxchips)
 {
 	int i, busw, nand_maf_id;
@@ -2650,6 +2669,8 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips)
 
 	/* Read the flash type */
 	type = nand_get_flash_type(mtd, chip, busw, &nand_maf_id);
+	
+	global_mafid = nand_maf_id;
 
 	if (IS_ERR(type)) {
 		printk(KERN_WARNING "No NAND device found!!!\n");
@@ -2937,11 +2958,11 @@ int nand_scan_tail(struct mtd_info *mtd)
 	}
 
 #if defined(CONFIG_ALLOCATE_MTDBLOCK_JZ_EARLY) && !defined(CONFIG_SOC_JZ4730)
-        /* Allocate a block cache for every partitions which works over mtdblock-jz */
+        /* Allocate a block cache for every partition which works over mtdblock-jz */
 	{
 		extern int nr_partitions;
 
-		jz_mtdblock_cache = kmalloc(nr_partitions * sizeof(unsigned char *), GFP_KERNEL);
+		jz_mtdblock_cache = kzalloc(nr_partitions * sizeof(unsigned char *), GFP_KERNEL);
 
 		for (i = 0; i < nr_partitions; i++) {
 			if (!(partition_info[i].mtdblock_jz_invalid) && !(partition_info[i].cpu_mode)) {

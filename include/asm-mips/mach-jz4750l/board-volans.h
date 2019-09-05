@@ -1,7 +1,7 @@
 /*
- *  linux/include/asm-mips/mach-jz4750/board-apus.h
+ *  linux/include/asm-mips/mach-jz4750l/board-volans.h
  *
- *  JZ4750-based APUS board ver 1.x definition.
+ *  JZ4750L-based VOLANS board ver 1.x definition.
  *
  *  Copyright (C) 2008 Ingenic Semiconductor Inc.
  *
@@ -12,98 +12,78 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef __ASM_JZ4750_APUS_H__
-#define __ASM_JZ4750_APUS_H__
+#ifndef __ASM_JZ4750L_VOLANS_H__
+#define __ASM_JZ4750L_VOLANS_H__
 
-/*====================================================================== 
+
+/*
  * Frequencies of on-board oscillators
  */
-#define JZ_EXTAL		24000000  /* Main extal freq: 24 MHz */
+#define JZ_EXTAL		12000000  /* Main extal oscillator: 12 MHz */
 #define JZ_EXTAL2		32768     /* RTC extal freq: 32.768 KHz */
+//#define CFG_DIV                 1         /* hclk=pclk=mclk=CFG_EXTAL/CFG_DIV, just for FPGA board */
 
-/*====================================================================== 
+/*
+ * ADKEYS
+ */
+#define GPIO_ADKEY_INT		(32*3+16) // KEY_INT - GPD16
+
+/*
+ *  ADKEYS LEVEL
+ */
+#define DPAD_MENU_LEVEL		244	//0.6V, SDATA = (4096*Vsacin)/3.3v
+#define DPAD_UP_LEVEL		890	//1.0V
+#define DPAD_DOWN_LEVEL		1486	//1.4V
+#define DPAD_LEFT_LEVEL		1982	//1.75V 
+#define DPAD_CENTER_LEVEL	2428	//2.0V	Enter key
+#define DPAD_RIGHT_LEVEL	2870	//2.4V
+
+/*
+ * Analog input for VBAT is the battery voltage divided by CFG_PBAT_DIV.
+ */
+#define CFG_PBAT_DIV            1
+
+/*
+ * Analog input for VBAT is the battery voltage divided by CFG_PBAT_DIV.
+ */
+#define ACTIVE_LOW_ADKEY	1
+
+
+/*
  * GPIO
  */
-#define GPIO_DISP_OFF_N         (32*4+25) /* GPE25 */
-#define GPIO_SD0_VCC_EN_N	(32*2+10) /* GPC10 */
-#define GPIO_SD0_CD_N		(32*2+11) /* GPC11 */
-#define GPIO_SD0_WP		(32*2+12) /* GPC12 */
-#define GPIO_SD1_VCC_EN_N	(32*2+13) /* GPC13 */
-#define GPIO_SD1_CD_N		(32*2+14) /* GPC14 */
-#define GPIO_USB_DETE		(32*2+11) /* GPC15 */
-#define GPIO_DC_DETE_N		(32*2+8)  /* GPC8 */
-#define GPIO_CHARG_STAT_N	(32*2+9)  /* GPC9 */
-#define GPIO_LCD_VCC_EN_N	(32*3+30) /* GPC10 */
-#define GPIO_LCD_PWM   		(32*4+24) /* GPE24 */
-#define GPIO_UDC_HOTPLUG	GPIO_USB_DETE
+#define GPIO_SD0_VCC_EN_N	(32*2+10)	/* GPC10 */
+#define GPIO_SD0_CD_N		(32*2+11)	/* GPC11 */
+#define GPIO_SD0_WP		(32*2+12)	/* GPC12 */
+#define GPIO_SD1_VCC_EN_N	(32*3+21)	/* GPD21 */
+#define GPIO_SD1_CD_N		(32*2+20)	/* GPC20 */
+#define GPIO_USB_DETE		(32*3+6)	/* GPD6  */
+#define GPIO_DC_DETE_N		103 /* GPD7 */
+#define GPIO_CHARG_STAT_N	111 /* GPD15 */
+#define GPIO_DISP_OFF_N		121 /* GPD25, LCD_REV */
+//#define GPIO_LED_EN       	124 /* GPD28 */
+#define GPIO_PEN_IRQ		(32*3+22)	/* GPD22 */
 
-#define CFG_PBAT_DIV            4
+#define GPIO_UDC_HOTPLUG	GPIO_USB_DETE
 
 /*====================================================================== 
  * LCD backlight
  */
-#define LCD_PWM_CHN 4    /* pwm channel */
+#define GPIO_LCD_PWM   		(32*2+14) /* GPE14 PWM4 */
 
 #define LCD_MAX_BACKLIGHT		100
 #define LCD_MIN_BACKLIGHT		1
 #define LCD_DEFAULT_BACKLIGHT		80
 
-/* LCD Backlight PWM Control - River. */
-#define HAVE_LCD_PWM_CONTROL	1
+#define LCD_PWM_CHN 4    /* pwm channel */
+#define LCD_PWM_FULL 101
 
-#ifdef HAVE_LCD_PWM_CONTROL
-static inline void __lcd_pwm_set_backlight_level(int n)
-{
-	__tcu_stop_counter(LCD_PWM_CHN);
-	
-	__tcu_set_pwm_output_shutdown_abrupt(LCD_PWM_CHN);
-	__tcu_disable_pwm_output(LCD_PWM_CHN);
-
-	__tcu_set_count(LCD_PWM_CHN, 0);
-	__tcu_set_full_data(LCD_PWM_CHN, LCD_MAX_BACKLIGHT + 1);
-	__tcu_set_half_data(LCD_PWM_CHN, n);
-
-	__tcu_enable_pwm_output(LCD_PWM_CHN);
-	__tcu_start_counter(LCD_PWM_CHN);
-
-	return;
-}
-
-static inline void __lcd_pwm_start(void)
-{
-	__gpio_as_pwm(4);
-
-	__tcu_stop_counter(LCD_PWM_CHN);
-	
-	__tcu_select_extalclk(LCD_PWM_CHN);
-	__tcu_select_clk_div4(LCD_PWM_CHN);
-	__tcu_init_pwm_output_high(LCD_PWM_CHN);
-
-	__lcd_pwm_set_backlight_level(LCD_DEFAULT_BACKLIGHT);
-
-	return;
-}
-
-static inline void __lcd_pwm_stop(void)
-{
-	__tcu_stop_counter(LCD_PWM_CHN);
-
-	__tcu_set_pwm_output_shutdown_abrupt(LCD_PWM_CHN);
-	__tcu_disable_pwm_output(LCD_PWM_CHN);
-
-	return;
-}
-
-#define __lcd_set_backlight_level(n) __lcd_pwm_set_backlight_level(n)
-
-#else /* Old GPIO Control */
 /* 100 level: 0,1,...,100 */
 #define __lcd_set_backlight_level(n)	\
 do {					\
 	__gpio_as_output(GPIO_LCD_PWM);	\
 	__gpio_set_pin(GPIO_LCD_PWM);	\
 } while (0)
-#endif
 
 #define __lcd_close_backlight()		\
 do {					\
@@ -171,4 +151,4 @@ do {						\
 	detected;				\
 })
 
-#endif /* __ASM_JZ4750_APUS_H__ */
+#endif /* __ASM_JZ4750L_VOLANS_H__ */

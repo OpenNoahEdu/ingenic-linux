@@ -15,7 +15,6 @@
  * then we only perform the little endian data format in driver.
  *
  */
-
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/pm.h>
@@ -638,7 +637,7 @@ static int record_fill_1x8_u(unsigned long dst_start, int count, int id)
 		count -= 2;   /* count in dword */
 		cnt++;
 		data = *(s++);
-		*(dp ++) = ((data << 16) >> 24) + 0x80;
+		*(dp ++) = data;
 		s++;	      /* skip the other channel */
 	}
 
@@ -657,9 +656,9 @@ static int record_fill_2x8_u(unsigned long dst_start, int count, int id)
 		count -= 2;
 		cnt += 2;
 		d1 = *(s++);
-		*(dp ++) = ((d1 << 16) >> 24) + 0x80;
+		*(dp ++) = d1;
 		d2 = *(s++);
-		*(dp ++) = ((d2 << 16) >> 24) + 0x80;
+		*(dp ++) = d2;
 	}
 	
 	return cnt;
@@ -718,8 +717,8 @@ static void replay_fill_1x8_u(signed long src_start, int count, int id)
 	while (count > 0) {
 		count--;
 		cnt += 1;
-		data = *(s++) - 0x80;
-		ddata = (unsigned long) data << 8;
+		data = *(s++);
+		ddata = (unsigned long) data;
 		*(dp ++) = ddata;
 		*(dp ++) = ddata;
 
@@ -745,8 +744,8 @@ static void replay_fill_2x8_u(signed long src_start, int count, int id)
 	while (count > 0) {
 		count -= 1;
 		cnt += 1 ;
-		d1 = *(s++) - 0x80;
-		dd1 = (unsigned long) d1 << 8;
+		d1 = *(s++);
+		dd1 = (unsigned long) d1;
 		*(dp ++) = dd1;
 		/* save last left */
 		if(count == 2)
@@ -874,6 +873,7 @@ static unsigned int jz_audio_set_format(int dev, unsigned int fmt)
 	case AFMT_U8:
 		__i2s_set_oss_sample_size(8);
 		__i2s_set_iss_sample_size(8);
+		__aic_enable_unsignadj();
 		jz_audio_format = fmt;
 		jz_update_filler(jz_audio_format,jz_audio_channels);
 		break;	
@@ -887,6 +887,7 @@ static unsigned int jz_audio_set_format(int dev, unsigned int fmt)
 		jz_update_filler(jz_audio_format,jz_audio_channels);
 		__i2s_set_oss_sample_size(16);
 		__i2s_set_iss_sample_size(16);
+		__aic_disable_unsignadj();
 		break;
 	case 18:
 		__i2s_set_oss_sample_size(18);
@@ -2691,7 +2692,8 @@ static ssize_t jz_audio_write(struct file *file, const char *buffer, size_t coun
 	if (jz_audio_channels == 2)
 		copy_count = jz_audio_fragsize / jz_audio_b;
 	else if(jz_audio_channels == 1)
-		copy_count = jz_audio_fragsize / 4;
+		copy_count = jz_audio_fragsize / jz_audio_b / 2;
+//		copy_count = jz_audio_fragsize / 4;
 	left_count = count;
 	if (copy_from_user(controller->tmp1, buffer, count)) {
 		printk("copy_from_user failed:%d",ret);

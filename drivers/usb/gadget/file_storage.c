@@ -561,6 +561,10 @@ struct lun {
 	u32		sense_data_info;
 	u32		unit_attention_data;
 
+#ifdef GHOST
+	unsigned int	is_nand;
+#endif
+
 	struct device	dev;
 };
 
@@ -697,7 +701,7 @@ struct fsg_dev {
 	struct lun		*curlun;
 
 #ifdef GHOST
-	unsigned int            nand_lb_active;
+	unsigned int		nand_lb_active;
 #endif
 };
 
@@ -1636,7 +1640,7 @@ static int do_read(struct fsg_dev *fsg)
 		/* Perform the read */
 		file_offset_tmp = file_offset;
 #ifdef GHOST
-		if (fsg->nand_lb_active)
+		if (curlun->is_nand)
 			nread = udc_read(file_offset_tmp, amount, bh->buf);
 		else
 			nread = vfs_read(curlun->filp,
@@ -1828,7 +1832,7 @@ static int do_write(struct fsg_dev *fsg)
 			/* Perform the write */
 			file_offset_tmp = file_offset;
 #ifdef GHOST
-			if (fsg->nand_lb_active)
+			if (curlun->is_nand)
 				nwritten = udc_write(file_offset_tmp, amount, bh->buf);
 			else
 				nwritten = vfs_write(curlun->filp,
@@ -2014,7 +2018,7 @@ static int do_verify(struct fsg_dev *fsg)
 		/* Perform the read */
 		file_offset_tmp = file_offset;
 #ifdef GHOST
-		if (fsg->nand_lb_active)
+		if (curlun->is_nand)
 			nread = udc_read(file_offset_tmp, amount, bh->buf);
 		else
 			nread = vfs_read(curlun->filp,
@@ -3593,10 +3597,13 @@ static int open_backing_file(struct lun *curlun, const char *filename)
 	rc = 0;
 
 #ifdef GHOST
-	if (strstr(filename,"mtd"))
-	{
-		the_fsg->nand_lb_active = 1;
-		NAND_LB_Init(); 
+	if (strstr(filename,"mtdblock")) {
+		if (!the_fsg->nand_lb_active) {
+			the_fsg->nand_lb_active = 1;
+			NAND_LB_Init();
+		}
+		
+		curlun->is_nand = 1;
 	}
 #endif
 
@@ -3614,10 +3621,11 @@ static void close_backing_file(struct lun *curlun)
 		curlun->filp = NULL;
 
 #ifdef GHOST
+	if (curlun->is_nand) {	
 		NAND_LB_FLASHCACHE();
-		NAND_MTD_FLASHCACHE();
-
-		the_fsg->nand_lb_active = 0;
+		
+		curlun->is_nand = 0;
+	}
 #endif		
 	}
 }
@@ -4072,8 +4080,13 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 				if (IS_ERR(p))
 					p = NULL;
 			}
+#ifdef GHOST
+			LINFO(curlun, "ro=%d, is_nand=%d, file: %s\n",
+					curlun->ro, curlun->is_nand, (p ? p : "(error)"));
+#else
 			LINFO(curlun, "ro=%d, file: %s\n",
 					curlun->ro, (p ? p : "(error)"));
+#endif
 		}
 	}
 	kfree(pathbuf);

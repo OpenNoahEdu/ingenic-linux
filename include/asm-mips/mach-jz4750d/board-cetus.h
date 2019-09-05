@@ -42,18 +42,116 @@
 
 #define GPIO_UDC_HOTPLUG	GPIO_USB_DETE
 
+
+/*====================================================================
+ * GPIO KEYS and ADKEYS
+ */
+#define GPIO_HOME		(32*5+12) // SW4-GPF12 SSI_DR
+#define GPIO_MENU		(32*2+31) // SW2-GPC31 boot_sel1
+#define GPIO_BACK		(32*5+11) // SW3-GPF11 SSI_DT
+#define GPIO_CALL		(32*5+10) // SW5-GPF10 SSI_CLK
+#define GPIO_ENDCALL		(32*4+7)  // SW6-GPE7  CIM_D7
+#define GPIO_SW10		(32*4+25) // SW10-GPE25 UART1_TXD
+#define GPIO_ADKEY_INT		(32*4+11) // KEY_INT-GPE11  CIM_HSYNC
+
+/*====================================================================
+ *  ADKEYS LEVEL
+ */
+
+#define DPAD_LEFT_LEVEL		869	//0.7V, 225=0.18105/3.3*4096
+#define DPAD_DOWN_LEVEL		1986	//1.6V
+#define DPAD_UP_LEVEL		2482	//2.0V
+#define DPAD_CENTER_LEVEL	1489	//1.2V
+#define DPAD_RIGHT_LEVEL	186	//0.15V
+
+/*====================================================================== 
+ * Analog input for VBAT is the battery voltage divided by CFG_PBAT_DIV.
+ */
+#define CFG_PBAT_DIV            1
+
+/*
+ * The GPIO interrupt pin is low voltage or fall edge acitve
+ */
+#define ACTIVE_LOW_HOME		1
+#define ACTIVE_LOW_MENU		1
+#define ACTIVE_LOW_BACK		1
+#define ACTIVE_LOW_CALL		1
+#define ACTIVE_LOW_ENDCALL	1
+#define ACTIVE_LOW_SW10		1
+#define ACTIVE_LOW_ADKEY	1
+#define ACTIVE_LOW_MSC0_CD	1 /* work when GPIO_SD0_CD_N = 0 */
+#define ACTIVE_LOW_MSC1_CD	1 /* work when GPIO_SD1_CD_N = 0 */
+#define ACTIVE_WAKE_UP 		1
+
+
 /*====================================================================== 
  * LCD backlight
  */
 #define GPIO_LCD_PWM   		(32*4+22) /* GPE22 PWM2 */ 
 #define LCD_PWM_CHN 2    /* pwm channel */
-#define LCD_PWM_FULL 101
+
+#define LCD_MAX_BACKLIGHT		100
+#define LCD_MIN_BACKLIGHT		1
+#define LCD_DEFAULT_BACKLIGHT		80
+
+/* LCD Backlight PWM Control - River. */
+#define HAVE_LCD_PWM_CONTROL	1
+
+#ifdef HAVE_LCD_PWM_CONTROL
+static inline void __lcd_pwm_set_backlight_level(int n)
+{
+	__tcu_stop_counter(LCD_PWM_CHN);
+	
+	__tcu_set_pwm_output_shutdown_abrupt(LCD_PWM_CHN);
+	__tcu_disable_pwm_output(LCD_PWM_CHN);
+
+	__tcu_set_count(LCD_PWM_CHN, 0);
+	__tcu_set_full_data(LCD_PWM_CHN, LCD_MAX_BACKLIGHT + 1);
+	__tcu_set_half_data(LCD_PWM_CHN, n);
+
+	__tcu_enable_pwm_output(LCD_PWM_CHN);
+	__tcu_start_counter(LCD_PWM_CHN);
+
+	return;
+}
+
+static inline void __lcd_pwm_start(void)
+{
+	__gpio_as_pwm(2);
+
+	__tcu_stop_counter(LCD_PWM_CHN);
+	
+	__tcu_select_extalclk(LCD_PWM_CHN);
+	__tcu_select_clk_div4(LCD_PWM_CHN);
+	__tcu_init_pwm_output_high(LCD_PWM_CHN);
+
+	__lcd_pwm_set_backlight_level(LCD_DEFAULT_BACKLIGHT);
+
+	return;
+}
+
+static inline void __lcd_pwm_stop(void)
+{
+	__tcu_stop_counter(LCD_PWM_CHN);
+
+	__tcu_set_pwm_output_shutdown_abrupt(LCD_PWM_CHN);
+	__tcu_disable_pwm_output(LCD_PWM_CHN);
+
+	return;
+}
+
+#define __lcd_set_backlight_level(n) __lcd_pwm_set_backlight_level(n)
+
+#else
+
 /* 100 level: 0,1,...,100 */
 #define __lcd_set_backlight_level(n)	\
 do {					\
 	__gpio_as_output(GPIO_LCD_PWM);	\
 	__gpio_set_pin(GPIO_LCD_PWM);	\
 } while (0)
+
+#endif
 
 #define __lcd_close_backlight()		\
 do {					\

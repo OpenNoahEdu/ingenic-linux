@@ -810,7 +810,7 @@ static int jz_mmc_probe(struct platform_device *pdev)
 	int irq;
 	struct resource *r;
 
-#ifdef CONFIG_MSC0_JZ4750
+#if defined CONFIG_MSC0_JZ4750 || defined CONFIG_MSC0_JZ4750_MODULE
 #ifdef CONFIG_SOC_JZ4750
 	__gpio_as_msc0_8bit(); // for jz4750
 #else
@@ -818,7 +818,9 @@ static int jz_mmc_probe(struct platform_device *pdev)
 #endif
 	__msc0_init_io();
 	__msc0_enable_power();
-#else
+#endif
+
+#if defined CONFIG_MSC1_JZ4750 || defined CONFIG_MSC1_JZ4750_MODULE
 	__gpio_as_msc1_4bit();
 	__msc1_init_io();
 	__msc1_enable_power();
@@ -831,10 +833,6 @@ static int jz_mmc_probe(struct platform_device *pdev)
 	irq = platform_get_irq(pdev, 0);
 	if (!r || irq < 0)
 		return -ENXIO;
-
-	r = request_mem_region(r->start, SZ_4K, DRIVER_NAME);
-	if (!r)
-		return -EBUSY;
 
 	mmc = mmc_alloc_host(sizeof(struct jz_mmc_host), &pdev->dev);
 	if (!mmc) {
@@ -981,7 +979,10 @@ static int jz_mmc_remove(struct platform_device *pdev)
 		jz_free_dma(rxdmachan);
 		jz_free_dma(txdmachan);
 		free_irq(IRQ_MSC, host);
+		free_irq(MSC_HOTPLUG_IRQ, host);
 		local_irq_restore(flags);
+		dma_free_coherent(&pdev->dev, PAGE_SIZE, host->sg_cpu, host->sg_dma);
+
 		mmc_free_host(mmc);
 	}
 	return 0;

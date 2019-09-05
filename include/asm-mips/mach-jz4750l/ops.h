@@ -526,10 +526,10 @@ do {						\
  */
 #define __gpio_as_msc1_4bit()			\
 do {						\
-	REG_GPIO_PXFUNS(1) = 0xfc000000;	\
-	REG_GPIO_PXTRGC(1) = 0xfc000000;	\
-	REG_GPIO_PXSELS(1) = 0xfc000000;	\
-	REG_GPIO_PXPES(1)  = 0xfc000000;	\
+	REG_GPIO_PXFUNS(3) = 0xfc000000;	\
+	REG_GPIO_PXTRGC(3) = 0xfc000000;	\
+	REG_GPIO_PXSELS(3) = 0xfc000000;	\
+	REG_GPIO_PXPES(3)  = 0xfc000000;	\
 } while (0)
 
 #define __gpio_as_msc 	__gpio_as_msc0_4bit /* default as msc0 4bit */

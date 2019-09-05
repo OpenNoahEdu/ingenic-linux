@@ -498,6 +498,24 @@ void jz_set_oss_dma(unsigned int dmanr, unsigned int mode, unsigned int audio_fm
 	switch (audio_fmt) {
 	case AFMT_U8:
 		/* burst mode : 32BIT */
+		if (mode == DMA_MODE_READ) {
+			chan->mode = DMA_8BIT_RX_CMD | DMA_MODE_READ;
+			chan->mode |= mode & ~(DMAC_DCMD_SAI | DMAC_DCMD_DAI);
+			mode &= DMA_MODE_MASK;
+			chan->mode |= DMAC_DCMD_DAI;
+			chan->mode &= ~DMAC_DCMD_SAI;
+		} else if (mode == DMA_MODE_WRITE) {
+			chan->mode = DMA_8BIT_TX_CMD | DMA_MODE_READ;
+			chan->mode |= mode & ~(DMAC_DCMD_SAI | DMAC_DCMD_DAI);
+			mode &= DMA_MODE_MASK;
+			chan->mode |= DMAC_DCMD_SAI;
+			chan->mode &= ~DMAC_DCMD_DAI;
+		} else
+			printk("oss_dma_burst_mode() just supports DMA_MODE_READ or DMA_MODE_WRITE!\n");
+		
+		REG_DMAC_DCMD(chan->io) = chan->mode & ~DMA_MODE_MASK;
+		REG_DMAC_DRSR(chan->io) = chan->source;
+
 		break;
 	case AFMT_S16_LE:
 		/* burst mode : 16BYTE */

@@ -1,6 +1,8 @@
 #ifndef __JZ4750_MMC_H__
 #define __JZ4750_MMC_H__
 
+#include <linux/autoconf.h>
+
 #define MMC_CLOCK_SLOW    400000      /* 400 kHz for initial setup */
 #define MMC_CLOCK_FAST  20000000      /* 20 MHz for maximum for normal operation */
 #define SD_CLOCK_FAST   24000000      /* 24 MHz for SD Cards */
@@ -9,14 +11,16 @@
 
 #define NR_SG	1
 
-#ifdef CONFIG_MSC0_JZ4750
+#if defined CONFIG_MSC0_JZ4750 || defined CONFIG_MSC0_JZ4750_MODULE
 #define MSC_ID 0
 #define MSC_HOTPLUG_IRQ MSC0_HOTPLUG_IRQ
 #define IRQ_MSC IRQ_MSC0
 #define DMA_ID_MSC_RX DMA_ID_MSC0_RX
 #define DMA_ID_MSC_TX DMA_ID_MSC0_TX
 #define MSC_HOTPLUG_PIN MSC0_HOTPLUG_PIN
-#else
+#endif
+
+#if defined CONFIG_MSC1_JZ4750 || defined CONFIG_MSC1_JZ4750_MODULE
 #define MSC_ID 1
 #define MSC_HOTPLUG_IRQ MSC1_HOTPLUG_IRQ
 #define IRQ_MSC IRQ_MSC1

@@ -93,6 +93,7 @@ static u32 addr_offset;
 static u32 cmd_offset;
 static int nand_chips = 1;  /* Number of nand chips to be scanned */
 extern int global_page; /* for two-plane operations */
+extern int global_mafid; /* ID of manufacture */
 
 /*
  * MTD structure for JzSOC board
@@ -168,32 +169,32 @@ static int partition_reserved_badblocks[] = {
 #if defined(CONFIG_JZ4750_APUS) || defined(CONFIG_JZ4750D_CETUS)
 struct mtd_partition partition_info[] = {
 	{name:"NAND BOOT partition",
-	 offset:0 * 0x100000,
-	 size:4 * 0x100000,
+	 offset:0 * 0x100000LL,
+	 size:4 * 0x100000LL,
 	 cpu_mode: 0,
 	 use_planes: 0,
 	 mtdblock_jz_invalid: 1},
 	{name:"NAND KERNEL partition",
-	 offset:4 * 0x100000,
-	 size:4 * 0x100000,
+	 offset:4 * 0x100000LL,
+	 size:4 * 0x100000LL,
 	 cpu_mode: 0,
 	 use_planes: 0,
 	 mtdblock_jz_invalid: 1},
 	{name:"NAND ROOTFS partition",
-	 offset:8 * 0x100000,
-	 size:504 * 0x100000,
+	 offset:8 * 0x100000LL,
+	 size:504 * 0x100000LL,
 	 cpu_mode: 1,
 	 use_planes: 0,
 	 mtdblock_jz_invalid: 1},
 	{name:"NAND DATA partition",
-	 offset:512 * 0x100000,
-	 size:512 * 0x100000,
+	 offset:512 * 0x100000LL,
+	 size:512 * 0x100000LL,
 	 cpu_mode: 0,
 	 use_planes: 1,
 	 mtdblock_jz_invalid: 1},
 	{name:"NAND VFAT partition",
-	 offset:1024 * 0x100000,
-	 size:1024 * 0x100000,
+	 offset:1024 * 0x100000LL,
+	 size:1024 * 0x100000LL,
 	 cpu_mode: 0,
 	 use_planes: 1,
 	 mtdblock_jz_invalid: 0},
@@ -213,10 +214,50 @@ static int partition_reserved_badblocks[] = {
 	2,			/* reserved blocks of mtd0 */
 	2,			/* reserved blocks of mtd1 */
 	10,			/* reserved blocks of mtd2 */
-        10,			/* reserved blocks of mtd3 */
+    10,			/* reserved blocks of mtd3 */
 	10,			/* reserved blocks of mtd4 */
 };
 #endif				/* CONFIG_JZ4750_APUS */
+
+#if defined(CONFIG_JZ4750L_VOLANS)
+struct mtd_partition partition_info[] = {
+	{name:"NAND BOOT partition",
+	 offset:0 * 0x100000,
+	 size:4 * 0x100000,
+	 cpu_mode: 0,
+	 use_planes: 0,
+	 mtdblock_jz_invalid: 1},
+	{name:"NAND KERNEL partition",
+	 offset:4 * 0x100000,
+	 size:4 * 0x100000,
+	 cpu_mode: 0,
+	 use_planes: 0,
+	 mtdblock_jz_invalid: 1},
+	{name:"NAND ROOTFS partition",
+	 offset:8 * 0x100000,
+	 size:504 * 0x100000,
+	 cpu_mode: 1,
+	 use_planes: 0,
+	 mtdblock_jz_invalid: 1},
+	};
+
+
+/* Define max reserved bad blocks for each partition.
+ * This is used by the mtdblock-jz.c NAND FTL driver only.
+ *
+ * The NAND FTL driver reserves some good blocks which can't be
+ * seen by the upper layer. When the bad block number of a partition
+ * exceeds the max reserved blocks, then there is no more reserved
+ * good blocks to be used by the NAND FTL driver when another bad
+ * block generated.
+ */
+static int partition_reserved_badblocks[] = {
+	2,			/* reserved blocks of mtd0 */
+	2,			/* reserved blocks of mtd1 */
+	10,			/* reserved blocks of mtd2 */
+};
+#endif	/* CONFIG_JZ4750L_VOLANS */
+
 
 /*-------------------------------------------------------------------------
  * Following three functions are exported and used by the mtdblock-jz.c
@@ -449,7 +490,8 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 {
 	u32 stat;
 	u32 *errs = (u32 *)errs0;
-
+	int ret = 0;
+	
 	if (REG_DMAC_DCCSR(0) & DMAC_DCCSR_BERR) {
 		stat = errs[0];
 		dprintk("stat=%x err0:%x err1:%x \n", stat, errs[1], errs[2]);
@@ -467,6 +509,8 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 				case 7:
 					bch_correct(mtd, dat, (errs[4] & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
 				case 6:
+					ret = -2;
+					printk("WARNING:There are too many bits error!errcnt = %d\n",errcnt);
 					bch_correct(mtd, dat, (errs[3] & BCH_ERR_INDEX_ODD_MASK) >> BCH_ERR_INDEX_ODD_BIT);
 				case 5:
 					bch_correct(mtd, dat, (errs[3] & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
@@ -474,6 +518,10 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 				case 4:
 					bch_correct(mtd, dat, (errs[2] & BCH_ERR_INDEX_ODD_MASK) >> BCH_ERR_INDEX_ODD_BIT);
 				case 3:
+#if !defined(CONFIG_MTD_HW_BCH_8BIT)
+					ret = -2;
+					printk("WARNING:There are too many bits error!errcnt = %d\n",errcnt);
+#endif
 					bch_correct(mtd, dat, (errs[2] & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
 				case 2:
 					bch_correct(mtd, dat, (errs[1] & BCH_ERR_INDEX_ODD_MASK) >> BCH_ERR_INDEX_ODD_BIT);
@@ -486,7 +534,7 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 #endif				/* CONFIG_MTD_NAND_DMA */
@@ -508,7 +556,8 @@ static int jzsoc_nand_bch_correct_data_cpu(struct mtd_info *mtd, u_char * dat, u
 	int oob_per_eccsize = ecc_pos / eccsteps;
 	short k;
 	u32 stat;
-
+	int ret = 0;
+	
 	/* Write data to REG_BCH_DR */
 	for (k = 0; k < eccsize; k++) {
 		REG_BCH_DR = ((struct buf_be_corrected *)dat)->data[k];
@@ -545,6 +594,8 @@ static int jzsoc_nand_bch_correct_data_cpu(struct mtd_info *mtd, u_char * dat, u
 				bch_correct(mtd, dat, (REG_BCH_ERR3 & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
 				/* FALL-THROUGH */
 			case 6:
+				ret = -2;
+				printk("WARNING:There are too many bits error!errcnt = %d\n",errcnt);
 				bch_correct(mtd, dat, (REG_BCH_ERR2 & BCH_ERR_INDEX_ODD_MASK) >> BCH_ERR_INDEX_ODD_BIT);
 				/* FALL-THROUGH */
 			case 5:
@@ -555,6 +606,10 @@ static int jzsoc_nand_bch_correct_data_cpu(struct mtd_info *mtd, u_char * dat, u
 				bch_correct(mtd, dat, (REG_BCH_ERR1 & BCH_ERR_INDEX_ODD_MASK) >> BCH_ERR_INDEX_ODD_BIT);
 				/* FALL-THROUGH */
 			case 3:
+#if !defined(CONFIG_MTD_HW_BCH_8BIT)
+				ret = -2;
+				printk("WARNING:There are too many bits error!errcnt = %d\n",errcnt);
+#endif
 				bch_correct(mtd, dat, (REG_BCH_ERR1 & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
 				/* FALL-THROUGH */
 			case 2:
@@ -562,14 +617,15 @@ static int jzsoc_nand_bch_correct_data_cpu(struct mtd_info *mtd, u_char * dat, u
 				/* FALL-THROUGH */
 			case 1:
 				bch_correct(mtd, dat, (REG_BCH_ERR0 & BCH_ERR_INDEX_EVEN_MASK) >> BCH_ERR_INDEX_EVEN_BIT);
-				return 0;
+				//return 0;
+				break;
 			default:
 				break;
 			}
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 
@@ -713,7 +769,10 @@ static void nand_write_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *c
 #if USE_IRQ
 	if (cmd_pgprog == 0x10) {
 		dprintk("nand prog before wake up\n");
-		err = wait_event_interruptible_timeout(nand_prog_wait_queue, dma_ack1, 3 * HZ);
+		do {
+			err = wait_event_interruptible_timeout(nand_prog_wait_queue, dma_ack1, 3 * HZ);
+		}while(err == -ERESTARTSYS);
+		
 		nand_status = NAND_NONE;
 		dprintk("nand prog after wake up\n");
 		if (!err) {
@@ -753,7 +812,12 @@ static void nand_write_page_hwecc_bch_planes(struct mtd_info *mtd, struct nand_c
 
 	/* send cmd 0x80, the MSB should be valid if realplane is 4 */
 	if (chip->realplanenum == 2)
-		chip->cmdfunc(mtd, 0x80, 0x00, 0x00);
+	{
+		if(global_mafid == 0x2c)
+			chip->cmdfunc(mtd, 0x80, 0x00, page);
+		else
+			chip->cmdfunc(mtd, 0x80, 0x00, 0x00);
+	}
 	else
 		chip->cmdfunc(mtd, 0x80, 0x00, page & (1 << (chip->chip_shift - chip->page_shift)));
 
@@ -805,7 +869,12 @@ static void nand_write_page_hwecc_bch_planes_cpu(struct mtd_info *mtd, struct na
 
 	/* send cmd 0x80, the MSB should be valid if realplane is 4 */
 	if (chip->realplanenum == 2)
-		chip->cmdfunc(mtd, 0x80, 0x00, 0x00);
+	{
+		if(global_mafid == 0x2c)
+			chip->cmdfunc(mtd, 0x80, 0x00, page);
+		else
+			chip->cmdfunc(mtd, 0x80, 0x00, 0x00);
+	}
 	else
 		chip->cmdfunc(mtd, 0x80, 0x00, page & (1 << (chip->chip_shift - chip->page_shift)));
 
@@ -984,7 +1053,10 @@ static int nand_read_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *chi
 
 		stat = chip->ecc.correct(mtd, (u8 *)buf_correct, (u8 *)&errs[i * ERRS_SIZE], NULL);
 		if (stat < 0)
+		{
+			printk("ecc Uncorrectable:global_page = %d,chip->planenum = %d\n",global_page,chip->planenum);
 			mtd->ecc_stats.failed++;
+		}
 		else
 			mtd->ecc_stats.corrected += stat;
 	}
@@ -1054,7 +1126,10 @@ static int nand_read_page_hwecc_bch_cpu(struct mtd_info *mtd, struct nand_chip *
 		chip->ecc.hwctl(mtd, NAND_ECC_READ);
 		stat = chip->ecc.correct(mtd, (u8 *)buf_correct, &ecc_code[eccbytes*i], &ecc_calc[eccbytes*i]);
 		if (stat < 0)
+		{
+			printk("ecc Uncorrectable:global_page = %d,chip->planenum = %d\n",global_page,chip->planenum);
 			mtd->ecc_stats.failed++;
+		}
 		else
 			mtd->ecc_stats.corrected += stat;
 	}
@@ -1121,7 +1196,12 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 
         /* send cmd 0x80, the MSB should be valid if realplane is 4 */
 	if (chip->realplanenum == 2)
-		chip->cmdfunc(mtd, 0x80, pagesize, 0x00);
+	{
+		if(global_mafid == 0x2c)
+			chip->cmdfunc(mtd, 0x80, pagesize, page);
+		else
+			chip->cmdfunc(mtd, 0x80, pagesize, 0x00);
+	}
 	else
 		chip->cmdfunc(mtd, 0x80, pagesize, page & (1 << (chip->chip_shift - chip->page_shift)));
 
@@ -1153,8 +1233,13 @@ static void single_erase_cmd_planes(struct mtd_info *mtd, int global_page)
 	page = (global_page / ppb) * ppb + global_page; /* = global_page%ppb + (global_page/ppb)*ppb*2 */
 
         /* send cmd 0x60, the MSB should be valid if realplane is 4 */
-	if (chip->realplanenum == 2)
-		chip->cmdfunc(mtd, 0x60, -1, 0x00);
+	if (chip->realplanenum == 2) 
+	{
+		if(global_mafid == 0x2c)
+			chip->cmdfunc(mtd, 0x60, -1, page);
+		else
+			chip->cmdfunc(mtd, 0x60, -1, 0x00);
+	}
 	else
 		chip->cmdfunc(mtd, 0x60, -1, page & (1 << (chip->chip_shift - chip->page_shift)));
 
@@ -1564,7 +1649,7 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 		desc->dsadr = CPHYSADDR((u32)oobbuf) + ecc_pos + i * eccbytes;	/* DMA source address */
 #endif
 		desc->dtadr = CPHYSADDR((u32)errs) + i * 4 * ERRS_SIZE;	/* DMA target address */
-		desc->ddadr = (next << 24) + (eccbytes + 15) / DIV_DS_BCH;	/* size: eccbytes bytes */
+		desc->ddadr = (next << 24) + (eccbytes + DIV_DS_BCH - 1) / DIV_DS_BCH;	/* size: eccbytes bytes */
 		desc->dreqt = DMAC_DRSR_RS_BCH_DEC;
 		dprintk("desc:%x cmd:%x sadr:%x tadr:%x dadr:%x\n", (u32)desc, desc->dcmd, desc->dsadr, desc->dtadr,
 			desc->ddadr);
@@ -1723,7 +1808,7 @@ int __init jznand_init(void)
 	this->chip_delay = 20;
 	/* Scan to find existance of the device */
 	ret = nand_scan_ident(jz_mtd, nand_chips);
-
+	
 #ifdef CONFIG_MTD_HW_BCH_ECC
 	if (!ret) {
 		if (this->planenum == 2) {

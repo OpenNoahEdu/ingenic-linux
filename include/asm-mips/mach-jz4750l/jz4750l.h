@@ -27,6 +27,10 @@
 #include <asm/mach-jz4750l/board-f4750l.h>
 #endif
 
+#ifdef CONFIG_JZ4750L_VOLANS
+#include <asm/mach-jz4750l/board-volans.h>
+#endif
+
 /* Add other platform definition here ... */
 
 

@@ -1939,14 +1939,55 @@ static void jz4740_ep0_kick(struct jz4740_udc *dev, struct jz4740_ep *ep)
 
 /** Handle USB RESET interrupt
  */
-static void jz4740_reset_irq(struct jz4740_udc *dev)
+static void jz4740_handle_reset(struct jz4740_udc *dev)
 {
+	udc_set_address(dev, 0);
+
+	/* Disable interrupts */
+	usb_writew(USB_REG_INTRINE, 0);
+	usb_writew(USB_REG_INTROUTE, 0);
+	usb_writeb(USB_REG_INTRUSBE, 0);
+
+	/* Disable DMA */
+	usb_writel(USB_REG_CNTL1, 0);
+	usb_writel(USB_REG_CNTL2, 0);
+
+	stop_activity(dev, dev->driver);
+
+	/* Enable interrupts */
+	usb_setw(USB_REG_INTRINE, USB_INTR_EP0);
+	usb_setb(USB_REG_INTRUSBE, USB_INTR_RESET);
+
+	dev->ep0state = WAIT_FOR_SETUP;
+	
 	dev->gadget.speed = (usb_readb(USB_REG_POWER) & USB_POWER_HSMODE) ? 
 		USB_SPEED_HIGH : USB_SPEED_FULL;
 
 	DEBUG_SETUP("%s: address = %d, speed = %s\n", __FUNCTION__, dev->usb_address,
-		    (dev->gadget.speed == USB_SPEED_HIGH) ? "HIGH":"FULL" );
+		    (dev->gadget.speed == USB_SPEED_HIGH) ? "HIGH":"FULL");
 }
+
+static void jz4740_handle_resume(struct jz4740_udc *dev)
+{
+	if (dev->gadget.speed != USB_SPEED_UNKNOWN
+			&& dev->driver && dev->driver->resume)
+		dev->driver->resume(&dev->gadget);
+
+	return;
+}
+
+static void jz4740_handle_suspend(struct jz4740_udc *dev)
+{
+	/* Host unloaded from us, can do something, such as flushing
+	   the NAND block cache etc. */
+
+	if (dev->gadget.speed != USB_SPEED_UNKNOWN
+			&& dev->driver && dev->driver->suspend)
+		dev->driver->suspend(&dev->gadget);
+	
+	return;
+}
+
 
 /*
  *	jz4740 usb device interrupt handler.
@@ -1972,6 +2013,7 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	if ((intr_usb & USB_INTR_RESUME) && 
 	    (usb_readb(USB_REG_INTRUSBE) & USB_INTR_RESUME)) {
 		DEBUG("USB resume\n");
+		jz4740_handle_resume(dev);
 	}
 
 	/* Check for system interrupts */
@@ -1988,7 +2030,7 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 			spin_unlock(&dev->lock);
 			return IRQ_HANDLED;
 		}
-		jz4740_reset_irq(dev);
+		jz4740_handle_reset(dev);
 	}
 
 	/* Check for endpoint 0 interrupt */
@@ -2031,9 +2073,8 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	if ((intr_usb & USB_INTR_SUSPEND) && 
 	    (usb_readb(USB_REG_INTRUSBE) & USB_INTR_SUSPEND)) {
 		DEBUG("USB suspend\n");
-		dev->driver->suspend(&dev->gadget);
-		/* Host unloaded from us, can do something, such as flushing
-		 the NAND block cache etc. */
+
+		jz4740_handle_suspend(dev);
 	}
 
 #ifdef CONFIG_JZ_UDC_HOTPLUG

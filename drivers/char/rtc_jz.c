@@ -372,6 +372,7 @@ static int rtc_open(struct inode *inode, struct file *file)
 	return 0;
 
 out_busy:
+	spin_unlock_irq (&rtc_lock);
 	return -EBUSY;
 }
 

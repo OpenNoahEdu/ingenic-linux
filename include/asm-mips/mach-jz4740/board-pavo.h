@@ -21,6 +21,7 @@
 #define JZ_EXTAL		12000000  /* Main extal freq: 12 MHz */
 #define JZ_EXTAL2		32768     /* RTC extal freq: 32.768 KHz */
 
+#define CFG_PBAT_DIV            4 //add for touchscreen
 
 /*====================================================================== 
  * GPIO

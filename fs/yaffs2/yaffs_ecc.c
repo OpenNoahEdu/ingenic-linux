@@ -260,6 +260,27 @@ void Data2Sym(const unsigned char *in, unsigned char *out)
 	out[25] &= 0x7; /* the last symbol has only 3 bits */ 
 }
 
+/* Transfer 26 5-bit symbols to 16 bytes*/
+void Sym2Data(unsigned char *in, unsigned char *out)
+{
+	int i, j,n;
+	unsigned long long ullin = 0,ullout = 0;
+	
+	n = 0;
+	for(j = 0;j < 26 / 8;j++)
+	{
+		ullin = *((unsigned long long *)in + j);
+	    ullout = 0;
+	    for (i = 0; i < 8; i++){
+			ullout |= (((ullin >> (i * 8)) & 0x1f) << (i * 5));
+		}
+		memcpy((out + n),(unsigned char *)&ullout,5);
+		n += 5;
+	}
+	out[15] = ((in[24] & 0x1f)| ((in[25] & 0x3) << 5));
+}
+
+
 /*
  * It does reed solomon ECC calcs on 16 bytes of oob data
  */
@@ -312,7 +333,10 @@ int yaffs_ECCCorrectOther(unsigned char *data, unsigned nBytes,
 	if (numerr == 0)
 		return 0;
 	else if (numerr > 0 && numerr < 3)
+	{
+		Sym2Data(data5,data); 
 		return 1;
+	}
 	else
 		return -1;
 }

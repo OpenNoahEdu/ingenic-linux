@@ -46,6 +46,7 @@
  * __gpio_as_sleep set all pins to pull-disable, and set all pins as input
  * except sdram and the pins which can be used as CS1_N to CS4_N for chip select. 
  */
+#if 0
 #define __gpio_as_sleep()	              \
 do {	                                      \
 	REG_GPIO_PXFUNC(1) = ~0x03ff7fff;     \
@@ -69,6 +70,34 @@ do {	                                      \
 	REG_GPIO_PXDIRC(5) =  0xffffffff;     \
 	REG_GPIO_PXPES(5)  =  0xffffffff;     \
 } while (0)
+#endif
+
+#if 1
+#define __gpio_as_sleep()	              \
+do {	                                      \
+	REG_GPIO_PXFUNC(1) = ~0x03ff7fff;     \
+	REG_GPIO_PXSELC(1) = ~0x03ff7fff;     \
+	REG_GPIO_PXDIRC(1) = ~0x03ff7fff;     \
+	REG_GPIO_PXPES(1)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(2) = ~0x01e00000;     \
+	REG_GPIO_PXSELC(2) = ~0x01e00000;     \
+	REG_GPIO_PXDIRC(2) = ~0x01e00000;     \
+	REG_GPIO_PXPES(2)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(3) =  0xffffffff;     \
+	REG_GPIO_PXSELC(3) =  0xffffffff;     \
+	REG_GPIO_PXDIRC(3) =  0xffffffff;     \
+	REG_GPIO_PXPEC(3)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(4) =  0xffffffff;     \
+	REG_GPIO_PXSELC(4) =  0xffffffff;     \
+	REG_GPIO_PXDIRC(4) =  0xffffffff;     \
+	REG_GPIO_PXPES(4)  =  0xffffffff;     \
+	REG_GPIO_PXFUNC(5) =  0xffffffff;     \
+	REG_GPIO_PXSELC(5) =  0xffffffff;     \
+	REG_GPIO_PXDIRC(5) =  0xffffffff;     \
+	REG_GPIO_PXPES(5)  =  0xffffffff;     \
+} while (0)
+#endif
+
 
 static int jz_pm_do_hibernate(void)
 {

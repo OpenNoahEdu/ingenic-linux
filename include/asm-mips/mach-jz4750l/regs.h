@@ -2075,9 +2075,11 @@
 #define SADC_ENA_SADCINEN	(1 << 0)  /* SADCIN Enable */
 
 /* ADC Configure Register */
+#define SADC_CFG_SPZZ    (1 << 31)
 #define SADC_CFG_EXIN           (1 << 30)
 #define SADC_CFG_CLKOUT_NUM_BIT	16
 #define SADC_CFG_CLKOUT_NUM_MASK (0x7 << SADC_CFG_CLKOUT_NUM_BIT)
+#define SADC_CFG_DNUM(x)  (((x) - 1) << SADC_CFG_CLKOUT_NUM_BIT)
 #define SADC_CFG_TS_DMA		(1 << 15)  /* Touch Screen DMA Enable */
 #define SADC_CFG_XYZ_BIT	13  /* XYZ selection */
 #define SADC_CFG_XYZ_MASK	(0x3 << SADC_CFG_XYZ_BIT)
@@ -2094,6 +2096,7 @@
   #define SADC_CFG_SNUM_6	(0x5 << SADC_CFG_SNUM_BIT)
   #define SADC_CFG_SNUM_8	(0x6 << SADC_CFG_SNUM_BIT)
   #define SADC_CFG_SNUM_9	(0x7 << SADC_CFG_SNUM_BIT)
+#define SADC_CFG_SNUM(x) (((x) - 1) << SADC_CFG_SNUM_BIT)
 #define SADC_CFG_CLKDIV_BIT	5  /* AD Converter frequency clock divider */
 #define SADC_CFG_CLKDIV_MASK	(0x1f << SADC_CFG_CLKDIV_BIT)
 #define SADC_CFG_PBAT_HIGH	(0 << 4)  /* PBAT >= 2.5V */

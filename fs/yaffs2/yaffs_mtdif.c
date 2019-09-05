@@ -97,15 +97,16 @@ int nandmtd_WriteChunkToNAND(yaffs_Device * dev, int chunkInNAND,
 			translate_spare2oob(spare, spareAsBytes);
 			ops.mode = MTD_OOB_AUTO;
 			ops.ooblen = 8; /* temp hack */
+            ops.oobbuf = spareAsBytes;
 		} else {
 			ops.mode = MTD_OOB_RAW;
 			ops.ooblen = YAFFS_BYTES_PER_SPARE;
+            ops.oobbuf =  (__u8 *) spare;
 		}
 		ops.len = data ? dev->nDataBytesPerChunk : ops.ooblen;
 		ops.datbuf = (u8 *)data;
 		ops.ooboffs = 0;
-		ops.oobbuf = spareAsBytes;
-		retval = mtd->write_oob(mtd, addr, &ops);
+        retval = mtd->write_oob(mtd, addr, &ops);
 	}
 #else
 	__u8 *spareAsBytes = (__u8 *) spare;
@@ -161,15 +162,16 @@ int nandmtd_ReadChunkFromNAND(yaffs_Device * dev, int chunkInNAND, __u8 * data,
 		if (dev->useNANDECC) {
 			ops.mode = MTD_OOB_AUTO;
 			ops.ooblen = 8; /* temp hack */
+            ops.oobbuf = spareAsBytes;
 		} else {
 			ops.mode = MTD_OOB_RAW;
 			ops.ooblen = YAFFS_BYTES_PER_SPARE;
+            ops.oobbuf =  (__u8 *) spare;
 		}
 		ops.len = data ? dev->nDataBytesPerChunk : ops.ooblen;
 		ops.datbuf = data;
 		ops.ooboffs = 0;
-		ops.oobbuf = spareAsBytes;
-		retval = mtd->read_oob(mtd, addr, &ops); 
+        retval = mtd->read_oob(mtd, addr, &ops); 
 		if (dev->useNANDECC)
 			translate_oob2spare(spare, spareAsBytes);
 	}
