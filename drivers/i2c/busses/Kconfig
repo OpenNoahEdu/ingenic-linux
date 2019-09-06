@@ -14,6 +14,20 @@ config I2C_JZ47XX
 	  this option. This driver can also be built as a module.  If so, the
 	  module will be called i2c-jz47xx.
 
+config I2C0_JZ4760
+	tristate "JZ4760 I2C controler 0 Interface support"
+	depends on JZSOC
+	help
+	  If you have devices in the Ingenic JZ4760 I2C controler 0 bus, say yes to
+	  this option. This driver can also be built as a module.
+
+config I2C1_JZ4760
+	tristate "JZ4760 I2C  controler 1 Interface support"
+	depends on JZSOC
+	help
+	  If you have devices in the Ingenic JZ4760 I2C controler 1 bus, say yes to
+	  this option. This driver can also be built as a module.
+
 config I2C_ALI1535
 	tristate "ALI 1535"
 	depends on PCI

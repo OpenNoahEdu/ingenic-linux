@@ -3,25 +3,23 @@
 #
 
 menu "JZSOC char device support"
-	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
 
 config JZCHAR
 	tristate 'JzSOC char device support'
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
 
 config JZ_SIMPLE_I2C
 	tristate 'Ingenic Simple I2C Userspace Driver'
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D 
 
-config JZ_CAMERA_SENSOR
-	bool
-
-config JZ_CIM
-	tristate 'JzSOC Camera Interface Module (CIM) support'
-	depends on JZCHAR
-	select JZ_CAMERA_SENSOR
+config JZ_GPIO_PM_KEY
+	tristate 'Ingenic GPIO PM Key Driver'
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D 
 
 config JZ_TPANEL_ATA2508
 	tristate 'JzSOC MPEG4 TOUCH PANEL ATA2508 support'
-	depends on JZCHAR
+	depends on JZCHAR && (SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D)
 
 #config JZ_TPANEL
 #	tristate 'JzSOC touchpanel driver support' 
@@ -50,21 +48,13 @@ config JZ_TPANEL_WM9712
 
 endchoice
 
-#config JZ_UDC_HOTPLUG
-#	tristate 'JZ UDC hotplug driver support'
-#	depends on JZCHAR
-
-config JZ_POWEROFF
-	tristate 'JZ board poweroff support' 
-	depends on JZCHAR
-
 config JZ_OW
 	tristate 'JZ One-wire bus support' 
-	depends on JZCHAR
+	depends on JZCHAR && (SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D)
 
 config JZ_TCSM
 	tristate 'JZ TCSM support' 
-	depends on JZCHAR
+	depends on JZCHAR && (SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760)
 
 config JZ_TSSI
 	tristate 'JZ MPEG2-TS interface support' 

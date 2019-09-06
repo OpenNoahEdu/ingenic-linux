@@ -251,7 +251,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		brq.mrq.cmd = &brq.cmd;
 		brq.mrq.data = &brq.data;
 
-#ifdef CONFIG_JZ4750_BOOT_FROM_MSC0
+#if defined( CONFIG_JZ_BOOT_FROM_MSC0)
 		brq.cmd.arg = blk_rq_pos(req) + 16384;
 #else
 		brq.cmd.arg = blk_rq_pos(req);

@@ -29,29 +29,52 @@ config MTD_NAND_JZ4750
 	help
 	Support NAND Flash device on Jz4750 board
 
+config MTD_NAND_JZ4760
+        tristate "Support NAND Flash device on Jz4760 board"
+        depends on SOC_JZ4760
+        help
+        Support NAND Flash device on Jz4760 board
+
+
 config MTD_NAND_CS2
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
 	bool 'Use NAND on CS2_N of JZSOC'
 	default n
 
 config MTD_NAND_CS3
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
 	bool 'Use NAND on CS3_N of JZSOC'
 	default n
 
 config MTD_NAND_CS4
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
 	bool 'Use NAND on CS4_N of JZSOC'
 	default n
 
 config MTD_NAND_MULTI_PLANE
-	depends on MTD_NAND_JZ4730 || MTD_NAND_JZ4740 || MTD_NAND_JZ4750
+	depends on MTD_NAND_JZ4730 || MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
 	bool 'Use multiple planes if the NAND supports'
 	default y
 	help
 	  It is just supported on jz4740 now.
+choice
+        prompt "8 bit or 16 bit NAND bus width"
+        default CONFIG_MTD_NAND_BUS_WIDTH_8
 
-if     MTD_NAND_JZ4740 || MTD_NAND_JZ4730 || MTD_NAND_JZ4750
+config MTD_NAND_BUS_WIDTH_8
+        bool '8 bit'
+        help
+          The bus width of NAND flash is 8 bit.
+
+config  MTD_NAND_BUS_WIDTH_16
+        bool '16 bit'
+        help
+          The bus width of NAND flash is 16 bit.
+
+endchoice
+
+
+if     MTD_NAND_JZ4740 || MTD_NAND_JZ4730 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
 choice
 	prompt "ECC type"
 	default CONFIG_MTD_SW_HM_ECC
@@ -70,18 +93,36 @@ config  MTD_HW_RS_ECC
 config  MTD_HW_BCH_ECC
 	depends on MTD_NAND_JZ4750
 	bool 'Select hardware BCH ECC'
+
+config  MTD_HW_BCH_ECC
+	depends on MTD_NAND_JZ4760
+	bool 'Select hardware BCH ECC'
 endchoice
 
 choice
-	prompt "4 bit or 8 bit BCH ecc"
-	depends on MTD_HW_BCH_ECC
-	default CONFIG_MTD_HW_BCH_4BIT
+        prompt "4 bit or 8 bit or 12 bit or 16 bit or 20 bit or 24 bit BCH ecc"
+        depends on MTD_HW_BCH_ECC
+        default CONFIG_MTD_HW_BCH_4BIT
 
-config 	MTD_HW_BCH_4BIT
-	bool '4 bit'
+config  MTD_HW_BCH_4BIT
+        bool '4 bit'
 
-config 	MTD_HW_BCH_8BIT
-	bool '8 bit'
+config  MTD_HW_BCH_8BIT
+        bool '8 bit'
+
+if     MTD_NAND_JZ4760
+config  MTD_HW_BCH_12BIT
+        bool '12 bit'
+
+config  MTD_HW_BCH_16BIT
+        bool '16 bit'
+
+config  MTD_HW_BCH_20BIT
+        bool '20 bit'
+
+config  MTD_HW_BCH_24BIT
+        bool '24 bit'
+endif
 
 endchoice
 

@@ -5,7 +5,7 @@
 #ifndef __MTD_ABI_H__
 #define __MTD_ABI_H__
 
-#include <linux/types.h>
+#include <mtd/types.h>
 
 #ifndef __KERNEL__ 
 #define __user

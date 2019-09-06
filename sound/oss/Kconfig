@@ -17,7 +17,7 @@ config SOUND_JZ_I2S
 	depends on JZSOC
 	help
 	  Say Y here if you have want to select the on-chip I2S driver
-	  on Jz4730/Jz4740/Jz5730.
+	  on Jz4730/Jz4740/Jz5730/jz4760.
 
 config SOUND_JZ_PCM
 	bool "Jz On-Chip PCM driver"
@@ -47,6 +47,12 @@ config I2S_DLV
 	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4750L
 	help
 	  Answer Y if you have an internal I2S codec on Jz4750 or Jz4750d, jz4750L.
+
+config I2S_DLV_4760
+	bool "Internal On-Chip codec on Jz4760"
+	depends on SOC_JZ4760
+	help
+	  Answer Y if you have an internal I2S codec on Jz4760.
 
 endchoice
 

@@ -32,73 +32,145 @@ config JZ_MMC_BUS_4
 
 endchoice
 
-config MSC0_JZ4750
-	tristate "JZ4750 SD/Multimedia Card 0 Interface support"
-	depends on SOC_JZ4750 || SOC_JZ4750D
+
+config JZ_MSC0
+	tristate "JZ SOC Multimedia/SD/SDIO host controller 0 support"
+	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
 	help
-	  This selects the Ingenic JZ4750 SD/Multimedia card 0 Interface.
+	  this selects the Ingenic Multimedia/SD/SDIO host controller 0.
 	  If you have a Ingenic platform with a Multimedia Card slot,
-	  say Y or M here.
+	  Say Y or M here.
 
 	  If unsure, say N.
 
 choice
-	depends on MSC0_JZ4750
-	prompt "MSC0 BUS Width"
-	default JZ4750_MSC0_BUS_4
+	depends on JZ_MSC0
+	prompt "Multimedia/SD/SDIO controller 0 Bus Width"
+	default JZ_MSC0_BUS_4
 	help
-	This defines the BUS Width of the Ingenic JZ4750 SD/Multimedia card Interface.
+	  This defines the bus width of the Ingenic Multimedia/SD/SDIO host controller
 
-config JZ4750_MSC0_BUS_1
-	bool "1 Bit Bus"
+config JZ_MSC0_BUS_1
+	bool "1-bit Bus"
 	help
-	 1 Bit SD/Multimedia Card Bus
+	  1-bit Multimedia/SD/SDIO Card Bus
 
-config JZ4750_MSC0_BUS_4
-	bool "4 Bit Bus"
+config JZ_MSC0_BUS_4
+	bool "4-bit Bus"
 	help
-	 4 Bit SD/Multimedia Card Bus
+	  4-bit Multimedia/SD/SDIO Card Bus
 
-config JZ4750_MSC0_BUS_8
-	bool "8 Bit Bus"
+config JZ_MSC0_BUS_8
+	bool "8-bit Bus"
 	help
-	 8 Bit Multimedia Card Bus
+	  8-bit Multimedia/SD/SDIO Card Bus
+	  If the controller support 8-bit bus, select this.
 
+	  If unsure, use the default(4-bit) maybe the best choice
 endchoice
 
-config MSC1_JZ4750
-	tristate "JZ4750 SD/Multimedia Card 1 Interface support"
-	depends on SOC_JZ4750 || SOC_JZ4750D
+config JZ_MSC0_SDIO_SUPPORT
+	bool "SDIO support for Multimedia/SD/SDIO controller 0"
+	depends on JZ_MSC0
 	help
-	  This selects the Ingenic JZ4750 SD/Multimedia card 1 Interface.
+	  SDIO support for MSC0.
+
+	  If unsure,say N.
+
+config JZ_MSC1
+	tristate "JZ SOC Multimedia/SD/SDIO host controller 1 support"
+	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	help
+	  this selects the Ingenic Multimedia/SD/SDIO host controller 1.
 	  If you have a Ingenic platform with a Multimedia Card slot,
-	  say Y or M here.
+	  Say Y or M here.
 
 	  If unsure, say N.
 
 choice
-	depends on MSC1_JZ4750
-	prompt "MSC1 BUS Width"
-	default JZ4750_MSC1_BUS_4
+	depends on JZ_MSC1
+	prompt "Multimedia/SD/SDIO controller 1 Bus Width"
+	default JZ_MSC1_BUS_4
 	help
-	This defines the BUS Width of the Ingenic JZ4750 SD/Multimedia card Interface.
+	  This defines the bus width of the Ingenic Multimedia/SD/SDIO host controller
 
-config JZ4750_MSC1_BUS_1
-	bool "1 Bit Bus"
+config JZ_MSC1_BUS_1
+	bool "1-bit Bus"
 	help
-	 1 Bit SD/Multimedia Card Bus
+	  1-bit Multimedia/SD/SDIO Card Bus
 
-config JZ4750_MSC1_BUS_4
-	bool "4 Bit Bus"
+config JZ_MSC1_BUS_4
+	bool "4-bit Bus"
 	help
-	 4 Bit SD/Multimedia Card Bus
+	  4-bit Multimedia/SD/SDIO Card Bus
+
+config JZ_MSC1_BUS_8
+	bool "8-bit Bus"
+	help
+	  8-bit Multimedia/SD/SDIO Card Bus
+	  If the controller support 8-bit bus, select this.
+
+	  If unsure, use the default(4-bit) maybe the best choice
 endchoice
 
-config JZ4750_BOOT_FROM_MSC0
-	tristate "JZ4750 Boot from SD/Multimedia Card Interface support"
-	depends on SOC_JZ4750 || SOC_JZ4750D
+config JZ_MSC1_SDIO_SUPPORT
+	bool "SDIO support for Multimedia/SD/SDIO controller 1"
+	depends on JZ_MSC1
 	help
-	  This selects boot from the Sd/Multimedia Card.
+	  SDIO support for MSC1.
+
+	  If unsure,say N.
+
+config JZ_MSC2
+	tristate "JZ SOC Multimedia/SD/SDIO host controller 2 support"
+	depends on SOC_JZ4760
+	help
+	  this selects the Ingenic Multimedia/SD/SDIO host controller 2.
+	  If you have a Ingenic platform with a Multimedia Card slot,
+	  Say Y or M here.
+
+	  If unsure, say N.
+
+choice
+	depends on JZ_MSC2
+	prompt "Multimedia/SD/SDIO controller 2 Bus Width"
+	default JZ_MSC2_BUS_4
+	help
+	  This defines the bus width of the Ingenic Multimedia/SD/SDIO host controller
+
+config JZ_MSC2_BUS_1
+	bool "1-bit Bus"
+	help
+	  1-bit Multimedia/SD/SDIO Card Bus
+
+config JZ_MSC2_BUS_4
+	bool "4-bit Bus"
+	help
+	  4-bit Multimedia/SD/SDIO Card Bus
+
+config JZ_MSC2_BUS_8
+	bool "8-bit Bus"
+	help
+	  8-bit Multimedia/SD/SDIO Card Bus
+	  If the controller support 8-bit bus, select this.
+
+	  If unsure, use the default(4-bit) maybe the best choice
+endchoice
+
+config JZ_MSC2_SDIO_SUPPORT
+	bool "SDIO support for Multimedia/SD/SDIO controller 2"
+	depends on JZ_MSC2
+	help
+	  SDIO support for MSC1.
+
+	  If unsure,say N.
+
+config JZ_BOOT_FROM_MSC0
+	tristate "Boot from Ingenic Multimedia/SD/SDIO Card Interface 0 support"
+	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	depends on JZ_MSC0
+	help
+	  This selects boot from the Multimedia/SD/SDIO Card.
 
 	  If unsure,say N.
 

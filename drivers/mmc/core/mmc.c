@@ -141,7 +141,7 @@ static int mmc_decode_csd(struct mmc_card *card)
 	e = UNSTUFF_BITS(resp, 47, 3);
 	m = UNSTUFF_BITS(resp, 62, 12);
 
-#ifdef CONFIG_JZ4750_BOOT_FROM_MSC0
+#if defined(CONFIG_JZ_BOOT_FROM_MSC0)
 	csd->capacity	  = (1 + m) << (e + 2);
 	csd->capacity	  -= 16384;
 #else

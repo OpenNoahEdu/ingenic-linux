@@ -39,6 +39,26 @@
 #include <asm/mach-jz4750l/jz4750l.h>
 #endif
 
+#ifdef CONFIG_SOC_JZ4760
+#include <asm/mach-jz4760/jz4760.h>
+#endif
+
+#ifdef CONFIG_SOC_JZ4810
+#include <asm/mach-jz4810/jz4810.h>
+#endif
+
+#ifdef CONFIG_MFD_WM831X
+#include <linux/mfd/wm831x/core.h>
+#include <asm/jzpm/jz_wm831x.h>
+
+#endif
+/*
+#else
+
+#include <asm/jzpm/jz.h>
+#endif
+*/
+
 /*
  * Generic I/O routines
  */

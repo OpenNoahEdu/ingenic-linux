@@ -32,9 +32,13 @@
 
 /* User space defines */
 
+#if 0
 typedef unsigned char __u8;
 typedef unsigned short __u16;
 typedef unsigned __u32;
+#else
+#include <mtd/types.h>
+#endif
 
 /*
  * Simple doubly linked list implementation.

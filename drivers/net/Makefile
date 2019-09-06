@@ -105,6 +105,7 @@ obj-$(CONFIG_PHYLIB) += phy/
 
 obj-$(CONFIG_JZ_ETH) += jz_eth.o
 obj-$(CONFIG_JZCS8900) += jzcs8900a.o
+obj-$(CONFIG_JZ4760_ETH) += jz4760_eth.o
 
 obj-$(CONFIG_SUNDANCE) += sundance.o
 obj-$(CONFIG_HAMACHI) += hamachi.o

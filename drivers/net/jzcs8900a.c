@@ -57,6 +57,7 @@
 
 #define FULL_DUPLEX 
 #define INT_PIN                 0
+
 #ifdef CONFIG_SOC_JZ4740
 #define CIRRUS_DEFAULT_IO	0xa8000000
 #define CIRRUS_DEFAULT_IRQ	107
@@ -70,7 +71,13 @@
 #define CIRRUS_DEFAULT_IRQ	(32*2 +6+48)
 #endif
 
-
+#elif CONFIG_SOC_JZ4760
+#ifdef CONFIG_JZ4760_LEPUS
+#define CIRRUS_DEFAULT_IO	0xb4000000
+#elif CONFIG_JZ4760_CYGNUS
+#define CIRRUS_DEFAULT_IO	0xb5000000
+#endif
+#define CIRRUS_DEFAULT_IRQ	(GPIO_NET_INT + IRQ_GPIO_0)
 #endif
 
 typedef struct {
@@ -108,6 +115,29 @@ static void gpio_init_cs8900(void)
 #endif
 
 	REG_EMC_SMCR3 |= (1 << 6);            //16bit
+
+#elif CONFIG_SOC_JZ4760
+
+#ifdef CONFIG_JZ4760_LEPUS
+	/* We use CS6 with 16-bit data width */
+	__gpio_as_func0(32 * 0 + 26);		/* GPA26 CS6# */
+	__gpio_as_func0(32 * 0 + 16);		/* GPA16 RD#  */
+	__gpio_as_func0(32 * 0 + 17);		/* GPA17 WE#  */
+ 
+	REG_EMC_SMCR6 &= ~EMC_SMCR_BW_MASK;
+	REG_EMC_SMCR6 |= EMC_SMCR_BW_16BIT;
+
+#elif CONFIG_JZ4760_CYGNUS
+        /* We use CS5 with 16-bit data width */
+	__gpio_as_func0(32 * 0 + 25);		/* GPA25 CS5# */
+	__gpio_as_func0(32 * 0 + 16);		/* GPA16 RD#  */
+	__gpio_as_func0(32 * 0 + 17);		/* GPA17 WE#  */
+ 
+	REG_EMC_SMCR5 &= ~EMC_SMCR_BW_MASK;
+	REG_EMC_SMCR5 |= EMC_SMCR_BW_16BIT;
+#endif
+	__gpio_as_irq_high_level(GPIO_NET_INT);	/* irq */
+	__gpio_disable_pull(GPIO_NET_INT);	/* disable pull */
 #endif
 	udelay(1);
 }

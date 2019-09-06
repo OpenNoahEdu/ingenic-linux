@@ -805,8 +805,16 @@ config RTC_PCF8563
 
 config RTC_JZ
 	bool 'Jz47XX On-Chip Real Time Clock'
+	depends on SOC_JZ4750 || SOC_JZ4750D
 	help
 	  Jz47XX On-Chip Real Time Clock
+
+
+config RTC_JZ4760
+	bool 'Jz4760 On-Chip Real Time Clock'
+	depends on SOC_JZ4760
+	help
+	  Jz4760 On-Chip Real Time Clock
 
 #
 # These legacy RTC drivers just cause too many conflicts with the generic

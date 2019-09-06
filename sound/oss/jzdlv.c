@@ -28,6 +28,9 @@
 #define USE_MIC 2
 #define USE_LINEIN 3
 
+/* For volume control mute - Added by River. */
+extern int jz_dlv_vol_mute;
+
 extern mixer_info info;
 extern _old_mixer_info old_info;
 extern int codec_volue_shift;
@@ -312,6 +315,7 @@ void set_playback_line_input_audio_direct_only(void)
 	write_codec_file_bit(1, 1, 2);//CR1.HP_BYPASS->1
 	write_codec_file_bit(1, 0, 4);//CR1.HP_DIS->0
 	write_codec_file_bit(1, 0, 3);//CR1.DACSEL->0
+	write_codec_file_bit(5, 1, 0);//PMR1.SB_IND->1
 	write_codec_file_bit(5, 0, 3);//PMR1.SB_LIN->0
 
 	write_codec_file_bit(5, 0, 5);//PMR1.SB_MIX->0
@@ -608,9 +612,24 @@ void set_dlv_line(int val)
 void set_dlv_volume(int val)
 {
 	unsigned long cur_vol;
-	cur_vol = 31 * (100 - val) / 100; 
-	write_codec_file(17, cur_vol | 0xc0);
-	write_codec_file(18, cur_vol);
+	
+	/* 0 -> DAC Soft Mute - Modified by River. */
+	if (!val) {
+		if (!jz_dlv_vol_mute) {
+			write_codec_file_bit(1, 1, 5); /* DAC soft mute -> ON. */
+			jz_dlv_vol_mute = 1;
+		}
+	}else {
+		cur_vol = 31 * (100 - val) / 100; 
+		
+		if (jz_dlv_vol_mute) {
+			jz_dlv_vol_mute = 0;
+			write_codec_file_bit(1, 0, 5); /* DAC soft mute -> OFF. */
+		}
+
+		write_codec_file(17, cur_vol | 0xc0);
+		write_codec_file(18, cur_vol);
+	}
 }
 
 static int __init init_dlv(void)

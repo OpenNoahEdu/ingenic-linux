@@ -16,6 +16,13 @@
 
 #include <asm/jzsoc.h>
 
+
+#include <asm/jzmmc/jz_mmc_platform_data.h>
+
+extern void __init board_msc_init(void);
+
+int __init jz_add_msc_devices(unsigned int controller, struct jz_mmc_platform_data *plat);
+
 /* OHCI (USB full speed host controller) */
 static struct resource jz_usb_ohci_resources[] = {
 	[0] = {
@@ -99,6 +106,7 @@ static struct platform_device jz_usb_gdt_device = {
 };
 
 /** MMC/SD controller **/
+#if 0
 static struct resource jz_mmc_resources[] = {
 	[0] = {
 		.start          = CPHYSADDR(MSC_BASE),
@@ -124,6 +132,91 @@ static struct platform_device jz_mmc_device = {
 	.num_resources  = ARRAY_SIZE(jz_mmc_resources),
 	.resource       = jz_mmc_resources,
 };
+#else
+/** MMC/SD controller MSC0**/
+static struct resource jz_msc0_resources[] = {
+	{
+		.start          = CPHYSADDR(MSC_BASE),
+		.end            = CPHYSADDR(MSC_BASE) + 0x1000 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = IRQ_MSC0,
+		.end            = IRQ_MSC0,
+		.flags          = IORESOURCE_IRQ,
+	},
+	{
+		.start          = DMA_ID_MSC0_RX,
+		.end            = DMA_ID_MSC0_TX,
+		.flags          = IORESOURCE_DMA,
+	},
+};
+
+static u64 jz_msc0_dmamask =  ~(u32)0;
+
+static struct platform_device jz_msc0_device = {
+	.name = "jz-msc0",
+	.id = 0,
+	.dev = {
+		.dma_mask               = &jz_msc0_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(jz_msc0_resources),
+	.resource       = jz_msc0_resources,
+};
+
+/** MMC/SD controller MSC1**/
+static struct resource jz_msc1_resources[] = {
+	{
+		.start          = CPHYSADDR(MSC_BASE) + 0x1000,
+		.end            = CPHYSADDR(MSC_BASE) + 0x10000 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = IRQ_MSC1,
+		.end            = IRQ_MSC1,
+		.flags          = IORESOURCE_IRQ,
+	},
+	{
+		.start          = DMA_ID_MSC1_RX,
+		.end            = DMA_ID_MSC1_TX,
+		.flags          = IORESOURCE_DMA,
+	},
+
+};
+
+static u64 jz_msc1_dmamask =  ~(u32)0;
+
+static struct platform_device jz_msc1_device = {
+	.name = "jz-msc1",
+	.id = 1,
+	.dev = {
+		.dma_mask               = &jz_msc1_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(jz_msc1_resources),
+	.resource       = jz_msc1_resources,
+};
+
+static struct platform_device *jz_msc_devices[] __initdata = {
+	&jz_msc0_device,
+	&jz_msc1_device,
+};
+
+int __init jz_add_msc_devices(unsigned int controller, struct jz_mmc_platform_data *plat)
+{
+	struct platform_device	*pdev;
+
+	if (controller < 0 || controller > 1)
+		return -EINVAL;
+
+	pdev = jz_msc_devices[controller];
+
+	pdev->dev.platform_data = plat;
+
+	return platform_device_register(pdev);
+}
+#endif
 
 
 /** I2C controller **/
@@ -161,12 +254,13 @@ static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz_usb_ohci_device,
 	&jz_lcd_device,
 	&jz_usb_gdt_device,
-	&jz_mmc_device,
+	//	&jz_mmc_device,
 	&jz_i2c_device,
 };
 
 static int __init jz_platform_init(void)
 {
+	board_msc_init();
 	return platform_add_devices(jz_platform_devices, ARRAY_SIZE(jz_platform_devices));
 }
 

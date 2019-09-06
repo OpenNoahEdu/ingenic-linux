@@ -49,6 +49,7 @@
 #define USE_NONE 1
 #define USE_MIC 2
 #define USE_LINEIN 3
+#define USE_WAIT_EVENT
 
 typedef struct hpvol_shift_s
 {
@@ -108,8 +109,9 @@ static int              codec_bass_gain;
 static int              audio_mix_modcnt;
 static int              jz_audio_dma_tran_count;  /* bytes count of one DMA transfer */
 #if defined(CONFIG_I2S_DLV)
-int              jz_mic_only = 1;
-static int              jz_codec_config = 0;
+int			jz_dlv_vol_mute = 0; /* Added by River. */
+int			jz_mic_only = 1;
+static int		jz_codec_config = 0;
 static unsigned long    ramp_up_start;
 static unsigned long    ramp_up_end;
 static unsigned long    gain_up_start;
@@ -146,6 +148,8 @@ static DECLARE_WAIT_QUEUE_HEAD (rx_wait_queue);
 static DECLARE_WAIT_QUEUE_HEAD (tx_wait_queue);
 static DECLARE_WAIT_QUEUE_HEAD (drain_wait_queue);
 static DECLARE_WAIT_QUEUE_HEAD (pop_wait_queue);
+
+static volatile int pop_wait_event;
 
 struct jz_i2s_controller_info
 {
@@ -422,8 +426,8 @@ static void jz_i2s_initHw(int set)
 	__i2s_disable_record();
 	__i2s_disable_replay();
 	__i2s_disable_loopback();
-	__i2s_set_transmit_trigger(4);
-	__i2s_set_receive_trigger(3);
+	__i2s_set_transmit_trigger(12);
+	__i2s_set_receive_trigger(4);
 }
 
 static int Init_In_Out_queue(int fragstotal,int fragsize)
@@ -1328,6 +1332,7 @@ static int __init probe_jz_i2s(struct jz_i2s_controller_info **controller)
 		printk(KERN_ERR "Jz I2S Controller: out of memory.\n");
 		return -ENOMEM;
 	}
+
 	(*controller)->name = "Jz I2S controller";
 	(*controller)->opened1 = 0;
 	(*controller)->opened2 = 0;
@@ -1338,6 +1343,7 @@ static int __init probe_jz_i2s(struct jz_i2s_controller_info **controller)
 	init_waitqueue_head(&tx_wait_queue);
 	init_waitqueue_head(&pop_wait_queue);
 	init_waitqueue_head(&drain_wait_queue);
+	pop_wait_event = 0;
 
 	return 0;
 }
@@ -1512,8 +1518,10 @@ static irqreturn_t aic_codec_irq(int irq, void *dev_id)
 		gain_down_end = jiffies;
 
 	write_codec_file(9, file_9);
-	if (file_9 & 0xf)
+	if (file_9 & 0xf) {
+		pop_wait_event = 1;
 		wake_up(&pop_wait_queue);
+	}
 	while (REG_ICDC_RGDATA & 0x100);
 	
 	return IRQ_HANDLED;
@@ -1844,6 +1852,8 @@ static int drain_dac(struct jz_i2s_controller_info *ctrl, int nonblock)
 static int jz_audio_release(struct inode *inode, struct file *file)
 {
 	unsigned long flags;
+	unsigned int dacflag;
+	unsigned int timeout = 0xfff;
 #if defined(CONFIG_I2S_DLV)
 	unsigned long tfl;
 #endif
@@ -1855,17 +1865,21 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		return -ENODEV;
 
 	pop_dma_flag = 0;
-	
+	pop_wait_event = 0;
+
 	if (controller->opened1 == 1 && controller->opened2 == 1) {
 		controller->opened1 = 0; 
 		__i2s_enable_transmit_dma();
 		__i2s_enable_replay();
 		drain_dac(controller, file->f_flags & O_NONBLOCK);
 #if defined(CONFIG_I2S_DLV)
+#if 0
 	/* wait for fifo empty */
 		write_codec_file_bit(1, 1, 5);//DAC_MUTE->1
 		gain_down_start = jiffies;
-		sleep_on(&pop_wait_queue);
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
+#endif
 		//gain_down_end = jiffies;
 		/*while (1) {
 			tfl = REG_AIC_SR & 0x00003f00;
@@ -1919,7 +1933,9 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 #if defined(CONFIG_I2S_DLV)
 		write_codec_file_bit(5, 1, 6);//SB_OUT->1
 		ramp_down_start = jiffies;
-		sleep_on(&pop_wait_queue);
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
+
 		//ramp_down_end = jiffies;
 		if (use_mic_line_flag == USE_LINEIN) {
 			unset_record_line_input_audio_with_audio_data_replay();
@@ -1948,14 +1964,31 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		//write_mute_to_dma_buffer(save_last_samples[last_dma_buffer_id].left,save_last_samples[last_dma_buffer_id].right);
 #endif
 #if defined(CONFIG_I2S_DLV)
+#if 0
 		write_codec_file_bit(1, 1, 5);//DAC_MUTE->1
 		gain_down_start = jiffies;
-		sleep_on(&pop_wait_queue);
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
+#endif
+		if (!jz_dlv_vol_mute) {
+			dacflag = read_codec_file(1);
+			if (!(dacflag & 0x20)) {
+				write_codec_file_bit(1, 1, 5);//DAC_MUTE->1
+				gain_down_start = jiffies;
+				wait_event(pop_wait_queue, pop_wait_event);
+				pop_wait_event = 0;
+			}
+		}else
+			mdelay(280);
+
 		//gain_down_end = jiffies;
 		while (1) {
+			timeout --;
 			tfl = REG_AIC_SR & 0x00003f00;
 			if (tfl == 0) {
+				break;
 				udelay(500);
+			} else if (!timeout){
 				break;
 			}
 			mdelay(2);
@@ -1969,7 +2002,7 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		if(clear_codec_replay)
 			clear_codec_replay();
 #endif
-//		__aic_flush_fifo();
+		__aic_flush_fifo();
   
 		spin_lock_irqsave(&controller->ioctllock, flags);
 		controller->total_bytes = 0;
@@ -1982,8 +2015,8 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 #if defined(CONFIG_I2S_DLV)
 		write_codec_file_bit(5, 1, 6);//SB_OUT->1
 		ramp_down_start = jiffies;
-		sleep_on(&pop_wait_queue);
-		//ramp_down_end = jiffies;
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
 		unset_audio_data_replay();
 #endif
 		__i2s_disable();
@@ -2018,11 +2051,11 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		/* unset Record MIC input audio with direct playback */
 		unset_record_mic_input_audio_with_direct_playback();
 #endif
-#if 0
+#if 1
 		/* unset Record MIC input audio without playback */
 		unset_record_mic_input_audio_without_playback();
 #endif
-#if 1
+#if 0
 		unset_playback_line_input_audio_direct_only();
 #endif
 #if 0
@@ -2079,6 +2112,8 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 	REG_DMAC_DMACKE(0) = 0x3f;
 #endif
 	pop_dma_flag = 0;
+	pop_wait_event = 0;
+
 	if (controller->opened1 == 1 || controller->opened2 == 1 ) {
 		printk("\naudio is busy!\n");
 		return -EBUSY;
@@ -2225,11 +2260,11 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 		set_record_mic_input_audio_with_direct_playback();
 #endif
 
-#if 0
+#if 1
 		/* set Record MIC input audio without playback */
 		set_record_mic_input_audio_without_playback();
 #endif
-#if 1
+#if 0
 		/* set Playback LINE input audio direct only */
 		set_playback_line_input_audio_direct_only();
 #endif
@@ -2248,7 +2283,7 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 	mdelay(10);
 	REG_AIC_I2SCR = 0x10;
 	mdelay(20);
-//	__aic_flush_fifo();
+	__aic_flush_fifo();
 #endif
 
 	__i2s_enable();
@@ -2262,19 +2297,15 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 		__dmac_enable_module(0);
 		write_codec_file_bit(5, 0, 6);//PMR1.SB_OUT->0
 		ramp_up_start = jiffies;
-		sleep_on(&pop_wait_queue);
-		//ramp_up_end = jiffies;
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
 #endif
 	} else if (file->f_mode & FMODE_WRITE) {
 #if defined(CONFIG_I2S_DLV)
 		write_codec_file_bit(5, 0, 6);//PMR1.SB_OUT->0
 		ramp_up_start = jiffies;
-		/*while (!(REG_RTC_RCR & RTC_RCR_WRDY));
-		REG_RTC_RCR = 0x1;
-		while (!(REG_RTC_RCR & RTC_RCR_WRDY));
-		REG_RTC_RGR = 1;*/
-		sleep_on(&pop_wait_queue);
-		//ramp_up_end = jiffies;
+		wait_event(pop_wait_queue, pop_wait_event);
+		pop_wait_event = 0;
 		write_codec_file_bit(5, 1, 4);//SB_ADC->1
 #endif
 	} else if (file->f_mode & FMODE_READ) {
@@ -2741,9 +2772,19 @@ static ssize_t jz_audio_write(struct file *file, const char *buffer, size_t coun
 					last_dma_buffer_id = id;
 #if defined(CONFIG_I2S_DLV)
 					if (jz_codec_config == 0) {
+#if 0
 						write_codec_file_bit(1, 0, 5);
 						gain_up_start = jiffies;
-						sleep_on(&pop_wait_queue);
+						wait_event(pop_wait_queue, pop_wait_event);
+						pop_wait_event = 0;
+#endif
+						if (!jz_dlv_vol_mute) {
+							write_codec_file_bit(1, 0, 5);
+							gain_up_start = jiffies;
+							wait_event(pop_wait_queue, pop_wait_event);
+							pop_wait_event = 0;
+						}
+
 						//gain_up_end = jiffies;
 						jz_codec_config = 1;
 						//SB_ADC->1

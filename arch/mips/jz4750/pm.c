@@ -244,10 +244,14 @@ static int jz_pm_do_sleep(void)
 	unsigned long sadc = REG_SADC_ENA;
 	unsigned long sleep_gpio_save[7*(GPIO_PORT_NUM-1)];
 
+	unsigned long flags;
+
 	printk(JZ_SOC_NAME": Put CPU into sleep mode.\n");
 
 	/* Preserve current time */
 	delta = xtime.tv_sec - REG_RTC_RSR;
+	
+	local_irq_save(flags);
 
         /* Disable nand flash */
 	REG_EMC_NFCSR = ~0xff;
@@ -323,6 +327,8 @@ static int jz_pm_do_sleep(void)
 
 	/* Restore Oscillator and Power Control Register */
 	REG_CPM_OPCR = opcr;
+	
+	local_irq_restore(flags);
 
 	/* Restore current time */
 	xtime.tv_sec = REG_RTC_RSR + delta;
@@ -336,33 +342,12 @@ int jz_pm_hibernate(void)
 	return jz_pm_do_hibernate();
 }
 
-#ifndef CONFIG_JZ_POWEROFF
-static irqreturn_t pm_irq_handler (int irq, void *dev_id)
-{
-	return IRQ_HANDLED;
-}
-#endif
-
 /* Put CPU to SLEEP mode */
 int jz_pm_sleep(void)
 {
-	int retval;
-
-#ifndef CONFIG_JZ_POWEROFF
-	if ((retval = request_irq (IRQ_GPIO_0 + GPIO_WAKEUP, pm_irq_handler, IRQF_DISABLED,
-				   "PM", NULL))) {
-		printk ("PM could not get IRQ for GPIO_WAKEUP\n");
-		return retval;
-	}
-#endif
-
 	jz_pm_do_sleep();
 
-#ifndef CONFIG_JZ_POWEROFF
-	free_irq (IRQ_GPIO_0 + GPIO_WAKEUP, NULL);
-#endif
-
-	return retval;
+	return 0;
 }
 
 /*

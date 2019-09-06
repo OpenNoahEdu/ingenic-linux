@@ -212,6 +212,22 @@ cflags-$(CONFIG_SOC_JZ4750L)	+= -I$(srctree)/arch/mips/include/asm/mach-jz4750l
 load-$(CONFIG_SOC_JZ4750L)	+= 0xffffffff80010000
 
 #
+# Commond Ingenic JZ4760 series
+#
+
+core-$(CONFIG_SOC_JZ4760)	+= arch/mips/jz4760/
+cflags-$(CONFIG_SOC_JZ4760)	+= -I$(srctree)/arch/mips/include/asm/mach-jz4760
+load-$(CONFIG_SOC_JZ4760)	+= 0xffffffff80010000
+
+#
+# Commond Ingenic JZ4810 series
+#
+
+core-$(CONFIG_SOC_JZ4810)	+= arch/mips/jz4810/
+cflags-$(CONFIG_SOC_JZ4810)	+= -I$(srctree)/arch/mips/include/asm/mach-jz4810
+load-$(CONFIG_SOC_JZ4810)	+= 0xffffffff80010000
+
+#
 # Texas Instruments AR7
 #
 core-$(CONFIG_AR7)		+= arch/mips/ar7/

@@ -62,27 +62,27 @@ union clycle_type
   cycle_t cycle64;
   unsigned int cycle32[2];
 };
-static union clycle_type old_cycle = {0};
 
 cycle_t jz_get_cycles(struct clocksource *cs)
 {
-  /* convert jiffes to jz timer cycles */
-  unsigned int ostcount;
-  unsigned long cpuflags;
-  unsigned int current_cycle;
- 
-  local_irq_save(cpuflags);
-  current_cycle = current_cycle_high;
-  ostcount = REG_TCU_OSTCNT;
-  local_irq_restore(cpuflags);
-  if((ostcount < old_cycle.cycle32[0]) && (current_cycle == old_cycle.cycle32[1])){
-    old_cycle.cycle32[0] = ostcount;
-    old_cycle.cycle32[1]++;
-  }else{
-    old_cycle.cycle32[0] = ostcount;
-    old_cycle.cycle32[1] = current_cycle; 
-  }
-  return (old_cycle.cycle64);
+	/* convert jiffes to jz timer cycles */
+	unsigned int ostcount;
+	unsigned long cpuflags;
+	unsigned int current_cycle;
+	unsigned int flag;
+	union clycle_type old_cycle;
+	local_irq_save(cpuflags);
+	current_cycle = current_cycle_high;
+	ostcount = REG_TCU_OSTCNT;
+	flag = (REG_TCU_TFR & TCU_TFCR_OSTFCL) ? 1: 0;
+	if(flag)
+		ostcount = REG_TCU_OSTCNT;	  
+	local_irq_restore(cpuflags);
+
+	old_cycle.cycle32[0] = ostcount;
+	old_cycle.cycle32[1] = current_cycle + flag;
+
+	return (old_cycle.cycle64);
 }
 
 

@@ -41,5 +41,6 @@
 
 #include <asm/mach-jz4750d/clock.h>
 #include <asm/mach-jz4750d/serial.h>
+#include <asm/mach-jz4750d/i2c.h>
 
 #endif /* __ASM_JZ4750_H__ */

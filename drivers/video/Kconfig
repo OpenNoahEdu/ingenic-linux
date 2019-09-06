@@ -237,14 +237,55 @@ config FB_TILEBLITTING
 comment "Frame buffer hardware drivers"
 	depends on FB
 
+
+config FB_JZ475X
+	tristate "JZ475X LCD Controller Driver Support (Staging. Only used for test.)"
+	depends on FB && (SOC_JZ4750 || SOC_JZ4750D)
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	---help---
+	default n
+
+config FB_JZ475X_TVE_PAL_OUTPUT
+	tristate "JZ475X TVE PAL Output Support"
+	depends on FB_JZ475X
+	---help---
+	default n
+
+config FB_JZ475X_TVE_NTSC_OUTPUT
+	tristate "JZ475X TVE NTSC Output Support"
+	depends on FB_JZ475X
+	---help---
+	default n
+
+config FB_JZ475X_LCD_OUTPUT
+	tristate "JZ475X LCD Output Support"
+	depends on FB_JZ475X
+	default y
+	---help---
+	default n
+
+choice
+	depends on FB_JZ475X_LCD_OUTPUT
+	prompt "LCD Output Support"
+	default FB_JZ475X_LCD_PANEL_AUO_A043FL01V2	
+	---help---
+	   Please select the lcd panel in you board
+
+config FB_JZ475X_LCD_PANEL_AUO_A043FL01V2
+	bool "AUO A043FL01V2 TFT panel (480x272)(24bits)"
+
+endchoice
+
 config FB_JZSOC
-	tristate "JZSOC LCD controller support"
+	tristate "JZSOC LCD/EPD controller support"
 	depends on FB && JZSOC
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	---help---
-	   JZSOC LCD Controller and Smart LCD Controller driver support.
+	   JZSOC LCD Controller, Smart LCD Controller driver support and EPD Controller driver support.
 
 config FB_JZ4740_SLCD
 	tristate "JZ4740 Smart LCD controller support"
@@ -458,6 +499,131 @@ config JZ4750D_VGA_DISPLAY
 	depends on SOC_JZ4750D
 	bool "Jz4750D VGA Display"
 endchoice
+
+config FB_JZ4760_LCD
+	tristate "JZ4760 LCD Controller support"
+	depends on FB_JZSOC && (SOC_JZ4760)
+	---help---
+	   JZ4760 LCD Controller driver.
+	   JZ4760 LCD Controller support OSD function(refer jz4760_lcdc_spec.pdf).JZ4760 LCD OSD implement 2 framebuffer layers: foreground0 and foreground1. JZ4760 LCD driver support only foreground0 default.
+
+config FB_JZ4760_LCD_USE_2LAYER_FRAMEBUFFER
+	bool "JZ4760 LCD driver 2 layers framebuffer support."
+	depends on FB_JZ4760_LCD
+	---help---
+	   JZ4760 LCD driver support only foreground0 by default.
+	   If you need both foreground0 and foreground1, please select this.
+
+config FB_JZ4760_TVE
+	tristate "JZ4760 TV Encode support"
+	depends on FB_JZSOC && FB_JZ4760_LCD
+	default n
+
+config JZ4760_IPU_MM
+	tristate "JZ4760 IPU MM support"
+	depends on FB_JZSOC && FB_JZ4760_LCD
+	default y
+	---help---
+	   Enable IPU Memory Management system. 
+	   It will reserve 16MB / 16MB + 4MB as IPU Framebuffer on JZ4750 / JZ4755. 
+	   Enable this if you want to use IPU.
+
+config FB_JZ4760_SLCD
+	bool
+	depends on FB_JZ4760_LCD
+	default n
+choice
+	depends on FB_JZ4760_LCD
+	prompt "JZ4760 LCD Panels Support"
+	default JZ4760_LCD_SAMSUNG_LTP400WQF02
+	---help---
+	   Please select the lcd panel in you board
+
+config JZ4760_LCD_SAMSUNG_LTP400WQF01
+	bool "SAMSUNG LTP400WQF01 TFT panel (480x272)(16bits)"
+
+config JZ4760_LCD_SAMSUNG_LTP400WQF02
+	bool "SAMSUNG LTP400WQF02 TFT panel (480x272)(18bits)"
+
+config JZ4760_LCD_AUO_A043FL01V2
+	bool "AUO A043FL01V2 TFT panel (480x272)(24bits)"
+
+config JZ4760_LCD_FOXCONN_PT035TN01
+     	bool "FOXCONN PT035TN01 TFT panel (320x240,3.5in)(18bit-parallel mode)"
+
+config JZ4760_LCD_INNOLUX_PT035TN01_SERIAL
+     	bool "INNOLUX PT035TN01 TFT panel (320x240,3.5in)(8bit-serial mode)"
+
+config JZ4760_LCD_TOPPOLY_TD025THEA7_RGB_DELTA
+	bool "TOPPOLY_TD025THEA7 TFT panel(320x240)(serial RGB delta mode)"
+
+config JZ4760_LCD_TOPPOLY_TD043MGEB1
+	bool "TOPPOLY_TD043MGEB1 TFT panel(800x480)(24bit mode)"
+
+config JZ4760_LCD_TRULY_TFTG320240DTSW_18BIT
+	bool "TRULY_TFTG320240DTSW TFT panel (320x240) (Parallel 18bit mode)"
+
+config JZ4760_LCD_TRULY_TFT_GG1P0319LTSW_W
+	bool "TRULY_TFT_GG1P0319LTSW_W (240x320) (Smart LCD 16bit)"
+
+config JZ4760_SLCD_KGM701A3_TFT_SPFD5420A
+	bool "KGM701A3_TFT_SPFD5420A (400x240) (Smart LCD 18bit)"
+	select FB_JZ4750_SLCD
+
+config JZ4760_VGA_DISPLAY
+	depends on SOC_JZ4760
+	bool "Jz4760 VGA Display"
+endchoice
+
+
+config FB_JZ4760_EPD
+	tristate "JZ4760 EPD Controller support"
+	depends on FB_JZSOC && (SOC_JZ4760)
+	---help---
+	   JZ4760 EPD Controller driver.
+	   JZ4760 EPD Controller support OSD function(refer jz4760_epdc_spec.pdf).JZ4760 EPD OSD implement 2 framebuffer layers: foreground0 and foreground1. JZ4760 EPD driver support only foreground0 default.
+
+
+choice
+	depends on FB_JZ4760_EPD
+	prompt "JZ4760 LCD OSD Mode select"
+	default JZ4760_LCD_USE_2LAYER_FG
+
+config JZ4760_LCD_USE_FG0_ONLY
+	bool "Only use foreground 0"
+
+config JZ4760_LCD_USE_FG1_ONLY
+	bool "Only use foreground 1"
+
+config JZ4760_LCD_USE_2LAYER_FG
+       bool "Use two-layer foregrounds."
+endchoice
+
+#config CONFIG_JZ4760_LCD_USE_2LAYER_FG #FB_JZ4760_EPD_USE_2LAYER_FRAMEBUFFER
+#	bool "JZ4760 EPD driver 2 layers framebuffer support."
+#	depends on FB_JZ4760_EPD
+#	---help---
+#	   JZ4760 EPD driver support only foreground0 by default.
+#	   If you need both foreground0 and foreground1, please select this.
+
+choice
+	depends on FB_JZ4760_EPD
+	prompt "JZ4760 EPD Panels Support"
+	default JZ4760_EPSON_EPD_DISPLAY
+	---help---
+	   Please select the lcd panel in you board
+config JZ4760_AUO_EPD_DISPLAY
+	bool "Jz4760 AUO EPD Display"
+
+config JZ4760_EPSON_EPD_DISPLAY
+	bool "Jz4760 EPSON Eink EPD Display"
+
+config JZ4760_OED_EPD_DISPLAY
+	bool "Jz4760 OED EPD Display"
+
+endchoice
+
+
 config FB_CIRRUS
 	tristate "Cirrus Logic support"
 	depends on FB && (ZORRO || PCI)

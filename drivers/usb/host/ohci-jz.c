@@ -28,6 +28,36 @@
 extern int usb_disabled(void);
 
 /*-------------------------------------------------------------------------*/
+/* FIXME: when port 2.6.29's cpm to jz4750, remove me!!! */
+#ifdef CONFIG_SOC_JZ4760
+static void jz_start_ohc(struct platform_device *dev)
+{
+	printk(KERN_DEBUG __FILE__
+		": starting JZ OHCI USB Controller\n");
+
+	/* Set UHC clock and start */
+	cpm_set_clock(CGU_UHCCLK, 48 * 1000 * 1000);
+	cpm_start_clock(CGM_UHC);
+
+	/* enable host controller */
+	cpm_uhc_phy(1);
+
+	printk(KERN_DEBUG __FILE__
+	": Clock to USB host has been enabled \n");
+}
+
+static void jz_stop_ohc(struct platform_device *dev)
+{
+	printk(KERN_DEBUG __FILE__
+	       ": stopping JZ OHCI USB Controller\n");
+
+	/* disable host controller */
+	cpm_uhc_phy(0);
+
+	cpm_stop_clock(CGM_UHC);
+}
+
+#else  /* !CONFIG_SOC_JZ4760 */
 
 static void jz_start_ohc(struct platform_device *dev)
 {
@@ -45,6 +75,7 @@ static void jz_start_ohc(struct platform_device *dev)
 	": Clock to USB host has been enabled \n");
 }
 
+
 static void jz_stop_ohc(struct platform_device *dev)
 {
 	printk(KERN_DEBUG __FILE__
@@ -55,7 +86,7 @@ static void jz_stop_ohc(struct platform_device *dev)
 #endif
 	__cpm_stop_uhc();
 }
-
+#endif	/* CONFIG_SOC_JZ4760 */
 
 /*-------------------------------------------------------------------------*/
 
@@ -200,6 +231,7 @@ static const struct hc_driver ohci_jz_hc_driver = {
 	 */
 	.hub_status_data =	ohci_hub_status_data,
 	.hub_control =		ohci_hub_control,
+
 #ifdef	CONFIG_PM
 	.bus_suspend =		ohci_bus_suspend,
 	.bus_resume =		ohci_bus_resume,

@@ -280,7 +280,13 @@ static inline unsigned long cpu_get_fpu_id(void)
  */
 static inline int __cpu_has_fpu(void)
 {
-	return ((cpu_get_fpu_id() & 0xff00) != FPIR_IMP_NONE);
+	return 0;
+#ifndef CONFIG_SOC_JZ4760
+	return 0; // need fix !!!
+//	return ((cpu_get_fpu_id() & 0xff00) != FPIR_IMP_NONE);
+#else
+	return 1;
+#endif
 }
 
 #define R4K_OPTS (MIPS_CPU_TLB | MIPS_CPU_4KEX | MIPS_CPU_4K_CACHE \
@@ -900,6 +906,20 @@ static inline void cpu_probe_ingenic(struct cpuinfo_mips *c, unsigned int cpu)
 		c->tlbsize = 32;
 
 		__cpu_name[cpu] = "Ingenic JZRISC";
+
+		if (__cpu_has_fpu())
+		{
+			unsigned int tmp,mask;
+			mask = 1 << 26;
+			c->options |= MIPS_CPU_FPU;
+			/* Set floating mode to 32*32bit mode */
+			tmp = read_c0_status();
+			tmp &= ~mask;
+			printk("Jz4760 Floating coprocessor work on %s mode\n",
+					(tmp & mask) ? "32*64bit" : "32*32bit");
+			write_c0_status(tmp);
+		}
+
 
 		break;
 	default:

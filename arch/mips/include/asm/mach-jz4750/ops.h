@@ -270,7 +270,7 @@
 //
 //////////////////////////////////////////////////////////
 
-/* 
+/*
  * p is the port number (0,1,2,3,4,5)
  * o is the pin offset (0-31) inside the port
  * n is the absolute number of a pin (0-191), regardless of the port
@@ -298,7 +298,7 @@ do {						\
 } while (0)
 
 /*
- * D0 ~ D31, A0 ~ A14, DCS0#, RAS#, CAS#, 
+ * D0 ~ D31, A0 ~ A14, DCS0#, RAS#, CAS#,
  * RDWE#, WE0#, WE1#, WE2#, WE3#, CKO#, CKE#
  */
 #define __gpio_as_sdram_32bit()			\
@@ -312,7 +312,7 @@ do {						\
 } while (0)
 
 /*
- * D0 ~ D15, A0 ~ A14, DCS0#, RAS#, CAS#, 
+ * D0 ~ D15, A0 ~ A14, DCS0#, RAS#, CAS#,
  * RDWE#, WE0#, WE1#, WE2#, WE3#, CKO#, CKE#
  */
 #define __gpio_as_sdram_16bit()						\
@@ -641,7 +641,7 @@ do {						\
 	REG_GPIO_PXPES(4)  = 0x00000fff;	\
 } while (0)
 
-/* 
+/*
  * SDATO, SDATI, BCLK, SYNC, SCLK_RSTN(gpio sepc) or
  * SDATA_OUT, SDATA_IN, BIT_CLK, SYNC, SCLK_RESET(aic spec)
  */
@@ -1632,7 +1632,7 @@ do {									\
 	REG_AIC_ACCR1 |= AC97_PCM_XS_L_FRONT | AC97_PCM_XS_R_FRONT;	\
 } while(0)
 
-/* In fact, only stereo is support now. */ 
+/* In fact, only stereo is support now. */
 #define __ac97_set_rs_none()	( REG_AIC_ACCR1 &= ~AIC_ACCR1_RS_MASK )
 #define __ac97_set_rs_mono() 						\
 do {									\
@@ -1738,7 +1738,7 @@ do { 									\
 #define __aic_write_tfifo(v)  ( REG_AIC_DR = (v) )
 #define __aic_read_rfifo()    ( REG_AIC_DR )
 
-#define __aic_internal_codec()  ( REG_AIC_FR |= AIC_FR_ICDC ) 
+#define __aic_internal_codec()  ( REG_AIC_FR |= AIC_FR_ICDC )
 #define __aic_external_codec()  ( REG_AIC_FR &= ~AIC_FR_ICDC )
 
 //
@@ -1918,7 +1918,7 @@ do {							\
 
 /* sysclk(cpm_pcm_sysclk) Hz is created by cpm logic, and pcmclk Hz is the pcm in/out clock wanted */
 #define __pcm_set_clk_rate(sysclk, pcmclk) \
-__pcm_set_clk_div(((sysclk) / (pcmclk) - 1)) 
+__pcm_set_clk_div(((sysclk) / (pcmclk) - 1))
 
 #define __pcm_set_sync_div(n) \
 ( REG_PCM_DIV = (REG_PCM_DIV & ~PCM_DIV_SYNDIV_MASK) | ((n) << PCM_DIV_SYNDIV_BIT) )
@@ -1986,6 +1986,9 @@ do {          						\
 #define __i2c_check_drf()	( REG_I2C_SR & I2C_SR_DRF )
 
 #define __i2c_received_ack()	( !(REG_I2C_SR & I2C_SR_ACKF) )
+#define __i2c_ack_is_nack()	(REG_I2C_SR & I2C_SR_ACKF)
+#define __i2c_ack_is_ack()	(!(REG_I2C_SR & I2C_SR_ACKF))
+
 #define __i2c_is_busy()		( REG_I2C_SR & I2C_SR_BUSY )
 #define __i2c_transmit_ended()	( REG_I2C_SR & I2C_SR_TEND )
 
@@ -2259,7 +2262,7 @@ do { 						\
 /* frmhl,endian,mcom,flen,pha,pol MASK */
 #define SSICR1_MISC_MASK 					\
 	( SSI_CR1_FRMHL_MASK | SSI_CR1_LFST | SSI_CR1_MCOM_MASK	\
-	  | SSI_CR1_FLEN_MASK | SSI_CR1_PHA | SSI_CR1_POL )	
+	  | SSI_CR1_FLEN_MASK | SSI_CR1_PHA | SSI_CR1_POL )
 
 #define __ssi_spi_set_misc(n,frmhl,endian,flen,mcom,pha,pol)		\
 	do {								\
@@ -2274,7 +2277,7 @@ do { 						\
 #define __ssi_set_lsb(n) ( REG_SSI_CR1(n) |= SSI_CR1_LFST )
 
 #define __ssi_set_frame_length(n, m)					\
-	REG_SSI_CR1(n) = (REG_SSI_CR1(n) & ~SSI_CR1_FLEN_MASK) | (((m) - 2) << 4) 
+	REG_SSI_CR1(n) = (REG_SSI_CR1(n) & ~SSI_CR1_FLEN_MASK) | (((m) - 2) << 4)
 
 /* m = 1 - 16 */
 #define __ssi_set_microwire_command_length(n,m)				\
@@ -2638,8 +2641,8 @@ do {						\
 
 #define __lcd_set_24_tftpnl()		( REG_LCD_CFG |= LCD_CFG_MODE_TFT_24BIT )
 
-/* 
- * n=1,2,4,8 for single mono-STN 
+/*
+ * n=1,2,4,8 for single mono-STN
  * n=4,8 for dual mono-STN
  */
 #define __lcd_set_panel_datawidth(n) 		\
@@ -3251,7 +3254,7 @@ do {                                                                 \
 #define __owi_disable_byte_interrupt()     ( REG_OWI_CTL &= ~OWI_CTL_EBYTE )
 #define __owi_enable_bit_interrupt()       ( REG_OWI_CTL |= OWI_CTL_EBIT )
 #define __owi_disable_bit_interrupt()      ( REG_OWI_CTL &= ~OWI_CTL_EBIT )
-#define __owi_enable_rst_interrupt()       ( REG_OWI_CTL |= OWI_CTL_ERST ) 
+#define __owi_enable_rst_interrupt()       ( REG_OWI_CTL |= OWI_CTL_ERST )
 #define __owi_disable_rst_interrupt()      ( REG_OWI_CTL &=~OWI_CTL_ERST )
 
 /* OW configure register ops */
@@ -3349,7 +3352,7 @@ do {                                                                 \
 #define __tssi_disable_ovrn_irq()             ( REG_TSSI_CTRL |= TSSI_CTRL_OVRNM )
 
 #define __tssi_enable_trig_irq()              ( REG_TSSI_CTRL &= ~TSSI_CTRL_TRIGM )
-#define __tssi_disable_trig_irq()             ( REG_TSSI_CTRL |= TSSI_CTRL_TRIGM ) 
+#define __tssi_disable_trig_irq()             ( REG_TSSI_CTRL |= TSSI_CTRL_TRIGM )
 
 #define __tssi_state_is_overrun()             ( REG_TSSI_STAT & TSSI_STAT_OVRN )
 #define __tssi_state_trigger_meet()           ( REG_TSSI_STAT & TSSI_STAT_TRIG )
