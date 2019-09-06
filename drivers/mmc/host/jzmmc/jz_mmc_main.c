@@ -30,6 +30,12 @@
 #include "include/jz_mmc_host.h"
 #include "include/jz_mmc_controller.h"
 
+/* for Atheros wifi */
+int is_virt_addr_valid(unsigned char *buffer) {
+	return virt_addr_valid(buffer);
+}
+EXPORT_SYMBOL(is_virt_addr_valid);
+
 struct jz_mmc_controller controller[JZ_MAX_MSC_NUM];
 int is_permission = 0;
 
@@ -283,6 +289,7 @@ void msc_dump_host_info(void) {
 EXPORT_SYMBOL(msc_dump_host_info);
 #endif	/* MSC_DEBUG_DMA */
 
+#if defined(CONFIG_JZ_RECOVERY_SUPPORT) || defined(CONFIG_JZ_SYSTEM_AT_CARD)
 static ssize_t mmc_permission_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -301,6 +308,7 @@ static ssize_t mmc_permission_store(struct device *dev,
 }
 
 static DEVICE_ATTR(permission, S_IWUSR | S_IRUGO, mmc_permission_show, mmc_permission_store);
+#endif
 
 static int jz_mmc_probe(struct platform_device *pdev)
 {
@@ -402,7 +410,8 @@ static int jz_mmc_probe(struct platform_device *pdev)
 
 	if(host->pdev_id == 0){
 #if defined(CONFIG_JZ_SYSTEM_AT_CARD)
-		device_create_file(&pdev->dev, &dev_attr_permission);
+		if(device_create_file(&pdev->dev, &dev_attr_permission))
+			printk("MSC0: device_create_file for attr_permission failed!\n");;
 #endif
 	}
 #ifdef CONFIG_JZ_RECOVERY_SUPPORT

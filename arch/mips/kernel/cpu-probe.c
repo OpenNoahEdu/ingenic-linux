@@ -280,12 +280,12 @@ static inline unsigned long cpu_get_fpu_id(void)
  */
 static inline int __cpu_has_fpu(void)
 {
-	return 0;
-#ifndef CONFIG_SOC_JZ4760
-	return 0; // need fix !!!
-//	return ((cpu_get_fpu_id() & 0xff00) != FPIR_IMP_NONE);
-#else
+#if defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
+	/* (cpu_get_fpu_id() & 0xff00) no use again in jz4760B */
+	/* so we have to force it to 1 */
 	return 1;
+#else
+	return ((cpu_get_fpu_id() & 0xff00) == 0x0100);
 #endif
 }
 

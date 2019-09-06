@@ -286,26 +286,41 @@ do {						\
 /*
  * UART3_TxD, UART3_RxD
  */
-#define __gpio_as_uart3()			\
-do {						\
-	REG_GPIO_PXFUNS(4) = 0x00000028;		\
-	REG_GPIO_PXTRGC(4) = 0x00000028;		\
-	REG_GPIO_PXSELS(4) = 0x00000028;		\
-	REG_GPIO_PXPES(4)  = 0x00000028;	\
+#define __gpio_as_uart3()           \
+do {                        \
+    unsigned int rx_bit = BIT12,tx_bit= BIT5;   \
+    REG_GPIO_PXFUNS(3) = rx_bit;        \
+    REG_GPIO_PXTRGC(3) = rx_bit;        \
+    REG_GPIO_PXSELC(3) = rx_bit;        \
+    REG_GPIO_PXPES(3)  = rx_bit;        \
+    \
+    REG_GPIO_PXFUNS(4) = tx_bit;        \
+    REG_GPIO_PXTRGC(4) = tx_bit;        \
+    REG_GPIO_PXSELS(4) = tx_bit;        \
+    REG_GPIO_PXPES(4)  = tx_bit;        \
 } while (0)
+
 /*
  * UART3_TxD, UART3_RxD, UART3_CTS, UART3_RTS
  */
-#define __gpio_as_uart3_ctsrts()		\
-do {						\
-	REG_GPIO_PXFUNS(4) = 0x00000028;		\
-	REG_GPIO_PXTRGC(4) = 0x00000028;		\
-	REG_GPIO_PXSELS(4) = 0x00000028;		\
-	REG_GPIO_PXFUNS(4) = 0x00000300;		\
-	REG_GPIO_PXTRGC(4) = 0x00000300;		\
-	REG_GPIO_PXSELC(4) = 0x00000300;		\
-	REG_GPIO_PXPES(4)  = 0x00000328;	\
-}
+#define __gpio_as_uart3_ctsrts()            \
+do {                        \
+    unsigned int rx_bit = BIT12,tx_bit= BIT5,   \
+                bits = BITS_H2L(9, 8); \
+    REG_GPIO_PXFUNS(3) = rx_bit;        \
+    REG_GPIO_PXTRGC(3) = rx_bit;        \
+    REG_GPIO_PXSELC(3) = rx_bit;        \
+    REG_GPIO_PXPES(3)  = rx_bit;        \
+    \
+    REG_GPIO_PXFUNS(4) = tx_bit;        \
+    REG_GPIO_PXTRGC(4) = tx_bit;        \
+    REG_GPIO_PXSELS(4) = tx_bit;        \
+    REG_GPIO_PXPES(4)  = tx_bit;        \
+    REG_GPIO_PXFUNS(4) = bits;      \
+    REG_GPIO_PXTRGC(4) = bits;      \
+    REG_GPIO_PXSELC(4) = bits;      \
+    REG_GPIO_PXPES(4)  = bits;      \
+} while (0)
 
 /*
  * SD0 ~ SD7, CS1#, CLE, ALE, FRE#, FWE#, FRB#
