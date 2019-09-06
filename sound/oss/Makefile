@@ -11,8 +11,8 @@ obj-$(CONFIG_SOUND_OSS)		+= sound.o
 #
 obj-$(CONFIG_SOUND_JZ_AC97)	+= jz_ac97.o ac97_codec.o
 obj-$(CONFIG_I2S_AK4642EN)	+= ak4642en.o
-obj-$(CONFIG_I2S_ICODEC)	+= jzcodec.o jz_i2s.o
-obj-$(CONFIG_I2S_DLV)	        += jzdlv.o jz_i2s.o
+obj-$(CONFIG_I2S_ICODEC)	+= jzcodec.o jz4740_i2s.o
+obj-$(CONFIG_I2S_DLV_4750)      += jzdlv.o jz_i2s.o
 obj-$(CONFIG_I2S_DLV_4760)	+= jz4760_dlv.o jz4760_i2s.o
 obj-$(CONFIG_SOUND_JZ_PCM)	+= jz_pcm_tlv320aic1106_dma.o
 

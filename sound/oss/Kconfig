@@ -42,7 +42,7 @@ config I2S_ICODEC
 	help
 	  Answer Y if you have an internal I2S codec.
 
-config I2S_DLV
+config I2S_DLV_4750
 	bool "Internal On-Chip codec on Jz4750 or Jz4750d"
 	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4750L
 	help

@@ -53,17 +53,18 @@
 #endif
 
 #include <asm/jzsoc.h>
+#include "mtd/mtd_bch4bit_n8.h"
 
 u8 nand_nce; /* indicates which chip select on JZSOC is used for current nand chip */
 int global_page; /* page index of large page used for nand with multiple planes */
 int global_mafid; /* ID of manufacture */
 struct mtd_info *jz_mtd1 = NULL; /* for 1 plane operation */
 
-/* indicates whether multiple planes operation is used  by all partitions 
+/* indicates whether multiple planes operation is used  by all partitions
    if multiple planes is supported by NAND */
 char all_use_planes = 1;
 
-/* The pointer to the address of block cache for partitions which work 
+/* The pointer to the address of block cache for partitions which work
    over mtdblock-jz */
 extern struct mtd_partition partition_info[]; /* defined in jz47xx_nand.c */
 unsigned char **jz_mtdblock_cache = NULL; /* used by mtdblock-jz.c */
@@ -93,9 +94,9 @@ static struct nand_ecclayout nand_oob_64 = {
 	.eccbytes = 36,
 	.eccpos = {
 		28, 29, 30, 31,
-		32, 33, 34, 35, 36, 37, 38, 39, 
-		40, 41, 42, 43, 44, 45, 46, 47, 
-		48, 49, 50, 51, 52, 53, 54, 55, 
+		32, 33, 34, 35, 36, 37, 38, 39,
+		40, 41, 42, 43, 44, 45, 46, 47,
+		48, 49, 50, 51, 52, 53, 54, 55,
 		56, 57, 58, 59, 60, 61, 62, 63},
 	.oobfree = {
 		{.offset = 2,
@@ -105,8 +106,8 @@ static struct nand_ecclayout nand_oob_64 = {
 	.eccbytes = 28,
 	.eccpos = {
 		24, 25, 26, 27, 28, 29, 30, 31,
-		32, 33, 34, 35, 36, 37, 38, 39, 
-		40, 41, 42, 43, 44, 45, 46, 47, 
+		32, 33, 34, 35, 36, 37, 38, 39,
+		40, 41, 42, 43, 44, 45, 46, 47,
 		48, 49, 50, 51},
 	.oobfree = {
 		{.offset = 2,
@@ -165,9 +166,9 @@ static struct nand_ecclayout nand_oob_128 = {
 	.eccbytes = 104,
 	.eccpos = {
 		 24, 25, 26, 27, 28, 29, 30, 31,
-		 32, 33, 34, 35, 36, 37, 38, 39, 
-		 40, 41, 42, 43, 44, 45, 46, 47, 
-		 48, 49, 50, 51, 52, 53, 54, 55, 
+		 32, 33, 34, 35, 36, 37, 38, 39,
+		 40, 41, 42, 43, 44, 45, 46, 47,
+		 48, 49, 50, 51, 52, 53, 54, 55,
 		 56, 57, 58, 59, 60, 61, 62, 63,
 		 64, 65, 66, 67, 68, 69, 70, 71,
 		 72, 73, 74, 75, 76, 77, 78, 79,
@@ -853,7 +854,7 @@ nand_get_device(struct nand_chip *chip, struct mtd_info *mtd, int new_state)
 	/* Hardware controller shared among independend devices */
 	if (!chip->controller->active)
 		chip->controller->active = chip;
-	
+
 	if (new_state == FL_PM_SUSPENDED)
 	printk("%s(): chip->controller->active: 0x%p, chip: 0x%p, chip->state: 0x%d.\n", __func__, chip->controller->active, chip, chip->state);
 	if (chip->controller->active == chip && chip->state == FL_READY) {
@@ -1164,7 +1165,7 @@ static int nand_read_page_hwecc_rs(struct mtd_info *mtd, struct nand_chip *chip,
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
 	uint32_t page;
 	uint8_t flag = 0;
-	
+
 	page = (buf[3]<<24) + (buf[2]<<16) + (buf[1]<<8) + buf[0];
 
 	chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
@@ -1475,7 +1476,7 @@ static int nand_read(struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len,
 		return -EINVAL;
 	if (!len)
 		return 0;
-	
+
 	nand_get_device(chip, mtd, FL_READING);
 
 	chip->ops.len = len;
@@ -1489,6 +1490,37 @@ static int nand_read(struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len,
 	nand_release_device(mtd);
 
 	return ret;
+}
+
+int nand_sw_bch_ops(struct mtd_info *mtd, u8 *oobdata, int ops)
+{
+#if !defined(CONFIG_SOC_JZ4750) && !defined(CONFIG_SOC_JZ4750D) && !defined(CONFIG_SOC_JZ4760)
+	//dprintk("%s: Not using jz4750 or jz4760\n", __FUNCTION__);
+	return 0;
+#endif
+	
+	int i, cnt, off, length;
+	unsigned char *oobp = oobdata;
+	struct nand_chip *chip = mtd->priv;
+
+	off = chip->ecc.layout->oobfree[0].offset;
+	length = 16;
+	
+	if (ops)	//encode
+	{
+		do_bch_encode(oobp + off, oobp + length + off, length);
+	}
+	else		//decode
+	{
+		cnt = 0;
+		for (i = 0; i < 32; i++)
+			if (*(oobp + i) == 0xff)
+				cnt++;
+	
+		if (cnt < 24)
+			do_bch_decode_and_correct (oobp + off, oobp + length + off, length);
+	}
+	return 0;
 }
 
 /**
@@ -1506,6 +1538,8 @@ static int nand_read_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 		sndcmd = 0;
 	}
 	chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
+	nand_sw_bch_ops(mtd, chip->oob_poi, 0);
+	
 	return sndcmd;
 }
 
@@ -1560,6 +1594,8 @@ static int nand_write_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 	int status = 0;
 	const uint8_t *buf = chip->oob_poi;
 	int length = mtd->oobsize;
+
+	nand_sw_bch_ops(mtd, chip->oob_poi, 1);
 
 	chip->cmdfunc(mtd, NAND_CMD_SEQIN, mtd->writesize, page);
 	chip->write_buf(mtd, buf, length);
@@ -3102,7 +3138,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 	if (chip->options & NAND_SKIP_BBTSCAN)
 		return 0;
 
-        /* Create jz_mtd1 for one plane operation if the NAND support multiple 
+        /* Create jz_mtd1 for one plane operation if the NAND support multiple
 	   planes operation, because some partitions will only use one plane. */
 	if ((chip->planenum == 2) && !all_use_planes) {
 		int i, len, numblocks;

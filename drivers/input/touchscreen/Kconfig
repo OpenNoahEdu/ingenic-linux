@@ -43,7 +43,7 @@ config TOUCHSCREEN_JZ
 
 config JZ_ADKEY
 	bool "JZ ADKEY"
-	depends on TOUCHSCREEN_JZ
+	depends on TOUCHSCREEN_JZ || TOUCHSCREEN_JZ4760
 	help
           The AD value of the key is get by JZ SAR A/D controller when any ad key
           is pressed down.
@@ -523,5 +523,11 @@ config TOUCHSCREEN_W90X900
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called w90p910_ts.
+
+config TOUCHSCREEN_FT5X0X
+        tristate "FocalTech FT5X0X TouchScreen driver"
+        depends on I2C
+        help
+          lepus FocalTech FT5X0X TouchSreen Driver implemented by Ingenic.
 
 endif

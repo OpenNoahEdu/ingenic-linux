@@ -127,7 +127,7 @@ config USB_MUSB_OTG
 endchoice
 config USB_MUSB_PERIPHERAL_HOTPLUG
         bool "Support Ingenic USB Device Controller Hotplug"
-        depends on SOC_JZ4760
+        depends on SOC_JZ4760 && USB_GADGET_MUSB_HDRC
 
 # enable peripheral support (including with OTG)
 config USB_GADGET_MUSB_HDRC
