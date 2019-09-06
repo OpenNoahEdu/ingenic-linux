@@ -43,9 +43,9 @@
 #define	BCH_ERR10       (BCH_BASE + 0x64) /* BCH Error Report 10 register */
 #define	BCH_ERR11       (BCH_BASE + 0x68) /* BCH Error Report 11 register */
 #define	BCH_INTS    	(BCH_BASE + 0x6C) /* BCH Interrupt Status register */
-#define	BCH_INTES       (BCH_BASE + 0x70) /* BCH Interrupt Enable register */
-#define	BCH_INTEC       (BCH_BASE + 0x74) /* BCH Interrupt Set register */
-#define	BCH_INTE       	(BCH_BASE + 0x78) /* BCH Interrupt Clear register */
+#define	BCH_INTE	(BCH_BASE + 0x70) /* BCH Interrupt Enable register */
+#define	BCH_INTES       (BCH_BASE + 0x74) /* BCH Interrupt Set register */
+#define	BCH_INTEC	(BCH_BASE + 0x78) /* BCH Interrupt Clear register */
 
 #define	REG_BCH_CR      REG32(BCH_CR)
 #define	REG_BCH_CRS     REG32(BCH_CRS)
@@ -111,76 +111,88 @@
 #define BCH_CNT_ENC_MASK         (0x7ff << BCH_CNT_ENC_BIT)
 
 /* BCH Error Report Register */
-#define BCH_ERR_INDEX_ODD_BIT    0
+#define BCH_ERR_INDEX_ODD_BIT    16
 #define BCH_ERR_INDEX_ODD_MASK   (0x1fff << BCH_ERR_INDEX_ODD_BIT)
-#define BCH_ERR_INDEX_EVEN_BIT   16
+#define BCH_ERR_INDEX_EVEN_BIT   0
 #define BCH_ERR_INDEX_EVEN_MASK  (0x1fff << BCH_ERR_INDEX_EVEN_BIT)
-
+#define BCH_ERR_INDEX_MASK	 0x1fff
 
 #ifndef __MIPS_ASSEMBLER
 
 /*************************************************************************
  * BCH
  *************************************************************************/
-#define __ecc_encoding_4bit()                                   \
-do {				   		        	\
-	REG_BCH_CRS = BCH_CR_BSEL_4 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;  \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_4 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_4bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_4 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_4 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_4bit()                           \
-do {                                                    \
-	REG_BCH_CRS = BCH_CR_BSEL_4 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	\
-	REG_BCH_CRC = ~(BCH_CR_BSEL_4 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_4bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_4 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_4 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_encoding_8bit()                                                   \
-do {				   		                        	\
-	REG_BCH_CRS = BCH_CR_BSEL_8 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;   \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_8 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_8bit()                                           \
+do {				   		                        \
+	REG_BCH_CRS = BCH_CR_BSEL_8 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_8 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_8bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_8 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_8 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_8bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_8 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_8 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_encoding_12bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_12 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_12 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_12bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_12 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_12 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_12bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_12 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_12 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_12bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_12 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_12 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_encoding_16bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_16 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_16 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_16bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_16 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_16 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_16bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_16 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_16 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_16bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_16 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_16 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_encoding_20bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_20 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_20 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_20bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_20 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_20 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_20bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_20 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_20 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_20bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_20 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_20 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_encoding_24bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_24 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_24 | BCH_CR_ENCE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_encoding_24bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_24 | BCH_CR_ENCE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_24 | BCH_CR_ENCE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
-#define __ecc_decoding_24bit()                                        \
-do {                                                                 \
-	REG_BCH_CRS = BCH_CR_BSEL_24 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE;	     \
-	REG_BCH_CRC = ~(BCH_CR_BSEL_24 | BCH_CR_DECE | BCH_CR_BRST | BCH_CR_BCHE); \
+#define __ecc_decoding_24bit()						\
+do {									\
+	REG_BCH_CRS = BCH_CR_BSEL_24 | BCH_CR_DECE | BCH_CR_BCHE;	\
+	REG_BCH_CRC = ~(BCH_CR_BSEL_24 | BCH_CR_DECE | BCH_CR_BCHE);	\
+	REG_BCH_CRS = BCH_CR_BRST;					\
 } while(0)
 #define __ecc_dma_enable()        ( REG_BCH_CRS = BCH_CR_DMAE )
 #define __ecc_dma_disable()       ( REG_BCH_CRC = BCH_CR_DMAE )
@@ -190,16 +202,13 @@ do {                                                                 \
 
 #define __ecc_cnt_dec(n)                                             \
 do {						               	     \
-        REG_BCH_CNT &= ~BCH_CNT_DEC_MASK;			      \
-        REG_BCH_CNT |= (n) << BCH_CNT_DEC_BIT;                        \
+        REG_BCH_CNT = (n) << BCH_CNT_DEC_BIT;                        \
 } while(0)
+
 #define __ecc_cnt_enc(n)                                             \
 do {                                                                 \
-        REG_BCH_CNT &= ~BCH_CNT_ENC_MASK;			      \
-        REG_BCH_CNT |= (n) << BCH_CNT_ENC_BIT;                        \
+        REG_BCH_CNT = (n) << BCH_CNT_ENC_BIT;                        \
 } while(0)
-
-
 
 #endif /* __MIPS_ASSEMBLER */
 

@@ -42,9 +42,29 @@
 #include "jz_cim_core.h"
 #include "jz_sensor.h"
 
-MODULE_AUTHOR("sonil<ztyan@ingenic.cn>");
+MODULE_AUTHOR("Lutts Cao<slcao@ingenic.cn>");
 MODULE_DESCRIPTION("Ingenic Camera interface driver");
 MODULE_LICENSE("GPL");
+
+#define CIM_MINOR             234
+
+//#define CONFIG_SOC_JZ4760B y
+#ifdef CONFIG_JZ4810_F4810
+#define CONFIG_SOC_JZ4760B y
+#endif
+
+//#define CIM_INTR_SOF_EN
+#define CIM_INTR_EOF_EN
+//#define CIM_INTR_EEOF_EN
+//#define CIM_INTR_STOP_EN
+//#define CIM_INTR_TRIG_EN
+#define CIM_INTR_OF_EN
+
+//#define CIM_SAFE_DISABLE
+
+#if defined(CONFIG_SOC_JZ4750)
+#undef CIM_INTR_EEOF_EN
+#endif
 
 #define CIM_DEBUG
 #define CIM_I_DEBUG
@@ -53,7 +73,11 @@ MODULE_LICENSE("GPL");
 #undef CIM_DEBUG
 
 #ifdef CIM_DEBUG
+#if defined(CONFIG_SOC_JZ4760B)
+#define dprintk(x...)	do{printk("CIM(test jz4760e)---\t");printk(x);}while(0)
+#else
 #define dprintk(x...)	do{printk("CIM---\t");printk(x);}while(0)
+#endif
 #else
 #define dprintk(x...)
 #endif
@@ -77,9 +101,19 @@ enum {TRUE=1,FALSE=0};
 
 struct cim_desc {
 	u32 nextdesc;   // Physical address of next desc
-	u32 framebuf;   // Physical address of frame buffer
+#if defined(CONFIG_SOC_JZ4760B)
 	u32 frameid;    // Frame ID
-	u32 dmacmd;     // DMA command
+	u32 framebuf;   // Physical address of frame buffer, when SEP=1, it's y framebuffer
+#else
+	u32 framebuf;   // Physical address of frame buffer, when SEP=1, it's y framebuffer
+	u32 frameid;    // Frame ID
+#endif
+	u32 dmacmd;     // DMA command, when SEP=1, it's y cmd
+	/* only used when SEP = 1 */
+	u32 cb_frame;
+	u32 cb_len;
+	u32 cr_frame;
+	u32 cr_len;
 };
 
 /*
@@ -115,6 +149,18 @@ static struct cim_device *jz_cim;
 
 static int snapshot_flag __read_mostly = 0;
 
+static unsigned int dmacmd_intr_flag = 0
+#ifdef CIM_INTR_SOF_EN
+	| CIM_CMD_SOFINT
+#endif
+#ifdef CIM_INTR_EOF_EN
+	| CIM_CMD_EOFINT
+#endif
+#ifdef CIM_INTR_EEOF_EN
+	| CIM_CMD_EEOFINT
+#endif
+	;
+
 
 //-------------------------------------------------------------------------------------------
 static spinlock_t fresh_lock = SPIN_LOCK_UNLOCKED;
@@ -122,8 +168,8 @@ static int fresh_id  __read_mostly = -1;
 static int fresh_buf __read_mostly;
 static int wait_count __read_mostly;
 
-static struct cim_desc frame_desc[SWAP_NR] __attribute__ ((aligned (16)));
-static struct cim_desc capture_desc __attribute__ ((aligned (16)));
+static struct cim_desc frame_desc[SWAP_NR] __attribute__ ((aligned (sizeof(struct cim_desc))));
+static struct cim_desc capture_desc __attribute__ ((aligned (sizeof(struct cim_desc))));
 
 /*====================================================================================
  * sensor muti-support
@@ -145,7 +191,7 @@ static ssize_t cim_write(struct file *filp, const char *buf, size_t size, loff_t
 static int cim_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
 static int cim_mmap(struct file *file, struct vm_area_struct *vma);
 
-static void cim_framebuffer_destroy(void);
+static void cim_fb_free(void);
 static int cim_set_function(int function,void *cookie);
 
 static int cim_set_preview_resolution(struct resolution_info param);
@@ -163,12 +209,14 @@ int camera_sensor_register(struct camera_sensor_desc *desc)
 	desc->max_capture_size=
 		desc->max_capture_parm.width
 	       	*desc->max_capture_parm.height
-		*desc->max_capture_parm.bpp >> 3;
+		* 3; /* in order to support seperate YCbCr */
+		//*desc->max_capture_parm.bpp >> 3;
 
 	desc->max_preview_size=
 		desc->max_preview_parm.width
 	       	*desc->max_preview_parm.height
-		*desc->max_preview_parm.bpp >> 3;
+		* 3; /* in order to support seperate YCbCr */
+		//*desc->max_preview_parm.bpp >> 3;
 
 	mutex_lock(&sensor_lock);
 	list_add_tail(&desc->list,&sensor_list);
@@ -182,6 +230,8 @@ void cim_scan_sensor(void)
 {
 	struct camera_sensor_desc *si;
 	struct list_head *tmp;
+
+	dprintk("Enter %s\n", __FUNCTION__);
 
 	mutex_lock(&sensor_lock);
 	list_for_each_entry(si, &sensor_list, list)
@@ -197,6 +247,7 @@ void cim_scan_sensor(void)
 	}
 
 	mutex_unlock(&sensor_lock);
+	dprintk("Leave %s\n", __FUNCTION__);
 }
 
 void sensors_make_default(void)
@@ -225,6 +276,9 @@ static void cim_print_regs(void)
 {
 	printk("REG_CIM_CFG \t= \t0x%08x\n", REG_CIM_CFG);
 	printk("REG_CIM_CTRL \t= \t0x%08x\n", REG_CIM_CTRL);
+#ifdef CONFIG_SOC_JZ4760B
+	printk("REG_CIM_CTRL2 \t= \t0x%08x\n", REG_CIM_CTRL2);
+#endif
 	printk("REG_CIM_STATE \t= \t0x%08x\n", REG_CIM_STATE);
 	printk("REG_CIM_IID \t= \t0x%08x\n", REG_CIM_IID);
 	printk("REG_CIM_DA \t= \t0x%08x\n", REG_CIM_DA);
@@ -233,26 +287,43 @@ static void cim_print_regs(void)
 	printk("REG_CIM_CMD \t= \t0x%08x\n", REG_CIM_CMD);
 	printk("REG_CIM_SIZE \t= \t0x%08x\n", REG_CIM_SIZE);
 	printk("REG_CIM_OFFSET \t= \t0x%08x\n", REG_CIM_OFFSET);
+#ifdef CONFIG_SOC_JZ4760B
+	printk("REG_CIM_YFA \t= \t%#08x\n", REG_CIM_YFA);
+	printk("REG_CIM_YCMD \t= \t%#08x\n", REG_CIM_YCMD);
+	printk("REG_CIM_CBFA \t= \t%#08x\n", REG_CIM_CBFA);
+	printk("REG_CIM_CBCMD \t= \t%#08x\n", REG_CIM_CBCMD);
+	printk("REG_CIM_CRFA \t= \t%#08x\n", REG_CIM_CRFA);
+	printk("REG_CIM_CRCMD \t= \t%#08x\n", REG_CIM_CRCMD);
+#endif
 }
 
-#if 0
+#if 1
 static void cim_print_buffers(void)
 {
 	int i;
-	printk("cim_tran_buf_id%x\n",cim_tran_buf_id);
-	printk("data_ready_buf_id=0x%x\n",data_ready_buf_id);
+	//printk("cim_tran_buf_id%x\n",cim_tran_buf_id);
+	//printk("data_ready_buf_id=0x%x\n",data_ready_buf_id);
 
-	for(i=0;i<3;i++)
+	for(i = 0; i < SWAP_NR; i++)
 	{
-		printk("cim_framebuf_desc[%d]=0x%x\n",i,cim_frame_desc[i].framebuf);
-		printk("cim_frameid _desc[%d]=0x%x\n",i,cim_frame_desc[i].frameid);
-		printk("cim_dmacmd  _desc[%d]=0x%x\n",i,cim_frame_desc[i].dmacmd);
-		printk("cim_nextdesc_desc[%d]=0x%x\n\n",i,cim_frame_desc[i].nextdesc);
+		printk("=============%p=============\n", &frame_desc[i]);
+		printk("cim_nextdesc_desc[%d]=0x%x\n",i,frame_desc[i].nextdesc);
+		printk("cim_framebuf_desc[%d]=0x%x\n",i,frame_desc[i].framebuf);
+		printk("cim_frameid _desc[%d]=0x%x\n",i,frame_desc[i].frameid);
+		printk("cim_dmacmd  _desc[%d]=0x%x\n",i,frame_desc[i].dmacmd);
+		//if (!jz_cim->cim_cfg.packed)
+		{
+			printk("cim_cb_frame_desc[%d]=0x%x\n",i,frame_desc[i].cb_frame);
+			printk("cim_cb_len_desc[%d]=0x%x\n",i,frame_desc[i].cb_len);
+			printk("cim_cr_frame_desc[%d]=0x%x\n",i,frame_desc[i].cr_frame);
+			printk("cim_cr_len_desc[%d]=0x%x\n",i,frame_desc[i].cr_len);
+		}
+		printk("========================================\n");
 	}
 
-	printk("preview_working_buf=0x%x\n",preview_working_buf);
-	printk("recorder_prepare_buf=0x%x\n",recorder_prepare_buf);
-	printk("recorder_working_buf=0x%x\n\n",recorder_working_buf);
+	//printk("preview_working_buf=0x%x\n",preview_working_buf);
+	//printk("recorder_prepare_buf=0x%x\n",recorder_prepare_buf);
+	//printk("recorder_working_buf=0x%x\n\n",recorder_working_buf);
 }
 #endif
 
@@ -262,17 +333,35 @@ static void cim_print_buffers(void)
 
 static int cim_init_capture_desc(void)
 {
-	int capture_frmsize = ((cur_desc->capture_parm.width * cur_desc->capture_parm.height
-                             * cur_desc->capture_parm.bpp) >> 3);
+	int imgsize = cur_desc->capture_parm.width * cur_desc->capture_parm.height;
+	int capture_frmsize = ((imgsize * cur_desc->capture_parm.bpp) >> 3);
 
 	dprintk("cap_size=0x%x\n",capture_frmsize);
 
-	capture_desc.framebuf = jz_cim->capture_binfo.base_paddr;;
 	capture_desc.nextdesc = virt_to_phys(&capture_desc);
 	capture_desc.frameid  = 0xff;
+	capture_desc.framebuf = jz_cim->capture_binfo.base_paddr;
+	printk("=======>cap fb = %#010x\n", capture_desc.framebuf);
 	//capture_desc.dmacmd   = (capture_frmsize>>2) | CIM_CMD_EOFINT | CIM_CMD_STOP;
-	capture_desc.dmacmd   = (capture_frmsize>>2) | CIM_CMD_EOFINT;
-#ifdef CONFIG_SOC_JZ4760
+	if (jz_cim->cim_cfg.packed)
+		capture_desc.dmacmd   = (capture_frmsize>>2) | dmacmd_intr_flag;
+	else {
+		printk("=======>%s:%d we are test sep!!!\n", __FUNCTION__, __LINE__);
+		capture_desc.dmacmd   = (imgsize>>2) | dmacmd_intr_flag;
+		/* FIXME: test YCbCr444 or YCbCr422 bellow */
+		if (jz_cim->cim_cfg.fmt_422) {
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize;
+			capture_desc.cb_len = (imgsize / 2) >> 2;
+			capture_desc.cr_frame = jz_cim->capture_binfo.base_paddr + imgsize + imgsize / 2;
+			capture_desc.cb_len = (imgsize / 2) >> 2;
+		} else {
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize;
+			capture_desc.cb_len = imgsize >> 2;
+			capture_desc.cr_frame = jz_cim->capture_binfo.base_paddr + imgsize + imgsize;
+			capture_desc.cb_len = imgsize >> 2;
+		}
+	}
+#if !defined(CONFIG_SOC_JZ4750)
 	capture_desc.dmacmd  |= CIM_CMD_OFRCV ;
 #endif
 	if(cur_desc->wait_frames == 0)
@@ -286,25 +375,46 @@ static int cim_init_preview_desc(void)
 {
 
 	int i;
+	int imgsize = cur_desc->preview_parm.width * cur_desc->preview_parm.height;
+	int preview_frmsize = ((imgsize * cur_desc->preview_parm.bpp) >> 3);
+	unsigned int base_paddr = 0;
 
 	dprintk("=================preview: width = %d height = %d bpp = %d\n",
-	       cur_desc->preview_parm.width , cur_desc->preview_parm.height, cur_desc->preview_parm.bpp);
-	int preview_frmsize = ((cur_desc->preview_parm.width * cur_desc->preview_parm.height
-                             * cur_desc->preview_parm.bpp) >> 3);
-
+		cur_desc->preview_parm.width , cur_desc->preview_parm.height, cur_desc->preview_parm.bpp);
 	dprintk("pre_size=0x%x",preview_frmsize);
 
 //--------------------------------------------------------------------------------------------
 
 	for (i= 0; i< SWAP_NR; i++)
 	{
-		frame_desc[i].framebuf = jz_cim->preview_binfo.base_paddr + jz_cim->ginfo.max_preview_size * i;
+		base_paddr = jz_cim->preview_binfo.base_paddr + jz_cim->ginfo.max_preview_size * i;
+
+		frame_desc[i].nextdesc  = virt_to_phys(&frame_desc[i+1]);
 		frame_desc[i].frameid  = i;
-		frame_desc[i].dmacmd   = (preview_frmsize>>2) | CIM_CMD_EOFINT ;
-#ifdef CONFIG_SOC_JZ4760
+		frame_desc[i].framebuf = base_paddr;
+		if (jz_cim->cim_cfg.packed)
+			frame_desc[i].dmacmd   = (preview_frmsize>>2) | dmacmd_intr_flag;
+		else {
+			printk("=======>%s:%d we are test sep!!!\n", __FUNCTION__, __LINE__);
+			frame_desc[i].dmacmd   = (imgsize>>2) | dmacmd_intr_flag;
+
+			/* FIXME: test YCbCr444 and YCbCr422 here */
+			if (jz_cim->cim_cfg.fmt_422) {
+				frame_desc[i].cb_frame = base_paddr + imgsize;
+				frame_desc[i].cb_len = (imgsize / 2) >> 2;
+				frame_desc[i].cr_frame = base_paddr + imgsize + imgsize / 2;
+				frame_desc[i].cr_len = (imgsize / 2) >> 2;
+			} else {
+				printk(">>>>>>>>>>>>>>in %s, we are test YUV444, img_size = %d\n", __FUNCTION__, imgsize);
+				frame_desc[i].cb_frame = base_paddr + imgsize;
+				frame_desc[i].cb_len = imgsize >> 2;
+				frame_desc[i].cr_frame = base_paddr + imgsize * 2;
+				frame_desc[i].cr_len = imgsize >> 2;
+			}
+		}
+#if !defined(CONFIG_SOC_JZ4750)
 		frame_desc[i].dmacmd  |= CIM_CMD_OFRCV ;
 #endif
-		frame_desc[i].nextdesc  = virt_to_phys(&frame_desc[i+1]);
 	}
 
 	frame_desc[SWAP_BUF-1].nextdesc  = virt_to_phys(&frame_desc[0]);
@@ -320,25 +430,6 @@ static int cim_init_preview_desc(void)
 
 //----------------------------------------------------------------------------------------------
 	return 0;
-}
-
-static void cim_framebuffer_destroy(void)
-{
-	if(jz_cim->mem_base != 0)
-	{
-		int page_order;
-		__cim_disable();
-
-		if(jz_cim->mem_size == 0)
-	       	{
-			dprintk("Original memory is NULL\n");
-			return;
-		}
-		page_order = get_order(jz_cim->mem_size);
-		free_pages((unsigned long)jz_cim->mem_base, page_order);
-		jz_cim->mem_base = 0;
-		dprintk("cim_fb_destory!\n");
-	}
 }
 
 static unsigned int cim_init_fb_info(int swap_nr)
@@ -372,34 +463,38 @@ static unsigned int cim_init_fb_info(int swap_nr)
 
 static int cim_fb_alloc(void)
 {
-	unsigned int mem_size = 0;
+	unsigned int mem_size = 0, preview_mem_size = 0, capture_mem_size = 0;
 	int order = 0;
 
-	if (jz_cim->mem_base == 0 )
+	if (jz_cim->mem_base == NULL )
 	{
 		dprintk("get new page!\n");
-		mem_size=cim_init_fb_info(SWAP_NR);
+
+		(void)cim_init_fb_info(SWAP_NR);
+		preview_mem_size = jz_cim->ginfo.max_preview_size * SWAP_NR;
+		capture_mem_size = jz_cim->ginfo.max_capture_size;
+		mem_size = (preview_mem_size > capture_mem_size) ? preview_mem_size : capture_mem_size;
 		order = get_order(mem_size);
 
-		dprintk("mem_size=%dK\n",mem_size>>10);
-		dprintk("order=%d\n",order);
+		dprintk("mem_size=%dK\n", mem_size>>10);
+		dprintk("order=%d\n", order);
 
-#if 1
 		jz_cim->mem_base = (unsigned char *)__get_free_pages(GFP_KERNEL, order);
 
 		if (jz_cim->mem_base == NULL)
 		{
-			printk("GET FREE PAGES FAILED!\n");
+			printk("Preview: GET FREE PAGES FAILED!\n");
 			return -ENOMEM;
 		}
 
 		jz_cim->preview_binfo.base_vaddr = (unsigned int)jz_cim->mem_base;
 		jz_cim->preview_binfo.base_paddr = virt_to_phys(jz_cim->mem_base);
 
-		jz_cim->capture_binfo.base_vaddr = (unsigned int)jz_cim->mem_base + jz_cim->preview_binfo.buffer_size;
-		jz_cim->capture_binfo.base_paddr = virt_to_phys(jz_cim->mem_base + jz_cim->preview_binfo.buffer_size);
+		jz_cim->capture_binfo.base_vaddr = (unsigned int)jz_cim->mem_base;
+		jz_cim->capture_binfo.base_paddr = virt_to_phys(jz_cim->mem_base);
 
-#endif
+		memset(jz_cim->mem_base, 0, mem_size);
+
 		jz_cim->mem_size = mem_size;
 		jz_cim->ginfo.mmap_size = mem_size;
 	}
@@ -407,6 +502,24 @@ static int cim_fb_alloc(void)
 	return 0;
 }
 
+static void cim_fb_free(void)
+{
+	if(jz_cim->mem_base != 0)
+	{
+		int page_order;
+		__cim_disable();
+
+		if(jz_cim->mem_size == 0)
+	       	{
+			dprintk("Original memory is NULL\n");
+			return;
+		}
+		page_order = get_order(jz_cim->mem_size);
+		free_pages((unsigned long)jz_cim->mem_base, page_order);
+		jz_cim->mem_base = NULL;
+		dprintk("cim_fb_destory!\n");
+	}
+}
 
 /*==========================================================================
  * CIM Module operations
@@ -420,15 +533,104 @@ static void cim_config(cim_config_t *c)
 	REG_CIM_SIZE = c->size;
 	REG_CIM_OFFSET = c->offs;
 
+#if defined(CONFIG_SOC_JZ4760B)
+		__cim_input_data_format_select_YUV422();
+		//__cim_input_data_format_select_YUV444();
+		__cim_set_input_data_stream_order(0); /* YCbCr or Y0CbY1Cr */
+		//__cim_set_input_data_stream_order(1); /* YCrCb or Y0CrY1Cb */
+		//__cim_set_input_data_stream_order(2); /* CbCrY or CbY0CrY1 */
+		//__cim_set_input_data_stream_order(3); /* CrCbY or CrY0CbY1 */
+
+		//__cim_set_data_packing_mode(0); /* 0x11 22 33 44 or 0x Y0 Cb Y1 Cr */
+		//__cim_set_data_packing_mode(1); /* 0x 22 33 44 11 or 0x Cb Y1 Cr Y0 */
+		__cim_set_data_packing_mode(2); /* 0x 33 44 11 22 or 0x Y1 Cr Y0 Cb */
+		//__cim_set_data_packing_mode(3); /* 0x 44 11 22 33 or 0x Cr Y0 Cb Y1 */
+		//__cim_set_data_packing_mode(4); /* 0x 44 33 22 11 or 0x Cr Y1 Cb Y0 */
+		//__cim_set_data_packing_mode(5); /* 0x 33 22 11 44 or 0x Y1 Cb Y0 Cr */
+		//__cim_set_data_packing_mode(6); /* 0x 22 11 44 33 or 0x Cb Y0 Cr Y1 */
+		//__cim_set_data_packing_mode(7); /* 0x 11 44 33 22 or 0x Y0 Cr Y1 Cb */
+
+		__cim_enable_bypass_func();
+		//__cim_disable_bypass_func();
+
+		__cim_enable_auto_priority();
+		//__cim_disable_auto_priority();
+
+		__cim_enable_emergency();
+		//__cim_disable_emergency();
+
+		/* 0, 1, 2, 3
+		 * 0: highest priority
+		 * 3: lowest priority
+		 * 1 maybe best for SEP=1
+		 * 3 maybe best for SEP=0
+		 */
+		//__cim_set_opg(0);
+		__cim_set_opg(1);
+		//__cim_set_opg(2);
+		//__cim_set_opg(3);
+
+		__cim_enable_priority_control();
+		//__cim_disable_priority_control();
+
+
+	if (c->packed) {
+		__cim_disable_sep();
+	} else {
+		__cim_enable_sep();
+	}
+#endif
+
 	if(cur_desc->no_dma) //just for fake sensor test
 		return;
 
-	// Enable sof, eof and stop interrupts
 	__cim_enable_dma();
 
-	__cim_enable_eof_intr();
+#ifdef CIM_SAFE_DISABLE
+	//__cim_enable_vdd_intr();
+#else
+	__cim_disable_vdd_intr();
+#endif
 
+#ifdef CIM_INTR_SOF_EN
+	__cim_enable_sof_intr();
+#else
+	__cim_disable_sof_intr();
+#endif
+
+#ifdef CIM_INTR_EOF_EN
+	__cim_enable_eof_intr();
+#else
+	__cim_disable_eof_intr();
+#endif
+
+#ifdef CIM_INTR_STOP_EN
+	__cim_enable_stop_intr();
+#else
+	__cim_disable_stop_intr();
+#endif
+
+#ifdef CIM_INTR_TRIG_EN
+	__cim_enable_trig_intr();
+#else
+	__cim_disable_trig_intr();
+#endif
+
+#ifdef CIM_INTR_OF_EN
 	__cim_enable_rxfifo_overflow_intr();
+#else
+	__cim_disable_rxfifo_overflow_intr();
+#endif
+
+#ifdef CIM_INTR_EEOF_EN
+	__cim_set_eeof_line(100);
+	__cim_enable_eeof_intr();
+#else
+#if !defined(CONFIG_SOC_JZ4750)
+	__cim_set_eeof_line(0);
+	__cim_disable_eeof_intr();
+#endif
+#endif
 }
 
 static void cim_init_config(struct camera_sensor_desc *desc)
@@ -440,13 +642,20 @@ static void cim_init_config(struct camera_sensor_desc *desc)
 
 	jz_cim->cim_cfg.cfg = cur_desc->cfg_info.configure_register;
 	jz_cim->cim_cfg.cfg &=~CIM_CFG_DMA_BURST_TYPE_MASK;
-#if defined(CONFIG_SOC_JZ4760)
+#if defined(CONFIG_SOC_JZ4760B)
+	jz_cim->cim_cfg.cfg |= CIM_CFG_DMA_BURST_INCR32  | (0<<CIM_CFG_RXF_TRIG_BIT);// (n+1)*burst = 2*16 = 32 <64
+	jz_cim->cim_cfg.ctrl =  CIM_CTRL_DMA_SYNC | CIM_CTRL_FRC_1;
+#elif defined(CONFIG_SOC_JZ4760)
 	jz_cim->cim_cfg.cfg |= CIM_CFG_DMA_BURST_INCR16;
 	jz_cim->cim_cfg.ctrl =  CIM_CTRL_DMA_SYNC | CIM_CTRL_FRC_1 | (1<<CIM_CTRL_RXF_TRIG_BIT);// (n+1)*burst = 2*16 = 32 <64
 #else
 	jz_cim->cim_cfg.cfg |= CIM_CFG_DMA_BURST_INCR8;
 	jz_cim->cim_cfg.ctrl = CIM_CTRL_FRC_1 | CIM_CTRL_RXF_TRIG_8 | CIM_CTRL_FAST_MODE; // 16 < 32
 #endif
+
+	jz_cim->cim_cfg.packed = jz_cim->ginfo.packed;
+	/* Just for test */
+	jz_cim->cim_cfg.fmt_422 = jz_cim->ginfo.fmt_422;
 
 	return;
 }
@@ -456,6 +665,7 @@ static int cim_device_init(void)
 {
 	cim_init_config(cur_desc);
 	cim_config(&jz_cim->cim_cfg);
+	cim_print_regs();
 	return 0;
 }
 
@@ -604,8 +814,12 @@ static int cim_snapshot(void)
 
 	cim_init_capture_desc();
 
+	dprintk("1: SNAPSHOT WRITE DMA PADDR:%#010x\n",capture_desc.framebuf);
+
 	cim_set_function(1,NULL);
 	cim_set_capture_resoultion(cur_desc->capture_parm,1);
+
+	dprintk("2: SNAPSHOT WRITE DMA PADDR:%#010x\n",capture_desc.framebuf);
 
 	//OUTPUT_TIME();
 	dprintk("%s, %s, %d\n", __FILE__, __FUNCTION__, __LINE__);
@@ -620,8 +834,8 @@ static int cim_snapshot(void)
 	else
 	{
 		dprintk("%s, %s, %d\n", __FILE__, __FUNCTION__, __LINE__);
-		dprintk("SNAPSHOT START!");
-		dprintk("SNAPSHOT WRITE DMA PADDR:%u\n",capture_desc.framebuf);
+		dprintk("SNAPSHOT START!\n");
+		dprintk("SNAPSHOT WRITE DMA PADDR:%#010x\n",capture_desc.framebuf);
 
 		__cim_enable();
 
@@ -642,21 +856,58 @@ static int cim_snapshot(void)
 static irqreturn_t cim_irq_handler(int irq, void *dev_id)
 {
 	u32 state = REG_CIM_STATE;
+	u32 state_back = state;
 	unsigned long flags;
+
+	iprintk(">>>>>>>>>>>>>>>>>>>state = %#0x\n", state);
+
+	if ( (state & CIM_STATE_DMA_SOF) ||
+	     (state & CIM_STATE_DMA_STOP) ||
+	     (state & CIM_STATE_VDD) ||
+	     (state & CIM_STATE_RXF_TRIG)) {
+		if (state & CIM_STATE_DMA_SOF) {
+			state &= ~CIM_STATE_DMA_SOF;
+			iprintk("sof intrrupt occured\n");
+		}
+
+		if (state & CIM_STATE_DMA_STOP) {
+			state &= ~CIM_STATE_DMA_STOP;
+			iprintk("stop intrrupt occured\n");
+		}
+
+		if (state & CIM_STATE_VDD) {
+			state &= ~CIM_STATE_VDD;
+			iprintk("cim disable done!\n");
+		}
+
+		if (state & CIM_STATE_RXF_TRIG) {
+			state &= ~CIM_STATE_RXF_TRIG;
+			iprintk("rx trig reached!\n");
+		}
+	}
+
+#if !defined(CONFIG_SOC_JZ4750)
+	if (state & CIM_STATE_DMA_EEOF) {
+		state &= ~CIM_STATE_DMA_EEOF;
+		iprintk("eeof intrrupt occured!\n");
+	}
+#endif
 
 	if (state & CIM_STATE_DMA_EOF)
        	{
 		if(likely(snapshot_flag != 1))
 	       	{
-			spin_lock_irqsave(fresh_lock,flags);
+			spin_lock_irqsave(&fresh_lock,flags);
 			jz_cim->preview_timeout_state = 1;
 
+			iprintk("__cim_get_iid() = %d\n", __cim_get_iid());
+			//cim_print_regs();
 			fresh_id =  __cim_get_iid() - 1;
 			if(fresh_id == -1)
 				fresh_id = SWAP_BUF-1;
 
 
-			spin_unlock_irqrestore(fresh_lock,flags);
+			spin_unlock_irqrestore(&fresh_lock,flags);
 
 			if(waitqueue_active(&jz_cim->preview_wait_queue))
 				wake_up_interruptible(&jz_cim->preview_wait_queue);
@@ -690,8 +941,30 @@ static irqreturn_t cim_irq_handler(int irq, void *dev_id)
 		}
 	}
 
-	if (state & CIM_STATE_RXF_OF)
+	state = state_back;
+	if ( (state & CIM_STATE_RXF_OF)
+#if defined(CONFIG_SOC_JZ4760B)
+	     || (state & CIM_STATE_Y_RF_OF) ||
+	     (state & CIM_STATE_CB_RF_OF) ||
+	     (state & CIM_STATE_CR_RF_OF)
+#endif
+	     )
        	{
+		if (state & CIM_STATE_RXF_OF)
+			printk("OverFlow interrupt!\n");
+
+#if defined(CONFIG_SOC_JZ4760B)
+		if (state & CIM_STATE_Y_RF_OF)
+			printk("Y overflow interrupt!!!\n");
+
+		if (state & CIM_STATE_CB_RF_OF)
+			printk("Cb overflow interrupt!!!\n");
+
+		if (state & CIM_STATE_CR_RF_OF)
+			printk("Cr overflow interrupt!!!\n");
+#endif
+
+		cim_print_regs();
 
 		REG_CIM_STATE &= ~CIM_STATE_VDD;
 		__cim_disable();
@@ -700,7 +973,6 @@ static irqreturn_t cim_irq_handler(int irq, void *dev_id)
 		__cim_clear_state();	// clear state register
 		__cim_enable();
 
-		dprintk("OverFlow interrupt!\n");
 		return IRQ_HANDLED;
 	}
 
@@ -719,13 +991,25 @@ static struct file_operations cim_fops =
 
 };
 
+static atomic_t jzcim_opened = ATOMIC_INIT(1); /* initially not opened */
+
 static int cim_open(struct inode *inode, struct file *filp)
 {
-	return 0;
+	if (jz_cim->ginfo.sensor_count <= 0)
+		return -ENODEV;
+
+	if (! atomic_dec_and_test (&jzcim_opened)) {
+		atomic_inc(&jzcim_opened);
+		return -EBUSY; /* already open */
+	}
+
+	return cim_fb_alloc();
 }
 
 static int cim_release(struct inode *inode, struct file *filp)
 {
+	cim_fb_free();
+	atomic_inc(&jzcim_opened); /* release the device */
 	return 0;
 }
 
@@ -739,7 +1023,7 @@ unsigned int get_phy_addr(unsigned int vaddr)
      	pmd_t   *pmdir;
       	pte_t   *pte;
 
-	dprintk("current task(%d)'s pgd is 0x%x\n",current->pid,current->mm->pgd);
+	dprintk("current task(%d)'s pgd is %p\n",current->pid,current->mm->pgd);
 
 	pgdir=pgd_offset(current->mm,vaddr);
 	if(pgd_none(*pgdir)||pgd_bad(*pgdir))
@@ -772,7 +1056,7 @@ unsigned int get_phy_addr(unsigned int vaddr)
 
 static ssize_t cim_read(struct file *filp, char *buf, size_t size, loff_t *l)
 {
-	dprintk("user buf paddr = 0x%x\n",get_phy_addr(buf));
+	dprintk("user buf paddr = 0x%x\n",get_phy_addr((unsigned int)buf));
 	return -1;
 }
 
@@ -790,24 +1074,41 @@ static unsigned int cim_get_preview_buf(int is_pbuf)
 	if(unlikely(fresh_id == -1))
 	{
 		iprintk("w");
+		//cim_print_regs();
 		interruptible_sleep_on_timeout(&jz_cim->preview_wait_queue,10*HZ);
 		//cim_print_regs();
 	}
 
-	if(unlikely(jz_cim->preview_timeout_state != 1))
+	if(unlikely(jz_cim->preview_timeout_state != 1)) {
+		printk("========>preview timeout!!!\n");
+		//cim_print_regs();
 		return (unsigned int)(~0);
+	}
 
-/******/spin_lock_irqsave(fresh_lock,flags);/*********************************************************/
+	//cim_print_regs();
 
+/******/spin_lock_irqsave(&fresh_lock,flags);/*********************************************************/
+
+	iprintk("===>fresh_buf = %d fresh_id = %d\n", fresh_buf, fresh_id);
 	tmp_addr=frame_desc[fresh_id].framebuf;
 	frame_desc[fresh_id].framebuf=frame_desc[SWAP_BUF+fresh_buf].framebuf;
 	frame_desc[SWAP_BUF+fresh_buf].framebuf=tmp_addr;
+	if (!jz_cim->cim_cfg.packed) {
+		iprintk("=======>%s:%d we are test sep!!!\n", __FUNCTION__, __LINE__);
+		tmp_addr = frame_desc[fresh_id].cb_frame;
+		frame_desc[fresh_id].cb_frame = frame_desc[SWAP_BUF+fresh_buf].cb_frame;
+		frame_desc[SWAP_BUF+fresh_buf].cb_frame=tmp_addr;
+
+		tmp_addr = frame_desc[fresh_id].cr_frame;
+		frame_desc[fresh_id].cr_frame = frame_desc[SWAP_BUF+fresh_buf].cr_frame;
+		frame_desc[SWAP_BUF+fresh_buf].cr_frame=tmp_addr;
+	}
 	dma_cache_wback((unsigned long)(&frame_desc[fresh_id]), sizeof(struct cim_desc));
 
 	jz_cim->preview_timeout_state = 0;
 	fresh_id = -1;
 
-/******/spin_unlock_irqrestore(fresh_lock,flags);/*******************************************************/
+/******/spin_unlock_irqrestore(&fresh_lock,flags);/*******************************************************/
 
 
 	if(likely(is_pbuf == 1))
@@ -879,21 +1180,36 @@ static int cim_get_sensor_info(void __user *arg,struct sensor_info *info)
 	return -ENODEV;
 }
 
+#if !defined(CONFIG_SOC_JZ4750)
 static int cim_enable_image_mode(int image_w,int image_h,int width,int height)
 {
-	int voffset,hoffset;
+	int voffset,hoffset, half_words_per_line = 0;
 
-	voffset = (((height - image_h) / 2) >> 1) << 1;
-	hoffset = (((width - image_w) / 2) >> 1) << 1;
+	voffset = (height - image_h) / 2;
+	voffset &= ~0x1;      /* must be even */
+
+	/* hoffset / 2 * 4 = (width - image_w) / 2 * (bpp / 8)
+	 * ---> hoffset = (width - image_w) / 2 * (bpp / 8) / 4 * 2
+	 */
+	if (jz_cim->cim_cfg.fmt_422) {
+		hoffset = (width - image_w) / 2;
+		hoffset &= ~0x1;      /* must be even */
+
+		half_words_per_line = image_w;
+	} else {
+		hoffset = (width - image_w) / 2;
+		hoffset = hoffset * 3 / 4 * 2;
+
+		half_words_per_line = image_w * 3 / 2; /* image_w must be even */
+	}
 
 	__cim_set_line(image_h);
-	__cim_set_pixel(image_w);
+	__cim_set_pixel(half_words_per_line);
 
 	__cim_set_v_offset(voffset);
 	__cim_set_h_offset(hoffset);
 
 	__cim_enable_size_func();
-	//REG_CIM_CTRL |= CIM_CTRL_WIN_EN;
 
 	dprintk("enable image mode (real size %d x %d) - %d x %d\n",width,height,image_w,image_h);
 	return 0;
@@ -907,22 +1223,35 @@ static int cim_disable_image_mode(void)
 	dprintk("disable image mode\n");
 	return 0;
 }
+#else  /* !CONFIG_SOC_JZ4750 */
+#define cim_enable_image_mode(iw, ih, w, h) do {  } while(0)
+#define cim_disable_image_mode() do {  } while(0)
+#endif
+
+static void param_normalization(struct resolution_info *param)  {
+	if(param->bpp != 8 || param->bpp != 16 || param->bpp != 24 || param->bpp != 32 ) {
+		if (jz_cim->cim_cfg.fmt_422)
+			param->bpp = 16;
+		else   /* yuv444 */
+			param->bpp = 24;
+	}
+	if(param->format == (unsigned int)(-1))
+		param->format= cur_desc->preview_parm.format;
+}
 
 static int cim_set_preview_resolution(struct resolution_info param)
 {
-	int i, max_preview_index, framesize, wpf; /* words per frame */
+	int i, max_preview_index, imgsize, framesize;
 
 	dprintk("SET PREVIEW RESOULTION %d\tX\t%d\t%d\n",param.width,param.height,param.bpp);
 
 	if(cur_desc == NULL)
 		return -ENODEV;
 
-	if(param.bpp != 8 || param.bpp != 16 || param.bpp != 32 )
-		param.bpp = cur_desc->preview_parm.bpp;
-	if(param.format == (unsigned int)(-1))
-		param.format= cur_desc->preview_parm.format;
+	param_normalization(&param);
 
-	framesize = (param.width * param.height * param.bpp + 7) >> 3;
+	imgsize = param.width * param.height;
+	framesize = (imgsize * param.bpp + 7) >> 3;
 	if (framesize > cur_desc->max_preview_size){
 		dprintk("ERROR! Preview size is too large!\n");
 		return -EINVAL;
@@ -1001,36 +1330,56 @@ static int cim_set_preview_resolution(struct resolution_info param)
 			CAMERA_MODE_PREVIEW);
 	}
 //---------------------------------------------------------------------------
-	wpf = (framesize +3) >> 2 ;
-
 	for (i = 0; i < SWAP_NR - 1; i++) {
-		frame_desc[i].dmacmd &= ~CIM_CMD_LEN_MASK;
-		frame_desc[i].dmacmd |= wpf;
+		if (jz_cim->cim_cfg.packed) {
+			frame_desc[i].dmacmd &= ~CIM_CMD_LEN_MASK;
+			frame_desc[i].dmacmd |= (framesize + 3) >> 2;
+			dprintk("framesize = %d\n", framesize);
+		} else {
+			dprintk("=======>%s:%d we are test sep!!!\n", __FUNCTION__, __LINE__);
+			frame_desc[i].dmacmd &= ~CIM_CMD_LEN_MASK;
+			frame_desc[i].dmacmd |= (imgsize + 3) >> 2;
+
+			/* FIXME: test YCbCr444 or YCbCr422 here */
+			if (jz_cim->cim_cfg.fmt_422) {
+				frame_desc[i].cb_frame = frame_desc[i].framebuf + imgsize;
+				frame_desc[i].cb_len = ( (imgsize + 1) / 2 + 3) >> 2;
+				frame_desc[i].cr_frame = frame_desc[i].cb_frame + imgsize / 2;
+				frame_desc[i].cr_len = ( (imgsize + 1) / 2 + 3) >> 2;
+			} else {
+				printk("we are testing yuv444\n");
+				frame_desc[i].cb_frame = frame_desc[i].framebuf + imgsize;
+				frame_desc[i].cb_len = imgsize >> 2;
+				frame_desc[i].cr_frame = frame_desc[i].cb_frame + imgsize;
+				frame_desc[i].cr_len = imgsize >> 2;
+			}
+		}
 		dma_cache_wback((unsigned long)(&frame_desc[i]), sizeof(struct cim_desc));
 	}
+
+	cim_print_buffers();
+	cim_print_regs();
+	printk("=========================\n");
 	return 0;
 }
 
 static int cim_set_capture_resoultion(struct resolution_info param,int state)
 {
-	int i,framesize, wpf,max_capture_index; // words per frame
+	int i,imgsize, framesize, max_capture_index; // words per frame
 
 	dprintk("SET CAPTURE RESOULTION %d\tX\t%d\t%d\n",param.width,param.height,param.bpp);
 
 	if(cur_desc == NULL)
 		return -ENODEV;
 
-	if(param.bpp != 8 || param.bpp != 16 || param.bpp != 32 )
-		param.bpp = cur_desc->capture_parm.bpp;
-	if(param.format == (unsigned int)(-1))
-		param.format= cur_desc->capture_parm.format;
+	param_normalization(&param);
 
-	framesize = (param.width * param.height * param.bpp + 7) >> 3;
+	imgsize = param.width * param.height;
+	framesize = (imgsize * param.bpp + 7) >> 3;
 	if (framesize > cur_desc->max_capture_size){
 		dprintk("ERROR! Capture size is too large!\n");
 		return -EINVAL;
 	}
-
 
 	cur_desc->capture_parm.width = param.width;
 	cur_desc->capture_parm.height = param.height;
@@ -1068,8 +1417,6 @@ static int cim_set_capture_resoultion(struct resolution_info param,int state)
 		}
 	}
 
-	//if(jz_cim->cim_started == TRUE)
-	//if(jz_cim->cim_transfer_started == 1)
 	if(i >= cur_desc->resolution_table_nr)
 	{
 		dprintk("size not found! use image mode!\n");
@@ -1110,9 +1457,26 @@ static int cim_set_capture_resoultion(struct resolution_info param,int state)
 	}
 
 	//---------------------------------------------------------------------------------------------
-	wpf = (framesize + 3) >> 2 ;
-	capture_desc.dmacmd &= ~CIM_CMD_LEN_MASK;
-	capture_desc.dmacmd |= wpf;
+	if (jz_cim->cim_cfg.packed) {
+		capture_desc.dmacmd &= ~CIM_CMD_LEN_MASK;
+		capture_desc.dmacmd |= (framesize + 3) >>2;
+	} else {
+		dprintk("=======>%s:%d we are test sep!!!\n", __FUNCTION__, __LINE__);
+		capture_desc.dmacmd &= ~CIM_CMD_LEN_MASK;
+		capture_desc.dmacmd |= (imgsize + 3) >> 2;
+		/* FIXME: test YCbCr444 or YCbCr422 */
+		if (jz_cim->cim_cfg.fmt_422) {
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize;
+			capture_desc.cb_len = ((imgsize + 1) / 2 + 3) >> 2;
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize + imgsize / 2;
+			capture_desc.cr_len = ((imgsize + 1) / 2 + 3) >> 2;
+		} else {
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize;
+			capture_desc.cb_len = (imgsize + 3) >> 2;
+			capture_desc.cb_frame = jz_cim->capture_binfo.base_paddr + imgsize + imgsize;
+			capture_desc.cr_len = (imgsize + 3) >> 2;
+		}
+	}
 	dma_cache_wback((unsigned long)(&capture_desc), sizeof(struct cim_desc));
 
 	dprintk("SET CAPTURE RESOULTION %d\tX\t%d\t%d\n -- OK!",param.width,param.height,param.bpp);
@@ -1300,9 +1664,10 @@ static int cim_select_sensor(unsigned int sensor_id)
 	return 0;
 }
 
+#if 0
 static int cim_set_buffer(void __user *argp, struct camera_buffer_info *binfo)
 {
-	unsigned int mb;
+	unsigned int mb, cap_mb;
 	struct camera_buffer_info tmp;
 
 	if (copy_from_user(&tmp, argp, sizeof(struct camera_buffer_info)))
@@ -1315,9 +1680,10 @@ static int cim_set_buffer(void __user *argp, struct camera_buffer_info *binfo)
 	}
 	memcpy(binfo, &tmp, sizeof(struct camera_buffer_info));
 
-	mb = (unsigned int)jz_cim->mem_base;
+	mb = (unsigned int)jz_cim->preview_mem_base;
+	cap_mb = (unsigned int)jz_cim->cap_mem_base;
 	if ((jz_cim->preview_binfo.base_vaddr != mb)
-	 && (jz_cim->capture_binfo.base_vaddr != (mb + jz_cim->preview_binfo.buffer_size)))
+	 && (jz_cim->capture_binfo.base_vaddr != cap_mb))
 	{
 		cim_framebuffer_destroy();
 		dprintk("CIM FRAME BUFFER DESTORY\n");
@@ -1325,6 +1691,7 @@ static int cim_set_buffer(void __user *argp, struct camera_buffer_info *binfo)
 
 	return 0;
 }
+#endif
 
 /**************************
  *     IOCTL Handlers     *
@@ -1347,6 +1714,16 @@ static int cim_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, u
 		cim_stop();
 		return 0;
 	}
+	case IOCTL_CIM_CHANGE_PACK_MODE:
+		jz_cim->cim_cfg.packed = *((unsigned int *)argp);
+		jz_cim->ginfo.packed = jz_cim->cim_cfg.packed;
+		printk("=============>set packed to %d\n", jz_cim->ginfo.packed);
+		return 0;
+	case IOCTL_CIM_CHANGE_FMT:
+		jz_cim->cim_cfg.fmt_422 = *((unsigned int *)argp);
+		jz_cim->ginfo.fmt_422 = jz_cim->cim_cfg.fmt_422;
+		printk("=============>set fmt_422 to %d\n", jz_cim->ginfo.fmt_422);
+		return 0;
 	case IOCTL_CIM_START_PREVIEW:
 	{
 		dprintk("IOCTL_CIM_START_PREVIEW\n");
@@ -1394,6 +1771,7 @@ static int cim_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, u
 	{
 		return copy_to_user(argp, &jz_cim->preview_binfo, sizeof(struct camera_buffer_info)) ? -EFAULT : 0;
 	}
+#if 0
 	case IOCTL_CIM_SET_PREVIEW_MEM:
 	{
 		dprintk("IOCTL_SET_PREVIEW_MEM\n");
@@ -1404,6 +1782,7 @@ static int cim_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, u
 		dprintk("IOCTL_SET_CAPTURE_MEM\n");
 		return cim_set_buffer(argp,&jz_cim->capture_binfo);
 	}
+#endif
 	case IOCTL_CIM_GET_PREVIEW_OFFSET:
 	{
 		unsigned int offset;
@@ -1522,13 +1901,13 @@ static int cim_mmap(struct file *file, struct vm_area_struct *vma)
 
 	buf_offsize_app_drv =(unsigned int )(jz_cim->mem_base)-(unsigned int )(vma->vm_start);
 
-#if 1
+#if 0
 	dprintk("vma->vm_start: 0x%x\n",vma->vm_start);
 	dprintk("vma->vm_end: 0x%x\n",vma->vm_end);
 	dprintk("vma->vm_pgoff: 0x%x\n",vma->vm_pgoff);
-	dprintk("jz_cim->mem_base(V): 0x%x\n",jz_cim->mem_base);
-	dprintk("jz_cim->mem_base(P): 0x%x\n",virt_to_phys(jz_cim->mem_base));
-	dprintk("jz_cim->mem_size: %dbytes\n",jz_cim->mem_size);
+	dprintk("jz_cim->mem_base(V): 0x%x\n",mem_base);
+	dprintk("jz_cim->mem_base(P): 0x%x\n",virt_to_phys(mem_base));
+	dprintk("jz_cim->mem_size: %dbytes\n",mem_size);
 	dprintk("buf_offsize_app_drv = jz_cim->mem_base-vma->vm_start\n");
 	dprintk("buf_offsize_app_drv = 0x%x\n",buf_offsize_app_drv);
 	dprintk("get_phy_addr test addr = 0x%x\n",get_phy_addr(vma->vm_start));
@@ -1557,6 +1936,12 @@ static int __init cim_init(void)
 		return -ENOMEM;
 	}
 
+#if !defined(CONFIG_SOC_JZ4750)
+	jz_cim->ginfo.window_support = 1;
+#else
+	jz_cim->ginfo.window_support = 0;
+#endif
+
 	cim_power_on();
 
 	cim_scan_sensor();
@@ -1572,7 +1957,7 @@ static int __init cim_init(void)
 
 	init_waitqueue_head(&jz_cim->capture_wait_queue);
 	init_waitqueue_head(&jz_cim->preview_wait_queue);
-	cim_fb_alloc();
+	//cim_fb_alloc();
 
 	if ((ret = request_irq(IRQ_CIM, cim_irq_handler, IRQF_DISABLED, CIM_NAME, jz_cim))) {
 		dprintk(KERN_ERR "request_irq return error, ret=%d\n", ret);
@@ -1591,7 +1976,7 @@ static int __init cim_init(void)
 
 static void __exit cim_exit(void)
 {
-	cim_framebuffer_destroy();
+	//cim_fb_free();
 	kfree(jz_cim);
 	misc_deregister(&cim_dev);
 }

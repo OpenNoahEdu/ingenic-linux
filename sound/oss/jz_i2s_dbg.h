@@ -33,31 +33,32 @@
 #endif
 
 #ifdef AIC_DEBUG_LEVEL2
-  #define REG_DEBUG			1
-  #define DMA_DEBUG			1
-  #define BUF_DEBUG			1
-  #define Q_DEBUG			1
-  #define TRACE_DEBUG			1
-  #define IRQ_DEBUG			1
-  #define IOC_DEBUG			1
-  #define CODEC_DEBUG			1
-  #define OTHER_DEBUG			1
+  #define REG_DEBUG			0
+  #define DMA_DEBUG			0
+  #define BUF_DEBUG			0
+  #define Q_DEBUG			0
+  #define TRACE_DEBUG			0
+  #define IRQ_DEBUG			0
+  #define IOC_DEBUG			0
+  #define CODEC_DEBUG			0
+  #define OTHER_DEBUG			0
 #endif
 
 #ifdef AIC_DEBUG_LEVEL1
-  #define OTHER_DEBUG			1
-  #define IRQ_DEBUG			1
-  #define DMA_DEBUG			1
-  #define REG_DEBUG			1
-//  #define IOC_DEBUG			1
+  #define OTHER_DEBUG			0
+  #define IRQ_DEBUG			0
+  #define DMA_DEBUG			0
+  #define REG_DEBUG			0
+//  #define IOC_DEBUG			0
 #endif
 
 #ifdef AIC_DEBUG_LEVEL0
-  #define IRQ_DEBUG			1
-  #define TRACE_DEBUG			1
+  #define IRQ_DEBUG			0
+  #define TRACE_DEBUG			0
 #endif
 
-#ifdef CODEC_DEBUG
+//#ifdef CODEC_DEBUG
+#if 0
   #define DPRINT_CODEC(msg...)		printk(msg)
 #else
   #define DPRINT_CODEC(msg...)		do{} while (0)

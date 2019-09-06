@@ -173,12 +173,16 @@ static void enable_dma_irq(unsigned int irq)
 
 static void disable_dma_irq(unsigned int irq)
 {
-	__dmac_channel_disable_irq(irq - IRQ_DMA_0);
+	int chan = irq - IRQ_DMA_0;
+	__dmac_disable_channel(chan);
+	__dmac_channel_disable_irq(chan);
 }
 
 static void mask_and_ack_dma_irq(unsigned int irq)
 {
 	unsigned int intc_irq;
+
+	disable_dma_irq(irq);
 
 	if ( irq < (IRQ_DMA_0 + HALF_DMA_NUM) ) 	/* DMAC Group 0 irq */
 		intc_irq = IRQ_DMAC0;
@@ -189,8 +193,8 @@ static void mask_and_ack_dma_irq(unsigned int irq)
 		return ;
 	}
 	__intc_ack_irq(intc_irq);
-	__dmac_channel_ack_irq(irq-IRQ_DMA_0); /* needed?? add 20080506, Wolfgang */
-	__dmac_channel_disable_irq(irq - IRQ_DMA_0);
+	//__dmac_channel_ack_irq(irq-IRQ_DMA_0); /* needed?? add 20080506, Wolfgang */
+	//__dmac_channel_disable_irq(irq - IRQ_DMA_0);
 }
 
 static void end_dma_irq(unsigned int irq)
@@ -434,13 +438,22 @@ static int plat_real_irq(int irq)
 #endif
 	case IRQ_DMAC0:
 	case IRQ_DMAC1:
-		irq = __dmac_get_irq() + IRQ_DMA_0;
+		irq = __dmac_get_irq();
+		if (irq < 0)
+			return irq;
+		irq += IRQ_DMA_0;
 		break;
 	case IRQ_MDMA:
-		irq = __mdmac_get_irq() + IRQ_MDMA_0;
+		irq = __mdmac_get_irq();
+		if (irq < 0)
+			return irq;
+		irq += IRQ_MDMA_0;
 		break;
 	case IRQ_BDMA:
-		irq = __bdmac_get_irq() + IRQ_BDMA_0;
+		irq = __bdmac_get_irq();
+		if (irq < 0)
+			return irq;
+		irq += IRQ_BDMA_0;
 		break;
 	}
 
@@ -458,7 +471,7 @@ asmlinkage void plat_irq_dispatch(void)
 
 
 	if (!(intc_ipr0 || intc_ipr1))	return;
-
+#if 0
 	if (intc_ipr0) {
 		irq = ffs(intc_ipr0) - 1;
 		intc_ipr0 &= ~(1<<irq);
@@ -467,18 +480,42 @@ asmlinkage void plat_irq_dispatch(void)
 		intc_ipr1 &= ~(1<<irq);
 		irq += 32;
 	}
+#endif
+#if 1
+	if (!(intc_ipr0 & 3)) {
+		if (intc_ipr0) {
+			irq = fls(intc_ipr0) - 1;
+			intc_ipr0 &= ~(1<<irq);
+		} else {
+			irq = fls(intc_ipr1) - 1;
+			intc_ipr1 &= ~(1<<irq);
+			irq += 32;
+		}
+	} else  {
+		if (intc_ipr0 & 2) {
+
+			irq = 1;
+			intc_ipr0 &= ~(1<<irq);
+		} else {
+
+			irq = 0;
+			intc_ipr0 &= ~(1<<irq);
+		}
+	}
+#endif
 
 	if ((irq >= IRQ_GPIO5) && (irq <= IRQ_GPIO0)) {
 		group = IRQ_GPIO0 - irq;
 		irq = __gpio_group_irq(group);
-		if (irq < 0) {
-			return;
-		}
-
-		irq += IRQ_GPIO_0 + 32 * group;
+		if (irq >= 0)
+			irq += IRQ_GPIO_0 + 32 * group;
 	} else {
 		irq = plat_real_irq(irq);
 	}
+
+	/* WARN((irq < 0), "irq raised, but no irq pending\n"); */
+	if (irq < 0)
+		return;
 
 	do_IRQ(irq);
 }

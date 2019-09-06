@@ -74,6 +74,10 @@
 #define DPAD_CENTER_LEVEL	1489    //1.2V
 #define DPAD_RIGHT_LEVEL	868     //0.7V
 
+
+#define GPIO_TS_I2C_INT         (32 * 1 + 20)   //GPB20
+#define GPIO_TS_I2C_IRQ         (IRQ_GPIO_0 + GPIO_TS_I2C_INT)
+
 /*======================================================================
  * Analog input for VBAT is the battery voltage divided by CFG_PBAT_DIV.
  */
@@ -245,7 +249,7 @@ do {								\
 #define ACTIVE_LOW_VOLUMEDOWN   1
 #define ACTIVE_LOW_VOLUMEUP     1
 #define ACTIVE_LOW_ADKEY	1
-#define ACTIVE_WAKE_UP 		1
+#define ACTIVE_LOW_WAKE_UP 	1
 #define ACTIVE_LOW_MSC0_CD	1
 #define ACTIVE_LOW_MSC1_CD	1
 
@@ -263,5 +267,24 @@ do {								\
 #define ACTIVE_LOW_PLAY		1
 #define ACTIVE_LOW_REWIND	1
 #define ACTIVE_LOW_FORWARD	1
+
+
+#define GPIO_SW3	(32 * 2 + 29) // SW3-GPC29
+#define GPIO_SW1	(32 * 2 + 31) // SW1-GPC31
+#define GPIO_SW6	(32 * 3 + 19) // SW6-boot_sel2-GPD19
+#define GPIO_SW4	(32 * 3 + 27) // SW4-GPD27
+#define GPIO_SW9	(32 * 0 + 30) // SW9-WAKEUP-GPA30
+#define GPIO_SW7	(32 * 3 + 18) // SW7-boot_sel1-GPD18
+#define GPIO_SW8	(32 * 3 + 17) // SW8-boot_sel0-GPD17
+
+#define ACTIVE_LOW_SW3		1
+#define ACTIVE_LOW_SW1		1
+#define ACTIVE_LOW_SW6		1
+#define ACTIVE_LOW_SW4		1
+#define ACTIVE_LOW_SW9		1
+#define ACTIVE_LOW_SW7   	1
+#define ACTIVE_LOW_SW8     	1
+
+#define JZ_EARLY_UART_BASE UART1_BASE
 
 #endif /* __ASM_JZ4760_LEPUS_H__ */

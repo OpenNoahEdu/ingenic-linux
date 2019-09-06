@@ -1439,9 +1439,9 @@ do {							\
 #define __aic_disable_loopback() ( REG_AIC_CR &= ~AIC_CR_ENLBF )
 
 #define __aic_flush_fifo_rx()	( REG_AIC_CR |= AIC_CR_FLUSH_RX )
-#define __aic_flush_fifo_tx()	( REG_AIC_CR |= AIC_CR_FLUSH_TX )
+#define __aic_flush_fifo()	( REG_AIC_CR |= AIC_CR_FLUSH_TX )
 #define __aic_unflush_fifo_rx()	( REG_AIC_CR &= ~AIC_CR_FLUSH_RX )
-#define __aic_unflush_fifo_tx()	( REG_AIC_CR &= ~AIC_CR_FLUSH_TX )
+#define __aic_unflush_fifo()	( REG_AIC_CR &= ~AIC_CR_FLUSH_TX )
 
 #define __aic_enable_transmit_intr() \
   ( REG_AIC_CR |= (AIC_CR_ETFS | AIC_CR_ETUR) )

@@ -23,9 +23,12 @@
 #elif defined(CONFIG_JZ4760_ALTAIR)
 #define OV7690_RESET_PIN
 #define OV7690_PD_PIN 		(1*32+9)		//GPB9
-#elif define(CONFIG_JZ4760_LEPUS)
+#elif defined(CONFIG_JZ4760_LEPUS)
 #define OV7690_RESET_PIN	(32 * 1 + 26)   /* GPB26 */
 #define OV7690_PD_PIN 		(32 * 1 + 27) /* GPB27 */
+#elif defined(CONFIG_JZ4750_APUS)
+#define OV7690_RESET_PIN	(32 * 4 + 16)   /* GPe16 */
+#define OV7690_PD_PIN 		(32 * 4 + 17) /* GPe17 */
 #endif
 
 

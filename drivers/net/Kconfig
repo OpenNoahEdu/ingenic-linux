@@ -218,7 +218,7 @@ config JZ_ETH
 
 config JZCS8900
 	tristate "JZ CS8900A Ethernet support"
-	depends on NET_ETHERNET && (SOC_JZ4740 || SOC_JZ4750 || SOC_JZ4760 )
+	depends on NET_ETHERNET && (SOC_JZ4740 || SOC_JZ4750 || SOC_JZ4760 || SOC_JZ4760B)
 	help
 	  Say Y for support of JZ CS8900A Ethernet interface.
 
@@ -227,12 +227,21 @@ config JZCS8900
 
 config JZ4760_ETH
 	tristate "JZ4760 On-Chip Ethernet support"
-	depends on NET_ETHERNET && (SOC_JZ4760 || SOC_JZ4810 || JZ_FPGA)
+	depends on NET_ETHERNET && (SOC_JZ4760 || SOC_JZ4810 || SOC_JZ4770 || JZ_FPGA)
 	help
 	  Say Y for support of JZ4760 On-Chip Ethernet interface.
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called jz4760_eth.
+
+config JZ_AX88796C
+	tristate "AX88796C for Ingenic SOC"
+	depends on NET_ETHERNET && JZSOC
+	help
+	  Say Y for support of AX88796C Ethernet interface on Ingenic SOC.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called ax88796c.
 
 
 config MACB

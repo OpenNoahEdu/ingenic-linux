@@ -99,7 +99,7 @@
 #define TCU_TCNT(n)	(TCU_BASE + (0x48 + (n)*0x10)) /* Timer Counter Reg */
 #define TCU_TCSR(n)	(TCU_BASE + (0x4C + (n)*0x10)) /* Timer Control Reg */
 #define TCU_OSTDR	(TCU_BASE + 0xe0) /* Operating System Timer Data Reg */
-#define TCU_OSTCNT	(TCU_BASE + 0xe8) /* Operating System Timer Counter Reg */
+#define TCU_OSTCNT	(TCU_BASE + 0xe4) /* Operating System Timer Counter Reg */
 #define TCU_OSTCSR	(TCU_BASE + 0xeC) /* Operating System Timer Control Reg */
 
 #define REG_TCU_TDFR(n)	REG16(TCU_TDFR((n)))

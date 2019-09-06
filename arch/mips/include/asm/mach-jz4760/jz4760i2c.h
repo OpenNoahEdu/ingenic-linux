@@ -80,7 +80,7 @@
 /* I2C Control Register (I2C_CTRL) */
 
 #define I2C_CTRL_SLVDIS		(1 << 6) /* after reset slave is disabled*/
-#define I2C_CTRL_REST		(1 << 5)	
+#define I2C_CTRL_REST		(1 << 5)
 #define I2C_CTRL_MATP		(1 << 4) /* 1: 10bit address 0: 7bit addressing*/
 #define I2C_CTRL_SATP		(1 << 3) /* standard mode 100kbps */
 #define I2C_CTRL_SPDF		(2 << 1) /* fast mode 400kbps */
@@ -105,7 +105,7 @@
 #define I2C_INTST_ISTP			(1 << 9)
 #define I2C_INTST_IACT			(1 << 8)
 #define I2C_INTST_RXDN			(1 << 7)
-#define I2C_INTST_TXABT			(1 << 6) 
+#define I2C_INTST_TXABT			(1 << 6)
 #define I2C_INTST_RDREQ			(1 << 5)
 #define I2C_INTST_TXEMP			(1 << 4)
 #define I2C_INTST_TXOF			(1 << 3)
@@ -143,7 +143,7 @@
 
 /* I2C Enable (I2C_ENB) */
 
-#define I2C_ENB_I2CENB 		(1 << 0) /* Enable the i2c */	
+#define I2C_ENB_I2CENB 		(1 << 0) /* Enable the i2c */
 
 /* I2C Status Register (I2C_STA) */
 
@@ -179,10 +179,21 @@
 #define I2C_ENSTA_SLVRDLST		(1 << 2)
 #define I2C_ENSTA_SLVDISB 		(1 << 1)
 #define I2C_ENSTA_I2CEN 		(1 << 0) /* when read as 1, i2c is deemed to be in an enabled state
-						    when read as 0, i2c is deemed completely inactive. The cpu can 
-						 safely read this bit anytime .When this bit is read as 0 ,the cpu can 
+						    when read as 0, i2c is deemed completely inactive. The cpu can
+						 safely read this bit anytime .When this bit is read as 0 ,the cpu can
 						 safely read SLVRDLST and SLVDISB */
 
+/* I2C standard mode high count register(I2CSHCNT) */
+#define I2CSHCNT_ADJUST(n)	(((n) - 8) < 6 ? 6 : ((n) - 8))
+
+/* I2C standard mode low count register(I2CSLCNT) */
+#define I2CSLCNT_ADJUST(n)	(((n) - 1) < 8 ? 8 : ((n) - 1))
+
+/* I2C fast mode high count register(I2CFHCNT) */
+#define I2CFHCNT_ADJUST(n)	(((n) - 8) < 6 ? 6 : ((n) - 8))
+
+/* I2C fast mode low count register(I2CFLCNT) */
+#define I2CFLCNT_ADJUST(n)	(((n) - 1) < 8 ? 8 : ((n) - 1))
 
 #ifndef __MIPS_ASSEMBLER
 
@@ -195,6 +206,8 @@
 
 #define __i2c_is_enable(n)       ( REG_I2C_ENSTA(n) & I2C_ENB_I2CENB )
 #define __i2c_is_disable(n)      ( !(REG_I2C_ENSTA(n) & I2C_ENB_I2CENB) )
+
+#define __i2c_abrt_intr(n)       (REG_I2C_INTST(n) & I2C_INTST_TXABT)
 
 #define __i2c_abrt(n)            ( REG_I2C_TXABRT(n) != 0 )
 #define __i2c_master_active(n)   ( REG_I2C_STA(n) & I2C_STA_MSTACT )

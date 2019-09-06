@@ -1,14 +1,14 @@
 /*
  * linux/arch/mips/jz4760/pm.c
- * 
+ *
  * JZ4760 Power Management Routines
- * 
+ *
  * Copyright (C) 2006 - 2010 Ingenic Semiconductor Inc.
  *
  *  This program is free software; you can distribute it and/or modify it
  *  under the terms of the GNU General Public License (Version 2) as
  *  published by the Free Software Foundation.
- * 
+ *
  *  This program is distributed in the hope it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
@@ -17,7 +17,7 @@
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
- * 
+ *
  */
 
 #include <linux/init.h>
@@ -25,14 +25,33 @@
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/suspend.h>
-#include <linux/proc_fs.h> 
+#include <linux/proc_fs.h>
 #include <linux/sysctl.h>
 
 #include <asm/cacheops.h>
 #include <asm/jzsoc.h>
 
+#ifndef CONFIG_JZ_SYSTEM_AT_CARD
+#define CONFIG_PM_POWERDOWN_P0 y
+#else
+#undef CONFIG_PM_POWERDOWN_P0
+#endif
+#define JZ_PM_SIMULATE_BATTERY y
+
+#ifdef JZ_PM_SIMULATE_BATTERY
+#define CONFIG_BATTERY_JZ
+#define JZ_PM_BATTERY_SIMED
+#endif
+
+#if defined(CONFIG_RTC_JZ4760) && defined(CONFIG_BATTERY_JZ)
+//extern unsigned long jz_read_bat(void);
+//extern int g_jz_battery_min_voltage;
+static unsigned int usr_alarm_data = 0;
+static int alarm_state = 0;
+#endif
+
 #undef DEBUG
-//#define DEBUG 
+//#define DEBUG
 #ifdef DEBUG
 #define dprintk(x...)	printk(x)
 #else
@@ -50,20 +69,19 @@ extern void wm8310_power_off(void);
 #endif
 int jz_pm_do_hibernate(void)
 {
+	printk("Put CPU into hibernate mode.\n");
 #if defined(CONFIG_INPUT_WM831X_ON)
 	printk("The power will be off.\n");
 	wm8310_power_off();
 	while(1);
 #else
 
-	printk("Put CPU into hibernate mode.\n");
-
 	/* Mask all interrupts */
 	OUTREG32(INTC_ICMSR(0), 0xffffffff);
 	OUTREG32(INTC_ICMSR(1), 0x7ff);
 
-	/* 
-	 * RTC Wakeup or 1Hz interrupt can be enabled or disabled 
+	/*
+	 * RTC Wakeup or 1Hz interrupt can be enabled or disabled
 	 * through  RTC driver's ioctl (linux/driver/char/rtc_jz.c).
 	 */
 
@@ -79,6 +97,9 @@ int jz_pm_do_hibernate(void)
 	/* clear wakeup status register */
 	rtc_write_reg(RTC_HWRSR, 0x0);
 
+	/* set wake up valid level as low  and disable rtc alarm wake up.*/
+        rtc_write_reg(RTC_HWCR,0x8);
+
 	/* Put CPU to hibernate mode */
 	rtc_write_reg(RTC_HCR, HCR_PD);
 
@@ -91,9 +112,66 @@ int jz_pm_do_hibernate(void)
 	return 0;
 }
 
+
+#if defined(CONFIG_RTC_JZ4760) && defined(CONFIG_BATTERY_JZ)
+static int alarm_remain = 0;
+//#define ALARM_TIME (3 * 60)
+#define ALARM_TIME (10 * 60)
+static inline void jz_save_alarm(void) {
+	uint32_t rtc_rtcsr = 0,rtc_rtcsar = 0;
+
+	rtc_rtcsar = rtc_read_reg(RTC_RTCSAR); /* second alarm register */
+	rtc_rtcsr = rtc_read_reg(RTC_RTCSR); /* second register */
+
+	alarm_remain = rtc_rtcsar - rtc_rtcsr;
+}
+
+static inline void jz_restore_alarm(void) {
+	if (alarm_remain > 0) {
+		rtc_write_reg(RTC_RTCSAR, rtc_read_reg(RTC_RTCSR) + alarm_remain);
+		rtc_set_reg(RTC_RTCCR,0x3<<2); /* alarm enable, alarm interrupt enable */
+	}
+}
+
+static void jz_set_alarm(void)
+{
+	uint32_t rtc_rtcsr = 0,rtc_rtcsar = 0;
+
+	rtc_rtcsar = rtc_read_reg(RTC_RTCSAR); /* second alarm register */
+	rtc_rtcsr = rtc_read_reg(RTC_RTCSR); /* second register */
+#if 0
+	if(rtc_rtcsar <= rtc_rtcsr) {
+#endif
+		printk("1\n");
+		rtc_write_reg(RTC_RTCSAR,rtc_rtcsr + ALARM_TIME);
+		rtc_set_reg(RTC_RTCCR,0x3<<2); /* alarm enable, alarm interrupt enable */
+//		alarm_state = 1;	       /* alarm on */
+#if 0
+	} else if(rtc_rtcsar > rtc_rtcsr + ALARM_TIME) {
+		printk("2\n");
+		usr_alarm_data = rtc_rtcsar;
+		rtc_write_reg(RTC_RTCSAR,rtc_rtcsr + ALARM_TIME);
+		rtc_set_reg(RTC_RTCCR,0x3<<2);
+		alarm_state = 1;
+	} else {	      /* ??? I have some questions here, when the cpu is sleeping, the time freezes, doesn't it?
+				 consider sleep->wakeup->sleep   --- by Lutts */
+		printk("3\n");
+		usr_alarm_data = 0;
+		rtc_set_reg(RTC_RTCCR,0x3<<2);
+		alarm_state = 0;
+	}
+#endif
+
+	rtc_rtcsar = rtc_read_reg(RTC_RTCSAR); /* second alarm register */
+	rtc_rtcsr = rtc_read_reg(RTC_RTCSR); /* second register */
+
+	printk("rtc_rtcsar = %u rtc_rtcsr = %u alarm_state = %d\n", rtc_rtcsar, rtc_rtcsr, alarm_state);
+}
+#undef ALARM_TIME
+#endif
+
 static int jz_pm_do_sleep(void)
-{ 
-	unsigned long delta;
+{
 	unsigned long nfcsr = REG_NEMC_NFCSR;
 	unsigned long opcr = INREG32(CPM_OPCR);
 	unsigned long icmr0 = INREG32(INTC_ICMR(0));
@@ -103,11 +181,13 @@ static int jz_pm_do_sleep(void)
 	unsigned long sleep_gpio_save[7*(GPIO_PORT_NUM-1)];
 	unsigned long cpuflags;
 
+#if defined(CONFIG_RTC_JZ4760) && defined(CONFIG_BATTERY_JZ)
+	jz_save_alarm();
+
+ __jz_pm_do_sleep_start:
+#endif
  	/* set SLEEP mode */
 	CMSREG32(CPM_LCR, LCR_LPM_SLEEP, LCR_LPM_MASK);
-
-	/* Preserve current time */
-	delta = xtime.tv_sec - rtc_read_reg(RTC_RTCSR);
 
 	/* Save CPU irqs */
 	local_irq_save(cpuflags);
@@ -127,20 +207,26 @@ static int jz_pm_do_sleep(void)
 
         /* stop uhc */
 	SETREG32(CPM_OPCR, OPCR_UHCPHY_DISABLE);
-	
+
 	/* stop otg and gps */
 	CLRREG32(CPM_OPCR, OPCR_OTGPHY_ENABLE | OPCR_GPSEN);
 
 	/*power down gps and ahb1*/
-	SETREG32(CPM_LCR, LCR_PDAHB1 | LCR_PDGPS);
+	//SETREG32(CPM_LCR, LCR_PDAHB1 | LCR_PDGPS);
+
+	//while(!(REG_CPM_LCR && LCR_PDAHB1S)) ;
+	//while(!(REG_CPM_LCR && LCR_PDGPSS)) ;
 
 	/* Mask all interrupts except rtc*/
 	OUTREG32(INTC_ICMSR(0), 0xffffffff);
-	OUTREG32(INTC_ICMSR(1), 0x7fe);
+	OUTREG32(INTC_ICMSR(1), 0x7ff);
 
-#if defined(CONFIG_RTC_DRV_JZ4760)
-	/* unmask rtc interrupts */
+#if defined(CONFIG_RTC_JZ4760)
 	OUTREG32(INTC_ICMCR(1), 0x1);
+	jz_set_alarm();
+	__intc_ack_irq(IRQ_RTC);
+	__intc_unmask_irq(IRQ_RTC);
+	rtc_clr_reg(RTC_RTCCR,RTCCR_AF);
 #else
 	/* mask rtc interrupts */
 	OUTREG32(INTC_ICMSR(1), 0x1);
@@ -148,6 +234,9 @@ static int jz_pm_do_sleep(void)
 
 	/* Sleep on-board modules */
 	jz_board_do_sleep(sleep_gpio_save);
+
+	printk("control = 0x%08x icmr0 = 0x%08x icmr1 = 0x%08x\n",
+	       INREG32(RTC_RTCCR), INREG32(INTC_ICMR(0)), INREG32(INTC_ICMR(1)));
 
 #if 0
 	/* WAKEUP key */
@@ -177,6 +266,8 @@ static int jz_pm_do_sleep(void)
 #endif
 
 #if defined(CONFIG_PM_POWERDOWN_P0)
+	printk("Shutdown P0\n");
+
 	/* power down the p0 */
 	SETREG32(CPM_OPCR, OPCR_PD);
 
@@ -187,6 +278,8 @@ static int jz_pm_do_sleep(void)
 	OUTREG32(CPM_CPSPPR, 0x00005a5a);
 	udelay(1);
 	OUTREG32(CPM_CPSPR, virt_to_phys(jz_cpu_resume));
+
+	rtc_clr_reg(RTC_RTCCR,RTCCR_AF);
 
 	/* *** go zzz *** */
 	jz_cpu_sleep();
@@ -214,7 +307,7 @@ static int jz_pm_do_sleep(void)
 	/*Restore pmembs0*/
 	REG_EMC_PMEMBS0 = pmembs0;
 
-	/* Restore interrupts */
+	/* Restore interrupts FIXME:*/
 	OUTREG32(INTC_ICMR(0), icmr0);
 	OUTREG32(INTC_ICMR(1), icmr1);
 
@@ -230,8 +323,26 @@ static int jz_pm_do_sleep(void)
 	/* Restore CPU interrupt flags */
 	local_irq_restore(cpuflags);
 
-	/* Restore current time */
-	xtime.tv_sec = rtc_read_reg(RTC_RTCSR) + delta;
+	CLRREG32(CPM_RSR, RSR_PR | RSR_WR | RSR_P0R);
+
+	printk("===>Leave CPU Sleep\n");
+#if  defined(CONFIG_RTC_JZ4760) && defined(CONFIG_BATTERY_JZ)
+	if((INREG32(RTC_RTCCR) & RTCCR_AF)) {
+		rtc_clr_reg(RTC_RTCCR,RTCCR_AF | RTCCR_AE | RTCCR_AIE);
+		if(!usr_alarm_data) /* restore usrs alarm state */
+			rtc_write_reg(RTC_RTCSAR,usr_alarm_data);
+#if 0
+		if(g_jz_battery_min_voltage > jz_read_bat()) /* Just for example, add your Battery check here */
+			pm_power_off();
+		else
+#endif
+			goto __jz_pm_do_sleep_start;
+	}
+#endif
+
+#if defined(CONFIG_RTC_JZ4760) && defined(CONFIG_BATTERY_JZ)
+	jz_restore_alarm();
+#endif
 
 	return 0;
 }
@@ -275,34 +386,16 @@ void jz_flush_cache_all(void)
 		: "r"(addr));
 }
 
-/* Put CPU to HIBERNATE mode 
- *----------------------------------------------------------------------------
- * Power Management sleep sysctl interface
- *
- * Write "mem" to /sys/power/state invokes this function 
- * which initiates a poweroff.
- */
 void jz_pm_hibernate(void)
 {
 	jz_pm_do_hibernate();
 }
 
-/* Put CPU to SLEEP mode
- *----------------------------------------------------------------------------
- * Power Management sleep sysctl interface
- *
- * Write "disk" to /sys/power/state invokes this function 
- * which initiates a sleep.
- */
-
-int jz_pm_sleep(void) 
+int jz_pm_sleep(void)
 {
 	return jz_pm_do_sleep();
 }
 
-/*
- * valid states, only support mem(sleep) and disk(hibernate)
- */
 static int jz4760_pm_valid(suspend_state_t state)
 {
 	return state == PM_SUSPEND_MEM;
@@ -332,4 +425,8 @@ int __init jz_pm_init(void)
 	suspend_set_ops(&jz4760_pm_ops);
 	return 0;
 }
+
+#ifdef JZ_PM_BATTERY_SIMED
+#undef CONFIG_BATTERY_JZ
+#endif
 

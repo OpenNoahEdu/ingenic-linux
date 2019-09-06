@@ -102,7 +102,7 @@ static inline int jz_usb_hub_workaround(struct usb_hub *hub, int port1)
 	}
 #endif
 
-#if defined(CONFIG_SOC_JZ4740) || defined(CONFIG_SOC_JZ4750) || defined(CONFIG_SOC_JZ4750D)
+#if defined(CONFIG_SOC_JZ4740) || defined(CONFIG_SOC_JZ4750) || defined(CONFIG_SOC_JZ4750D) || defined(CONFIG_SOC_JZ4810)
 	/*
 	 * On Jz4740 and Jz4750, the second USB port was used as device.
 	 */

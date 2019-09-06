@@ -43,6 +43,14 @@
 #include <asm/mach-jz4760/jz4760.h>
 #endif
 
+#ifdef CONFIG_SOC_JZ4760B
+#include <asm/mach-jz4760b/jz4760b.h>
+#endif
+
+#ifdef CONFIG_SOC_JZ4770
+#include <asm/mach-jz4770/jz4770.h>
+#endif
+
 #ifdef CONFIG_SOC_JZ4810
 #include <asm/mach-jz4810/jz4810.h>
 #endif

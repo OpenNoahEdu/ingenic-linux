@@ -17,11 +17,11 @@
 
 #define VALID_FLAGS (SYNC_FILE_RANGE_WAIT_BEFORE|SYNC_FILE_RANGE_WRITE| \
 			SYNC_FILE_RANGE_WAIT_AFTER)
-
+#if defined(CONFIG_MTD_BLOCK)
 static struct mtdblk_dev *g_udc_mtdblk;
 extern struct mtdblk_dev *udc_get_mtdblk(void);
 extern void udc_flush_cache(struct mtdblk_dev *mtdblk);
-
+#endif
 /*
  * Do the filesystem syncing work. For simple filesystems sync_inodes_sb(sb, 0)
  * just dirties buffers with inodes so we have to submit IO for these buffers
@@ -116,9 +116,11 @@ restart:
 	}
 	spin_unlock(&sb_lock);
 	mutex_unlock(&mutex);
-	
+#if defined(CONFIG_MTD_BLOCK)	
 	g_udc_mtdblk = udc_get_mtdblk();
-	udc_flush_cache(g_udc_mtdblk);
+	if(g_udc_mtdblk)
+		udc_flush_cache(g_udc_mtdblk);
+#endif
 }
 
 /*

@@ -1,6 +1,6 @@
 /*
  * linux/drivers/mtd/nand/jz4750_nand.c
- * 
+ *
  * JZ4750 NAND driver
  *
  * Copyright (c) 2005 - 2007 Ingenic Semiconductor Inc.
@@ -24,8 +24,9 @@
 
 #include <asm/io.h>
 #include <asm/jzsoc.h>
+#include "mtd/mtd_bch4bit_n8.h"
 
-/* 32bit instead of 16byte burst is used by DMA to read or 
+/* 32bit instead of 16byte burst is used by DMA to read or
    write NAND and BCH avoiding grabbing bus for too long */
 #define DMAC_DCMD_DS_NAND    DMAC_DCMD_DS_32BIT
 #define DIV_DS_NAND          4
@@ -104,7 +105,7 @@ extern char all_use_planes;
 
 int nr_partitions; /* Number of partitions */
 
-/* 
+/*
  * Define partitions for flash devices
  */
 #if defined(CONFIG_JZ4750_FUWA) || defined(CONFIG_JZ4750D_FUWA1)
@@ -443,7 +444,7 @@ static void bch_correct(struct mtd_info *mtd, u8 * dat, int idx)
  * jzsoc_nand_bch_correct_data
  * @mtd:	mtd info structure
  * @dat:        data to be corrected
- * @errs0:      pointer to the dma target buffer of bch decoding which stores BHINTS and 
+ * @errs0:      pointer to the dma target buffer of bch decoding which stores BHINTS and
  *              BHERR0~3(8-bit BCH) or BHERR0~1(4-bit BCH)
  * @calc_ecc:   no used
  */
@@ -604,6 +605,8 @@ static int jzsoc_nand_calculate_bch_ecc(struct mtd_info *mtd, const u_char * dat
 	return 0;
 }
 
+extern int nand_sw_bch_ops(struct mtd_info *mtd, u8 *oobdata, int ops);
+
 #if defined(CONFIG_MTD_NAND_DMA)
 
 /**
@@ -625,6 +628,8 @@ static void nand_write_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *c
 	const u8 *databuf;
 	u8 *oobbuf;
 	jz_dma_desc_8word *desc;
+
+	nand_sw_bch_ops(mtd, chip->oob_poi, 1);
 
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	memcpy(prog_buf, buf, pagesize);
@@ -718,7 +723,7 @@ static void nand_write_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *c
 		do {
 			err = wait_event_interruptible_timeout(nand_prog_wait_queue, dma_ack1, 3 * HZ);
 		}while(err == -ERESTARTSYS);
-		
+
 		nand_status = NAND_NONE;
 		dprintk("nand prog after wake up\n");
 		if (!err) {
@@ -788,7 +793,9 @@ static void nand_write_page_hwecc_bch_cpu(struct mtd_info *mtd, struct nand_chip
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
 	static struct buf_be_corrected buf_calc0;
 	struct buf_be_corrected *buf_calc = &buf_calc0;
-
+	
+	nand_sw_bch_ops(mtd, chip->oob_poi, 1);
+	
 	for (i = 0; i < eccsteps; i++, p += eccsize) {
 		buf_calc->data = (u8 *)buf + eccsize * i;
 		buf_calc->oob = chip->oob_poi + oob_per_eccsize * i;
@@ -1112,6 +1119,7 @@ static int nand_read_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chip
 		chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
 	}
 	chip->read_buf(mtd, chip->oob_poi, oobsize);
+	nand_sw_bch_ops(mtd, chip->oob_poi, 0);
 	/* Read second page OOB */
 	page += ppb;
 	if (sndcmd) {
@@ -1119,6 +1127,7 @@ static int nand_read_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chip
 		sndcmd = 0;
 	}
 	chip->read_buf(mtd, chip->oob_poi+oobsize, oobsize);
+	nand_sw_bch_ops(mtd, chip->oob_poi + oobsize, 0);
 	return 0;
 }
 
@@ -1127,7 +1136,7 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 				     int global_page)
 {
 	int status = 0, page;
-	const uint8_t *buf = chip->oob_poi;
+	uint8_t *buf = chip->oob_poi;
 	int pagesize = mtd->writesize >> 1;
 	int oobsize = mtd->oobsize >> 1;
 	int ppb = mtd->erasesize / mtd->writesize;
@@ -1144,7 +1153,8 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 	}
 	else
 		chip->cmdfunc(mtd, 0x80, pagesize, page & (1 << (chip->chip_shift - chip->page_shift)));
-
+	
+	nand_sw_bch_ops(mtd, buf, 1);
 	chip->write_buf(mtd, buf, oobsize);
 	/* Send first command to program the OOB data */
 	chip->cmdfunc(mtd, 0x11, -1, -1);
@@ -1154,6 +1164,7 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 	page += ppb;
 	buf += oobsize;
 	chip->cmdfunc(mtd, 0x81, pagesize, page);
+	nand_sw_bch_ops(mtd, buf, 1);
 	chip->write_buf(mtd, buf, oobsize);
 	/* Send command to program the OOB data */
 	chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
@@ -1173,7 +1184,7 @@ static void single_erase_cmd_planes(struct mtd_info *mtd, int global_page)
 	page = (global_page / ppb) * ppb + global_page; /* = global_page%ppb + (global_page/ppb)*ppb*2 */
 
         /* send cmd 0x60, the MSB should be valid if realplane is 4 */
-	if (chip->realplanenum == 2) 
+	if (chip->realplanenum == 2)
 	{
 		if(global_mafid == 0x2c)
 			chip->cmdfunc(mtd, 0x60, -1, page);
@@ -1315,7 +1326,7 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	if (!read_buf)
 		return -ENOMEM;
 #endif
-	/* space for the error reports of bch decoding((4 * 5 * eccsteps) bytes), and the space for the value 
+	/* space for the error reports of bch decoding((4 * 5 * eccsteps) bytes), and the space for the value
          * of ddr and dcs of channel 0 and channel nand_dma_chan (4 * (2 + 2) bytes) */
 	errs = (u32 *)kmalloc(4 * (2 + 2 + 5 * eccsteps), GFP_KERNEL);
 	if (!errs)
@@ -1428,8 +1439,11 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	desc = dma_desc_nand_prog;
 	next = (CPHYSADDR((u32)dma_desc_nand_prog) + sizeof(jz_dma_desc_8word)) >> 4;
 	desc->dcmd =
-	    DMAC_DCMD_SAI | DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_8 |
-	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;
+	    DMAC_DCMD_SAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_8 |
+	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;	//for unshare mode, no DMAC_DCMD_DAI
+	if (is_share_mode()) {
+		desc->dcmd |= DMAC_DCMD_DAI;
+	}
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	desc->dsadr = CPHYSADDR((u32)prog_buf);	/* DMA source address */
 #endif
@@ -1442,8 +1456,11 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	desc++;
 	next = (CPHYSADDR((u32)dma_desc_nand_cmd_pgprog)) >> 4;
 	desc->dcmd =
-	    DMAC_DCMD_SAI | DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_8 |
+	    DMAC_DCMD_SAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_8 |
 	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;
+	if (is_share_mode()) {
+		desc->dcmd |= DMAC_DCMD_DAI;
+	}
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	desc->dsadr = CPHYSADDR((u32)oobbuf);                	/* DMA source address */
 #endif
@@ -1467,10 +1484,10 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	/* set descriptor for __nand_sync() */
 	desc++;
 #if USE_IRQ
-	desc->dcmd = 
+	desc->dcmd =
 		DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_32 | DMAC_DCMD_DS_32BIT | DMAC_DCMD_TIE;
 #else
-	desc->dcmd = 
+	desc->dcmd =
 		DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_32 | DMAC_DCMD_DS_32BIT;
 #endif
 	desc->dsadr = CPHYSADDR((u32)pval_nand_ddr);	/* DMA source address */
@@ -1479,8 +1496,8 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	desc->dreqt = DMAC_DRSR_RS_NAND;
 	dprintk("1cmd:%x sadr:%x tadr:%x dadr:%x\n", desc->dcmd, desc->dsadr, desc->dtadr, desc->ddadr);
 
-        /* eccsteps*2 + 2 + 2 + 2: 
-	   dma_desc_enc + dma_desc_enc1 + dma_desc_nand_prog(oob) + dma_desc_nand_ddr(csr) 
+        /* eccsteps*2 + 2 + 2 + 2:
+	   dma_desc_enc + dma_desc_enc1 + dma_desc_nand_prog(oob) + dma_desc_nand_ddr(csr)
 	   + dma_desc_nand_cmd_pgprog(sync) */
 	dma_cache_wback_inv((u32)dma_desc_enc, (eccsteps * 2 + 2 + 2 + 2) * (sizeof(jz_dma_desc_8word)));
 	/* 4*6: pval_nand_ddr, pval_nand_dcs, pval_bch_ddr, pval_bch_dcs, dummy, pval_nand_cmd_pgprog */
@@ -1496,8 +1513,11 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	desc = dma_desc_nand_read;
 	next = (CPHYSADDR((u32)dma_desc_nand_read) + sizeof(jz_dma_desc_8word)) >> 4;
 	desc->dcmd =
-	    DMAC_DCMD_SAI | DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_8 | DMAC_DCMD_DWDH_32 |
-	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;
+	    DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_8 | DMAC_DCMD_DWDH_32 |
+	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;		//for unshare mode, no DMAC_DCMD_SAI
+	if (is_share_mode()) {
+		desc->dcmd |= DMAC_DCMD_SAI;
+	}
 	desc->dsadr = CPHYSADDR((u32)(chip->IO_ADDR_R));	/* DMA source address */
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	desc->dtadr = CPHYSADDR((u32)read_buf);	/* DMA target address */
@@ -1510,8 +1530,11 @@ static int jz4750_nand_dma_init(struct mtd_info *mtd)
 	desc++;
 	next = (CPHYSADDR((u32)dma_desc_bch_ddr)) >> 4;
 	desc->dcmd =
-	    DMAC_DCMD_SAI | DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_8 | DMAC_DCMD_DWDH_32 |
+	    DMAC_DCMD_DAI | DMAC_DCMD_RDIL_IGN | DMAC_DCMD_SWDH_8 | DMAC_DCMD_DWDH_32 |
 	    DMAC_DCMD_DS_NAND | DMAC_DCMD_LINK;
+	if (is_share_mode()) {
+		desc->dcmd |= DMAC_DCMD_SAI;
+	}
 	desc->dsadr = CPHYSADDR((u32)(chip->IO_ADDR_R));	/* DMA source address */
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	desc->dtadr = CPHYSADDR((u32)oobbuf);	/* DMA target address */
@@ -1748,7 +1771,7 @@ int __init jznand_init(void)
 	this->chip_delay = 20;
 	/* Scan to find existance of the device */
 	ret = nand_scan_ident(jz_mtd, nand_chips);
-	
+
 #ifdef CONFIG_MTD_HW_BCH_ECC
 	if (!ret) {
 		if (this->planenum == 2) {
@@ -1858,11 +1881,11 @@ static int jz4750_nand_dma_exit(struct mtd_info *mtd)
 #endif
 
 	/* space for the error reports of bch decoding((4 * 5 * eccsteps) bytes),
-         * and the space for the value of ddr and dcs of channel 0 and channel 
+         * and the space for the value of ddr and dcs of channel 0 and channel
          * nand_dma_chan (4 * (2 + 2) bytes) */
 	kfree(errs);
 
-	/* space for dma_desc_nand_read contains dma_desc_nand_prog, 
+	/* space for dma_desc_nand_read contains dma_desc_nand_prog,
 	 * dma_desc_enc and dma_desc_dec */
 	free_page((u32)dma_desc_nand_read);
 

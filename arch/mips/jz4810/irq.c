@@ -154,7 +154,6 @@ static struct irq_chip gpio_irq_type = {
 /*
  * DMA irq type
  */
-
 static void enable_dma_irq(unsigned int irq)
 {
 	unsigned int intc_irq;
@@ -173,12 +172,16 @@ static void enable_dma_irq(unsigned int irq)
 
 static void disable_dma_irq(unsigned int irq)
 {
-	__dmac_channel_disable_irq(irq - IRQ_DMA_0);
+	int chan = irq - IRQ_DMA_0;
+	__dmac_disable_channel(chan);
+	__dmac_channel_disable_irq(chan);
 }
 
 static void mask_and_ack_dma_irq(unsigned int irq)
 {
 	unsigned int intc_irq;
+
+	disable_dma_irq(irq);
 
 	if ( irq < (IRQ_DMA_0 + HALF_DMA_NUM) ) 	/* DMAC Group 0 irq */
 		intc_irq = IRQ_DMAC0;
@@ -189,8 +192,8 @@ static void mask_and_ack_dma_irq(unsigned int irq)
 		return ;
 	}
 	__intc_ack_irq(intc_irq);
-	__dmac_channel_ack_irq(irq-IRQ_DMA_0); /* needed?? add 20080506, Wolfgang */
-	__dmac_channel_disable_irq(irq - IRQ_DMA_0);
+	//__dmac_channel_ack_irq(irq-IRQ_DMA_0); /* needed?? add 20080506, Wolfgang */
+	//__dmac_channel_disable_irq(irq - IRQ_DMA_0);
 }
 
 static void end_dma_irq(unsigned int irq)
@@ -221,6 +224,7 @@ static struct irq_chip dma_irq_type = {
 	.end = end_dma_irq,
 };
 
+#if 0
 /*
  * MDMA irq type
  */
@@ -286,6 +290,7 @@ static struct irq_chip mdma_irq_type = {
 	.ack = mask_and_ack_mdma_irq,
 	.end = end_mdma_irq,
 };
+#endif
 
 //----------------------------------------------------------------------
 
@@ -378,63 +383,77 @@ void __init arch_init_irq(void)
 		set_irq_chip_and_handler(IRQ_DMA_0 + i, &dma_irq_type, handle_level_irq);
 	}
 
+#if 0
 	/* Set up MDMAC irq
 	 */
 	for (i = 0; i < NUM_MDMA; i++) {
 		disable_mdma_irq(IRQ_MDMA_0 + i);
 		set_irq_chip_and_handler(IRQ_MDMA_0 + i, &mdma_irq_type, handle_level_irq);
 	}
+#endif
 
 	/* Set up BDMA irq
 	 */
 	for (i = 0; i < MAX_BDMA_NUM; i++) {
 		disable_bdma_irq(IRQ_BDMA_0 + i);
-		set_irq_chip_and_handler(IRQ_MDMA_0 + i, &bdma_irq_type, handle_level_irq);
+		set_irq_chip_and_handler(IRQ_BDMA_0 + i, &bdma_irq_type, handle_level_irq);
 	}
 
 	/* Set up GPIO irq
 	 */
-#if 1
-//	for (i = 0; i < NUM_GPIO; i++) {
-	for (i = 0; i < 90; i++) {
+#ifndef JZ_BOOTUP_UART_TXD
+#error "JZ_BOOTUP_UART_TXD is not set, please define it int your board header file!"
+#endif
+#ifndef JZ_BOOTUP_UART_RXD
+#error "JZ_BOOTUP_UART_RXD is not set, please define it int your board header file!"
+#endif
+	for (i = 0; i < NUM_GPIO; i++) {
+		if (unlikely(i == JZ_BOOTUP_UART_TXD))
+			continue;
+		if (unlikely(i == JZ_BOOTUP_UART_RXD))
+			continue;
 		disable_gpio_irq(IRQ_GPIO_0 + i);
 		set_irq_chip_and_handler(IRQ_GPIO_0 + i, &gpio_irq_type, handle_level_irq);
 	}
-#endif
-
 }
 
 static int plat_real_irq(int irq)
 {
-	switch (irq) {
-	case IRQ_GPIO0:
-		irq = __gpio_group_irq(0) + IRQ_GPIO_0;
-		break;
-	case IRQ_GPIO1:
-		irq = __gpio_group_irq(1) + IRQ_GPIO_0 + 32;
-		break;
-	case IRQ_GPIO2:
-		irq = __gpio_group_irq(2) + IRQ_GPIO_0 + 64;
-		break;
-	case IRQ_GPIO3:
-		irq = __gpio_group_irq(3) + IRQ_GPIO_0 + 96;
-		break;
-	case IRQ_GPIO4:
-		irq = __gpio_group_irq(4) + IRQ_GPIO_0 + 128;
-		break;
-	case IRQ_GPIO5:
-		irq = __gpio_group_irq(5) + IRQ_GPIO_0 + 160;
-		break;
-	case IRQ_DMAC0:
-	case IRQ_DMAC1:
-		irq = __dmac_get_irq() + IRQ_DMA_0;
-		break;
-	case IRQ_MDMA:
-		irq = __mdmac_get_irq() + IRQ_MDMA_0;
-		break;
-	case IRQ_BDMA:
-		irq = __bdmac_get_irq() + IRQ_BDMA_0;
-		break;
+	int group = 0;
+
+	if ((irq >= IRQ_GPIO5) && (irq <= IRQ_GPIO0)) {
+		group = IRQ_GPIO0 - irq;
+		irq = __gpio_group_irq(group);
+		if (irq >= 0)
+			irq += IRQ_GPIO_0 + 32 * group;
+	} else {
+		switch (irq) {
+		case IRQ_DMAC0:
+		case IRQ_DMAC1:
+			irq = __dmac_get_irq();
+			if (irq < 0) {
+				printk("REG_DMAC_DMAIPR(0) = 0x%08x\n", REG_DMAC_DMAIPR(0));
+				printk("REG_DMAC_DMAIPR(1) = 0x%08x\n", REG_DMAC_DMAIPR(1));
+				return irq;
+			}
+			irq += IRQ_DMA_0;
+			break;
+#if 0
+		case IRQ_MDMA:
+			irq = __mdmac_get_irq();
+			if (irq < 0)
+				return irq;
+			irq += IRQ_MDMA_0;
+			break;
+#endif
+		case IRQ_BDMA:
+			irq = __bdmac_get_irq();
+			if (irq < 0)
+				return irq;
+
+			irq += IRQ_BDMA_0;
+			break;
+		}
 	}
 
 	return irq;
@@ -444,10 +463,10 @@ asmlinkage void plat_irq_dispatch(void)
 {
 	int irq = 0;
 
-	static unsigned long intc_ipr0 = 0, intc_ipr1 = 0;
+	unsigned long intc_ipr0 = 0, intc_ipr1 = 0;
 
-	intc_ipr0 |= REG_INTC_IPR(0);
-	intc_ipr1 |= REG_INTC_IPR(1);
+	intc_ipr0 = REG_INTC_IPR(0);
+	intc_ipr1 = REG_INTC_IPR(1);
 
 	if (!(intc_ipr0 || intc_ipr1))	return;
 
@@ -461,5 +480,9 @@ asmlinkage void plat_irq_dispatch(void)
 	}
 
 	irq = plat_real_irq(irq);
+	WARN((irq < 0), "irq raised, but no irq pending!\n");
+	if (irq < 0)
+		return;
+
 	do_IRQ(irq);
 }

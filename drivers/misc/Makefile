@@ -24,4 +24,5 @@ obj-y				+= eeprom/
 obj-y				+= cb710/
 
 obj-$(CONFIG_JZ_CIM)            += jz_cim/
+obj-$(CONFIG_JZ_OPT)		+= opt_test.o
 obj-$(CONFIG_JZ_I2C_SIMULATE)   += i2c_simulate.o

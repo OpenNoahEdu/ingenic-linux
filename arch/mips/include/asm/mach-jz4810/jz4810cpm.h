@@ -79,6 +79,104 @@
 #define REG_CPM_CLKGR1		REG32(CPM_CLKGR1)
 #define REG_CPM_CLKGR		REG32(CPM_CLKGR0)
 
+#ifndef __MIPS_ASSEMBLER
+
+typedef enum {
+        CGM_NEMC = 0,
+        CGM_BCH  = 1,
+        CGM_OTG  = 2,
+        CGM_MSC0 = 3,
+        CGM_SSI0 = 4,
+        CGM_I2C0 = 5,
+        CGM_I2C1 = 6,
+        CGM_SCC  = 7,
+        CGM_AIC         = 8,
+        CGM_TSSI        = 9,
+        CGM_OWI         = 10,
+        CGM_MSC1        = 11,
+        CGM_MSC2        = 12,
+        CGM_KBC         = 13,
+        CGM_SADC        = 14,
+        CGM_UART0       = 15,
+        CGM_UART1 = 16,
+        CGM_UART2 = 17,
+        CGM_UART3 = 18,
+        CGM_SSI1  = 19,
+        CGM_SSI2  = 20,
+        CGM_DMAC  = 21,
+        CGM_GPS   = 22,
+        CGM_MAC   = 23,
+        CGM_UHC         = 24,
+        CGM_MDMA        = 25,
+        CGM_CIM         = 26,
+        CGM_TVE         = 27,
+        CGM_LCD         = 28,
+        CGM_IPU         = 29,
+        CGM_DDR         = 30,
+        CGM_EMC         = 31,
+        CGM_BDMA  = 32 + 0,
+        CGM_MC    = 32 + 1,
+        CGM_DBLK  = 32 + 2,
+        CGM_ME    = 32 + 3,
+        CGM_DCT   = 32 + 4,
+        CGM_SRAM  = 32 + 5,
+        CGM_CABAC = 32 + 6,
+        CGM_AHB1  = 32 + 7,
+        CGM_PCM         = 32 + 8,
+        CGM_GPU         = 32 + 9,
+        CGM_ALL_MODULE,
+} clock_gate_module;
+
+
+#define __CGU_CLOCK_BASE__      0x1000
+
+typedef enum {
+        /* Clock source is pll0 */
+        CGU_CCLK = __CGU_CLOCK_BASE__ + 0,
+        CGU_HCLK,
+        CGU_PCLK,
+        CGU_MCLK,
+        CGU_H2CLK,
+        CGU_SCLK,
+
+        /* Clock source is exclk, pll0 or pll0/2 */
+        CGU_MSCCLK,
+        CGU_SSICLK,
+
+        /* Clock source is pll0 or pll0/2 */
+        CGU_CIMCLK,
+
+        /* Clock source is exclk, pll0, pll0/2 or pll1 */
+        CGU_TVECLK,
+
+        /* Clock source is pll0 */
+        CGU_LPCLK,
+
+        /* Clock source is exclk, exclk/2, pll0, pll0/2 or pll1 */
+        CGU_I2SCLK,
+        CGU_PCMCLK,
+        CGU_OTGCLK,
+
+        /* Clock source is pll0, pll0/2 or pll1 */
+        CGU_UHCCLK,
+        CGU_GPSCLK,
+        CGU_GPUCLK,
+
+        /* Clock source is exclk or exclk/2 */
+        CGU_UARTCLK,
+        CGU_SADCCLK,
+
+        /* Clock source is exclk */
+        CGU_TCUCLK,
+
+	/* Clock source is external rtc clock */
+	CGU_RTCCLK,
+
+        CGU_CLOCK_MAX,
+} cgu_clock;
+#endif
+
+
 /* Clock control register */
 #define CPM_CPCCR_ECS			(1 << 31)
 #define CPM_CPCCR_MEM			(1 << 30)
@@ -163,16 +261,16 @@
 #define CPM_USBPCR_OTG_DISABLE		(1 << 20)
 #define CPM_USBPCR_COMPDISTUNE_BIT	17
 #define CPM_USBPCR_COMPDISTUNE_MASK	(0x07 << COMPDISTUNE_BIT)
-#define CPM_USBPCR_OTGTUNE_BIT		14  
+#define CPM_USBPCR_OTGTUNE_BIT		14
 #define CPM_USBPCR_OTGTUNE_MASK		(0x07 << OTGTUNE_BIT)
-#define CPM_USBPCR_SQRXTUNE_BIT		11  
+#define CPM_USBPCR_SQRXTUNE_BIT		11
 #define CPM_USBPCR_SQRXTUNE_MASK	(0x7x << SQRXTUNE_BIT)
-#define CPM_USBPCR_TXFSLSTUNE_BIT	7  
+#define CPM_USBPCR_TXFSLSTUNE_BIT	7
 #define CPM_USBPCR_TXFSLSTUNE_MASK	(0x0f << TXFSLSTUNE_BIT)
 #define CPM_USBPCR_TXPREEMPHTUNE	(1 << 6)
 #define CPM_USBPCR_TXRISETUNE_BIT	4
 #define CPM_USBPCR_TXRISETUNE_MASK	(0x03 << TXRISETUNE_BIT)
-#define CPM_USBPCR_TXVREFTUNE_BIT	0  
+#define CPM_USBPCR_TXVREFTUNE_BIT	0
 #define CPM_USBPCR_TXVREFTUNE_MASK	(0x0f << TXVREFTUNE_BIT)
 
 /* USB reset detect timer register */
@@ -484,7 +582,7 @@
 #define __cpm_stop_me()		(REG_CPM_CLKGR1 |= CPM_CLKGR0_ME)
 #define __cpm_stop_dblk()	(REG_CPM_CLKGR1 |= CPM_CLKGR0_DBLK)
 #define __cpm_stop_mc()		(REG_CPM_CLKGR1 |= CPM_CLKGR0_MC)
-#define __cpm_stop_bdma()	(REG_CPM_CLKGR1 |= CPM_CLKGR0_BDMA)
+#define __cpm_stop_bdma()	(REG_CPM_CLKGR1 |= CPM_CLKGR1_BDMA)
 
 #define __cpm_start_all() 	\
 	do {\
@@ -532,7 +630,7 @@
 #define __cpm_start_me()		(REG_CPM_CLKGR1 &= ~CPM_CLKGR0_ME)
 #define __cpm_start_dblk()	(REG_CPM_CLKGR1 &= ~CPM_CLKGR0_DBLK)
 #define __cpm_start_mc()		(REG_CPM_CLKGR1 &= ~CPM_CLKGR0_MC)
-#define __cpm_start_bdma()	(REG_CPM_CLKGR1 &= ~CPM_CLKGR0_BDMA)
+#define __cpm_start_bdma()	(REG_CPM_CLKGR1 &= ~CPM_CLKGR1_BDMA)
 
 #define __cpm_get_o1st() \
 	((REG_CPM_OPCR & CPM_OPCR_O1ST_MASK) >> CPM_OPCR_O1ST_BIT)
@@ -546,12 +644,20 @@
 #define __cpm_enable_uhc_phy()		(REG_CPM_OPCR &= ~CPM_OPCR_UHCPHY_DISABLE)
 
 #define __cpm_suspend_uhcphy()  (REG_CPM_OPCR |= CPM_OPCR_UHCPHY_DISABLE)
-#define __cpm_suspend_gps()        (REG_CPM_OPCR &= ~CPM_OPCR_GPSEN)              
+#define __cpm_suspend_gps()        (REG_CPM_OPCR &= ~CPM_OPCR_GPSEN)
 #define __cpm_suspend_udcphy()	(REG_CPM_OPCR &= ~CPM_OPCR_UDCPHY_ENABLE)
 #define __cpm_disable_osc_in_sleep()	(REG_CPM_OPCR &= ~CPM_OPCR_OSC_ENABLE)
 #define __cpm_enable_osc_in_sleep()	(REG_CPM_OPCR |= CPM_OPCR_OSC_ENABLE)
 #define __cpm_select_rtcclk_rtc()	(REG_CPM_OPCR |= CPM_OPCR_ERCS)
 #define __cpm_select_rtcclk_exclk()	(REG_CPM_OPCR &= ~CPM_OPCR_ERCS)
+
+void cpm_start_clock(clock_gate_module module_name);
+void cpm_stop_clock(clock_gate_module module_name);
+unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz);
+unsigned int cpm_get_clock(cgu_clock clock_name);
+unsigned int cpm_get_pllout(void);
+
+extern int jz_pm_init(void);
 
 #endif /* __MIPS_ASSEMBLER */
 

@@ -25,11 +25,13 @@ struct camera_sensor_desc ov3640_sensor_desc;
 
 /* gpio init */
 #if defined(CONFIG_JZ4750_APUS) || defined(CONFIG_JZ4750D_FUWA1) || defined(CONFIG_JZ4750_AQUILA)/* board APUS */
-#define GPIO_CAMERA_RST         (32*4+8)
+#define GPIO_CAMERA_RST         (32*4+8) /* MCLK as reset */
 #elif defined(CONFIG_JZ4760_ALTAIR)
 #define GPIO_CAMERA_RST         (32*4+13) /*GPE13*/
-#elif defined(CONFIG_JZ4760_LEPUS)
+#elif defined(CONFIG_JZ4760_LEPUS) || defined(CONFIG_JZ4760B_LEPUS)
 #define GPIO_CAMERA_RST         (32*1 + 26) /* GPB26 */
+#elif defined(CONFIG_JZ4760_F4760) || defined(CONFIG_JZ4810_F4810)/* JZ4760 FPGA */
+#define GPIO_CAMERA_RST         (32*1+9) /* CIM_MCLK as reset */
 #else
 #error "ov3640/ov3640_camera.c , please define camera for your board."
 #endif
@@ -43,7 +45,7 @@ void ov3640_power_down(void)
 #elif defined(CONFIG_JZ4760_ALTAIR)
 	__gpio_as_output(0*32+27);                                    /* GPA27 */
 	__gpio_set_pin(0*32+27);
-#elif defined(CONFIG_JZ4760_LEPUS)
+#elif defined(CONFIG_JZ4760_LEPUS) || defined(CONFIG_JZ4760B_LEPUS)
 	__gpio_as_output(32 * 1 + 27); /* GPB27 */
 	__gpio_set_pin(32 * 1 + 27);
 #endif
@@ -59,7 +61,7 @@ void ov3640_power_up(void)
 #elif defined(CONFIG_JZ4760_ALTAIR)
 	__gpio_as_output(0*32+27);
 	__gpio_clear_pin(0*32+27);
-#elif defined(CONFIG_JZ4760_LEPUS)
+#elif defined(CONFIG_JZ4760_LEPUS) || defined(CONFIG_JZ4760B_LEPUS)
 	__gpio_as_output(32 * 1 + 27); /* GPB27 */
 	__gpio_clear_pin(32 * 1 + 27);
 #endif
@@ -88,11 +90,17 @@ void ov3640_reset(void)
 	__gpio_set_pin(2*32+31);
 #else
 	dprintk("=======%s:%d\n", __FUNCTION__, __LINE__);
-	__gpio_as_output(GPIO_CAMERA_RST);
+#ifdef CONFIG_JZ4810_F4810
+	__gpio_as_output0(GPIO_CAMERA_RST);
+	mdelay(50);
+	__gpio_as_output1(GPIO_CAMERA_RST);
+	mdelay(50);
+#else
 	__gpio_clear_pin(GPIO_CAMERA_RST);
 	mdelay(50);
 	__gpio_set_pin(GPIO_CAMERA_RST);
 	mdelay(50);
+#endif
 #endif
 }
 
@@ -494,6 +502,7 @@ int ov3640_sensor_probe(void)
 	int retval = 0;
 	ov3640_power_up();
 	ov3640_reset();
+	mdelay(10);
 	retval=sensor_read_reg16(ov3640_sensor_desc.client,0x300a);
 	ov3640_power_down();
 
@@ -514,9 +523,12 @@ int ov3640_set_resolution(int width,int height,int bpp,pixel_format_flag_t fmt,c
 
 static int ov3640_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	printk("=====>enter ov3640 probe\n");
 	ov3640_sensor_desc.client = client;
-	sensor_set_i2c_speed(client,400000);//set ov3640 i2c speed : 400khz
+#ifndef CONFIG_JZ4810_F4810
+	sensor_set_i2c_speed(client,400000);// set ov3640 i2c speed : 400khz
+#else
+	sensor_set_i2c_speed(client,5000);// F4760: set ov3640 i2c speed : 5khz
+#endif
 	camera_sensor_register(&ov3640_sensor_desc);
 
 	return 0;
@@ -534,7 +546,7 @@ struct camera_sensor_ops ov3640_sensor_ops = {
 
 
 struct resolution_info ov3640_resolution_table[] = {
-	{2048,1536,16,PIXEL_FORMAT_YUV422I},
+	//{2048,1536,16,PIXEL_FORMAT_YUV422I},
 	{1600,1200,16,PIXEL_FORMAT_YUV422I},
 	{1280,1024,16,PIXEL_FORMAT_YUV422I},
 	{1024,768,16,PIXEL_FORMAT_YUV422I},
@@ -559,18 +571,34 @@ struct camera_sensor_desc ov3640_sensor_desc = {
 	.resolution_table = ov3640_resolution_table,
 	.resolution_table_nr=ARRAY_SIZE(ov3640_resolution_table),
 
+#if 0
 	.capture_parm = {2048, 1536, 16,PIXEL_FORMAT_YUV422I},
 	.max_capture_parm = {2048, 1536, 16,PIXEL_FORMAT_YUV422I},
 
 	.preview_parm = {1024,768, 16,PIXEL_FORMAT_YUV422I},
 	.max_preview_parm = {1024,768, 16,PIXEL_FORMAT_YUV422I},
+#else
+#if 0
+	.capture_parm = {1600, 1200, 16,PIXEL_FORMAT_YUV422I},
+	.max_capture_parm = {1600, 1200, 16,PIXEL_FORMAT_YUV422I},
+
+	.preview_parm = {1024, 768, 16,PIXEL_FORMAT_YUV422I},
+	.max_preview_parm = {1024 , 768, 16,PIXEL_FORMAT_YUV422I},
+#else
+	.capture_parm = {800, 600, 16,PIXEL_FORMAT_YUV422I},
+	.max_capture_parm = {800, 600, 16,PIXEL_FORMAT_YUV422I},
+
+	.preview_parm = {640, 480, 16,PIXEL_FORMAT_YUV422I},
+	.max_preview_parm = {640 , 480, 16,PIXEL_FORMAT_YUV422I},
+#endif
+#endif
 
 	.cfg_info = {
 		.configure_register= 0x0
 			|CIM_CFG_PACK_2			/* pack mode : 3 2 1 4*/
 			|CIM_CFG_BYPASS			/* Bypass Mode */
 			//|CIM_CFG_VSP             	/* VSYNC Polarity:1-falling edge active */
-			|CIM_CFG_PCP             	/* PCLK working edge:1-falling */
+			//|CIM_CFG_PCP             	/* PCLK working edge:1-falling */
 			|CIM_CFG_DSM_GCM,		/* Gated Clock Mode */
 	},
 
@@ -606,7 +634,6 @@ static struct i2c_driver ov3640_driver = {
 
 static int __init ov3640_register(void)
 {
-	printk("=====>enter ov3640 register......\n");
 	return i2c_add_driver(&ov3640_driver);
 }
 

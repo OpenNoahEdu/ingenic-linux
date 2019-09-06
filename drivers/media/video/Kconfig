@@ -625,11 +625,6 @@ config VIDEO_JZ4740_CIM
 	depends on VIDEO_V4L2 && FB_JZSOC && SOC_JZ4740
 	select VIDEO_JZ_SENSOR
 
-config VIDEO_JZ4750_CIM
-	tristate 'JzSOC Camera Interface Module (CIM) support'
-	depends on VIDEO_V4L2 && FB_JZSOC && (SOC_JZ4750 || SOC_JZ4750D)
-	select VIDEO_JZ_SENSOR
-
 config VIDEO_JZ_SENSOR
 	tristate "Jz generic camera sensor driver"
 

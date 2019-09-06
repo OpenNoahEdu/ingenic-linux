@@ -24,8 +24,9 @@
 
 #include <asm/jzsoc.h>
 #include <linux/i2c.h>
-#include <asm/jzmmc/jz_mmc_platform_data.h>
-
+#include <linux/mmc/host.h>
+#include <linux/ft5x0x_ts.h>
+#include <linux/spi/spi.h>
 extern void (*jz_timer_callback)(void);
 extern int __init jz_add_msc_devices(unsigned int controller, struct jz_mmc_platform_data *plat);
 
@@ -38,28 +39,116 @@ extern int __init jz_add_msc_devices(unsigned int controller, struct jz_mmc_plat
 #endif
 
 /*
- * __gpio_as_sleep set all pins to pull-disable, and set all pins as input
- * except sdram and the pins which can be used as CS1_N to CS4_N for chip select.
+ *  config_gpio_on_sleep config all gpio pins when sleep.
  */
-#define __gpio_as_sleep()	              \
-do {	                                      \
-	REG_GPIO_PXFUNC(1) = ~0x03ff7fff;     \
-	REG_GPIO_PXSELC(1) = ~0x03ff7fff;     \
-	REG_GPIO_PXDIRC(1) = ~0x03ff7fff;     \
-	REG_GPIO_PXPES(1)  =  0xffffffff;     \
-	REG_GPIO_PXFUNC(2) = ~0x01e00000;     \
-	REG_GPIO_PXSELC(2) = ~0x01e00000;     \
-	REG_GPIO_PXDIRC(2) = ~0x01e00000;     \
-	REG_GPIO_PXPES(2)  =  0xffffffff;     \
-	REG_GPIO_PXFUNC(4) =  0xffffffff;     \
-	REG_GPIO_PXSELC(4) =  0xffffffff;     \
-	REG_GPIO_PXDIRC(4) =  0xffffffff;     \
-	REG_GPIO_PXPES(4)  =  0xffffffff;     \
-	REG_GPIO_PXFUNC(5) =  0xffffffff;     \
-	REG_GPIO_PXSELC(5) =  0xffffffff;     \
-	REG_GPIO_PXDIRC(5) =  0xffffffff;     \
-	REG_GPIO_PXPES(5)  =  0xffffffff;     \
-} while (0)
+struct gpio_sleep_status {
+	unsigned int input;
+	unsigned int input_pull;
+	unsigned int input_no_pull;
+	unsigned int output;
+	unsigned int output_high;
+	unsigned int output_low;
+	unsigned int no_operation;
+};
+
+void config_gpio_on_sleep(void)
+{
+	int i = 0;
+	struct gpio_sleep_status gpio_sleep_st[] = {
+		/* GPA */
+		{
+			.input_pull = BIT31 | BIT27 |
+			BITS_H2L(29,28) | /* NC pin */
+			BITS_H2L(19,0), /* NAND: SD0~SD15 */
+
+			.output_high = BIT21 | BIT22 | BIT23 | BIT24 | BIT25 | BIT26, /* NAND: CS1~CS6 */
+			.output_low = 0x0,
+#ifndef CONFIG_JZ_SYSTEM_AT_CARD
+			.no_operation = 0x0,
+#else
+			.no_operation = BITS_H2L(23, 18),
+#endif
+		},
+
+		/* GPB */
+		{
+			.input_pull = BIT30 | BIT27 | BIT26 | BIT25 | BITS_H2L(24,22) | BIT20 |
+			BITS_H2L(19,0), /* SA0~SA5 */
+
+			.output_high = BIT29,
+			.output_low = BIT31 | BIT28 | BIT21,
+#ifndef CONFIG_JZ_SYSTEM_AT_CARD
+			.no_operation = 0x0,
+#else
+			.no_operation = BIT0,
+#endif
+		},
+
+		/* GPC */
+		{
+			.input_pull = BITS_H2L(31,28),
+			.output_high = 0x0,
+			.output_low = BITS_H2L(27,0),
+			.no_operation = 0x0,
+		},
+
+		/* GPD */
+		{
+			.input_pull = BITS_H2L(29,26) | BITS_H2L(19,14) | BITS_H2L(13,12) || BITS_H2L(10,0) | BIT11,  // bit11 temporary input_pull
+			.output_high = 0x0,
+			.output_low =  BITS_H2L(25,20), // | BIT11,
+			.no_operation = 0x0,
+		},
+
+		/* GPE */
+		{
+			.input_pull = BITS_H2L(18,11) | BITS_H2L(8,3) | BIT0,
+			.output_high = BIT9,
+			.output_low = BITS_H2L(29,20) | BIT10 | BIT1 | BIT2,
+			.no_operation = 0x0,
+		},
+
+		/* GPF */
+		{
+			.input_pull = BIT11 | BITS_H2L(8,4) | BITS_H2L(2,0),
+			.output_high = BIT9,
+			.output_low = BIT3,
+			.no_operation = 0x0,
+		},
+	};
+
+	for (i = 0; i < 6; i++) {
+		gpio_sleep_st[i].input_pull &= ~gpio_sleep_st[i].no_operation;
+		gpio_sleep_st[i].output_high &= ~gpio_sleep_st[i].no_operation;
+		gpio_sleep_st[i].output_low &= ~gpio_sleep_st[i].no_operation;
+		gpio_sleep_st[i].input_no_pull = 0xffffffff &
+			~(gpio_sleep_st[i].input_pull |
+			  gpio_sleep_st[i].output_high |
+			  gpio_sleep_st[i].output_low) &
+			~gpio_sleep_st[i].no_operation;
+
+		gpio_sleep_st[i].input = gpio_sleep_st[i].input_pull | gpio_sleep_st[i].input_no_pull;
+		gpio_sleep_st[i].output = gpio_sleep_st[i].output_high | gpio_sleep_st[i].output_low;
+
+		/* all as gpio, except interrupt pins(see @wakeup_key_setup()) */
+		REG_GPIO_PXFUNC(i) =  (0xffffffff & ~gpio_sleep_st[i].no_operation);
+		REG_GPIO_PXSELC(i) =  (0xffffffff & ~gpio_sleep_st[i].no_operation);
+		/* input */
+		REG_GPIO_PXDIRC(i) =  gpio_sleep_st[i].input;
+		/* pull */
+		REG_GPIO_PXPEC(i) = gpio_sleep_st[i].input_pull;
+		/* no_pull */
+		REG_GPIO_PXPES(i) =  gpio_sleep_st[i].input_no_pull;
+
+		/* output */
+		REG_GPIO_PXDIRS(i) =  gpio_sleep_st[i].output;
+		REG_GPIO_PXPES(i)  = gpio_sleep_st[i].output; /* disable pull */
+		/* high */
+		REG_GPIO_PXDATS(i) = gpio_sleep_st[i].output_high;
+		/* low */
+		REG_GPIO_PXDATC(i) = gpio_sleep_st[i].output_low;
+	}
+}
 
 struct wakeup_key_s {
 	int gpio;       /* gpio pin number */
@@ -70,20 +159,18 @@ struct wakeup_key_s {
 /* add wakeup keys here */
 static struct wakeup_key_s wakeup_key[] = {
 	{
-		.gpio = GPIO_HOME,
-		.active_low = ACTIVE_LOW_HOME,
+		.gpio = GPIO_POWER_ON,
+		.active_low = ACTIVE_LOW_WAKE_UP,
 	},
+#ifndef CONFIG_JZ_SYSTEM_AT_CARD
 	{
-		.gpio = GPIO_BACK,
-		.active_low = ACTIVE_LOW_BACK,
+		.gpio = MSC0_HOTPLUG_PIN,
+		.active_low = ACTIVE_LOW_MSC0_CD,
 	},
+#endif
 	{
-		.gpio = GPIO_ENDCALL,
-		.active_low = ACTIVE_LOW_ENDCALL,
-	},
-	{
-		.gpio = GPIO_ADKEY_INT,
-		.active_low = ACTIVE_LOW_ADKEY,
+		.gpio = MSC1_HOTPLUG_PIN,
+		.active_low = ACTIVE_LOW_MSC1_CD,
 	},
 };
 
@@ -93,22 +180,11 @@ static void wakeup_key_setup(void)
 	int num = sizeof(wakeup_key) / sizeof(wakeup_key[0]);
 
 	for(i = 0; i < num; i++) {
-#if 0
 		if(wakeup_key[i].active_low)
 			__gpio_as_irq_fall_edge(wakeup_key[i].gpio);
 		else
 			__gpio_as_irq_rise_edge(wakeup_key[i].gpio);
-#endif
 
-#if 1
-        /* Because GPIO_VOLUMUP, GPIO_VOLUMDOWN and GPIO_MENU are boot_sel pins, and
-           resuming from sleep is implemented by reseting, the values of boot_sel pins
-           will be read at this time to determine boot method. So system couldn't be
-           waken by these keys. */
-        __gpio_as_input(GPIO_MENU);
-        __gpio_as_input(GPIO_VOLUMEDOWN);
-        __gpio_as_input(GPIO_VOLUMEUP);
-#endif
 		__gpio_ack_irq(wakeup_key[i].gpio);
 		__gpio_unmask_irq(wakeup_key[i].gpio);
 		__intc_unmask_irq(IRQ_GPIO0 - (wakeup_key[i].gpio/32));  /* unmask IRQ_GPIOn */
@@ -149,7 +225,7 @@ void jz_board_do_sleep(unsigned long *ptr)
          * Set all pins to pull-disable, and set all pins as input except
          * sdram and the pins which can be used as CS1_N to CS4_N for chip select.
          */
-//        __gpio_as_sleep();
+	config_gpio_on_sleep();
 
         /*
 	 * Set proper status for GPC21 to GPC24 which can be used as CS1_N to CS4_N.
@@ -164,7 +240,10 @@ void jz_board_do_sleep(unsigned long *ptr)
          * __gpio_set_pin(n); or  __gpio_clear_pin(n);
 	 */
 
-#ifdef DEBUG
+	if (!console_suspend_enabled)
+		__gpio_as_uart1();
+
+#if 0
         /* Keep uart function for printing debug message */
 	__gpio_as_uart0();
 	__gpio_as_uart1();
@@ -173,9 +252,9 @@ void jz_board_do_sleep(unsigned long *ptr)
 
         /* Print messages of GPIO registers for debug */
 	for(i=0;i<GPIO_PORT_NUM;i++) {
-		dprintk("sleep dat:%x pin:%x fun:%x sel:%x dir:%x pull:%x msk:%x trg:%x\n",      \
-			REG_GPIO_PXDAT(i),REG_GPIO_PXPIN(i),REG_GPIO_PXFUN(i),REG_GPIO_PXSEL(i), \
-			REG_GPIO_PXDIR(i),REG_GPIO_PXPE(i),REG_GPIO_PXIM(i),REG_GPIO_PXTRG(i));
+		printk("GP%d: data:0x%08x pin:0x%08x fun:0x%08x sel:0x%08x dir:0x%08x pull:0x%08x msk:0x%08x trg:0x%08x\n",
+		       i, REG_GPIO_PXDAT(i),REG_GPIO_PXPIN(i),REG_GPIO_PXFUN(i),REG_GPIO_PXSEL(i),
+		       REG_GPIO_PXDIR(i),REG_GPIO_PXPE(i),REG_GPIO_PXIM(i),REG_GPIO_PXTRG(i));
 	}
 #endif
 	wakeup_key_setup();
@@ -219,8 +298,13 @@ void jz_board_do_resume(unsigned long *ptr)
 
 static void lepus_sd_gpio_init(struct device *dev)
 {
+#if defined (CONFIG_JZ_SYSTEM_AT_CARD)
+	__gpio_as_msc0_boot();
+#else
 	__gpio_as_msc0_8bit();
+#endif
 	__gpio_as_output(GPIO_SD0_VCC_EN_N);
+	__gpio_set_pin(GPIO_SD0_VCC_EN_N); /* poweroff */
 	__gpio_as_input(GPIO_SD0_CD_N);
 }
 
@@ -241,6 +325,9 @@ static void lepus_sd_cpm_start(struct device *dev)
 
 static unsigned int lepus_sd_status(struct device *dev)
 {
+#if defined(CONFIG_JZ_SYSTEM_AT_CARD)
+	return 1;
+#else
 	unsigned int status;
 
 	status = (unsigned int) __gpio_get_pin(GPIO_SD0_CD_N);
@@ -249,42 +336,54 @@ static unsigned int lepus_sd_status(struct device *dev)
 #else
 	return status;
 #endif
+#endif
 }
 
-#if 0
-static void lepus_sd_plug_change(int state)
-{
-	if(state == CARD_INSERTED)
-		__gpio_as_irq_high_level(MSC0_HOTPLUG_PIN); /* wait remove */
-	else
-		__gpio_as_irq_low_level(MSC0_HOTPLUG_PIN); /* wait insert */
-}
-#else
 static void lepus_sd_plug_change(int state)
 {
 	if(state == CARD_INSERTED) /* wait for remove */
 #if ACTIVE_LOW_MSC0_CD
-		__gpio_as_irq_rise_edge(MSC0_HOTPLUG_PIN);
+		__gpio_as_irq_high_level(MSC0_HOTPLUG_PIN);
 #else
-		__gpio_as_irq_fall_edge(MSC0_HOTPLUG_PIN);
+		__gpio_as_irq_low_level(MSC0_HOTPLUG_PIN);
 #endif
 	else		      /* wait for insert */
 #if ACTIVE_LOW_MSC0_CD
-		__gpio_as_irq_fall_edge(MSC0_HOTPLUG_PIN);
+		__gpio_as_irq_low_level(MSC0_HOTPLUG_PIN);
 #else
-		__gpio_as_irq_rise_edge(MSC0_HOTPLUG_PIN);
+		__gpio_as_irq_high_level(MSC0_HOTPLUG_PIN);
 #endif
 }
-#endif
 
 static unsigned int lepus_sd_get_wp(struct device *dev)
 {
+#if defined(CONFIG_JZ_SYSTEM_AT_CARD)
+	return 0;
+#else
+	int i = 0;
 	unsigned int status;
 
-	status = (unsigned int) __gpio_get_pin(MSC0_WP_PIN);
+	for (i = 0; i < 5; i++) {
+		status = (unsigned int) __gpio_get_pin(MSC0_WP_PIN);
+		schedule_timeout(HZ/100); /* 10ms */
+	}
 	return (status);
+#endif
 }
+#if defined(CONFIG_JZ_RECOVERY_SUPPORT) && defined(CONFIG_JZ_SYSTEM_AT_CARD)
+struct mmc_partition_info lepus_partitions[] = {
+	[0] = {"mbr",0,512,0},//0 - 512
+	[1] = {"uboot",512,3*1024*1024-512,0}, // 512 - 2.5MB
+	[2] = {"misc",0x3000000,0x1000000,0},//3MB - 1MB
+	[3] = {"kernel",0x400000,0x400000,0},//4MB - 4MB
+	[4] = {"recovery",0x800000,0x400000,0},//8MB -4MB
 
+	[5] = {"rootfs",12*1024*1024,256*1024*1024,1}, //12MB - 256MB
+	[6] = {"data",268*1024*1024,500*1024*1024,1},//268MB - 500MB
+	[7] = {"cache",768*1024*1024,32*1024*1024,1},//768MB - 32MB
+	[8] = {"test_0",0x0,0xffffffff,0},
+};
+#endif
 struct jz_mmc_platform_data lepus_sd_data = {
 #ifndef CONFIG_JZ_MSC0_SDIO_SUPPORT
 	.support_sdio   = 0,
@@ -292,8 +391,13 @@ struct jz_mmc_platform_data lepus_sd_data = {
 	.support_sdio   = 1,
 #endif
 	.ocr_mask	= MMC_VDD_32_33 | MMC_VDD_33_34,
+#if defined(CONFIG_JZ_SYSTEM_AT_CARD)
+	.status_irq	= 0,
+	.detect_pin     = 0,
+#else
 	.status_irq	= MSC0_HOTPLUG_IRQ,
 	.detect_pin     = GPIO_SD0_CD_N,
+#endif
 	.init           = lepus_sd_gpio_init,
 	.power_on       = lepus_sd_power_on,
 	.power_off      = lepus_sd_power_off,
@@ -301,7 +405,15 @@ struct jz_mmc_platform_data lepus_sd_data = {
 	.status		= lepus_sd_status,
 	.plug_change	= lepus_sd_plug_change,
 	.write_protect  = lepus_sd_get_wp,
-	.max_bus_width  = MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED | MMC_CAP_4_BIT_DATA,
+	.max_bus_width  = MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED
+#ifdef CONFIG_JZ_MSC0_BUS_4
+	| MMC_CAP_4_BIT_DATA
+#endif
+#ifdef CONFIG_JZ_MSC0_BUS_8
+	| MMC_CAP_8_BIT_DATA
+#endif
+	,
+
 #ifdef CONFIG_JZ_MSC0_BUS_1
 	.bus_width      = 1,
 #elif defined  CONFIG_JZ_MSC0_BUS_4
@@ -309,12 +421,17 @@ struct jz_mmc_platform_data lepus_sd_data = {
 #else
 	.bus_width      = 8,
 #endif
+#if defined(CONFIG_JZ_RECOVERY_SUPPORT) && defined(CONFIG_JZ_SYSTEM_AT_CARD)
+	.partitions = lepus_partitions,
+	.num_partitions = ARRAY_SIZE(lepus_partitions),
+#endif
 };
 
 static void lepus_tf_gpio_init(struct device *dev)
 {
 	__gpio_as_msc1_4bit();
 	__gpio_as_output(GPIO_SD1_VCC_EN_N);
+	__gpio_set_pin(GPIO_SD1_VCC_EN_N); /* poweroff */
 	__gpio_as_input(GPIO_SD1_CD_N);
 }
 
@@ -344,31 +461,21 @@ static unsigned int lepus_tf_status(struct device *dev)
 #endif
 }
 
-#if 0
-static void lepus_tf_plug_change(int state)
-{
-	if(state == CARD_INSERTED)
-		__gpio_as_irq_low_level(MSC1_HOTPLUG_PIN);
-	else
-		__gpio_as_irq_high_level(MSC1_HOTPLUG_PIN);
-}
-#else
 static void lepus_tf_plug_change(int state)
 {
 	if(state == CARD_INSERTED) /* wait for remove */
 #if ACTIVE_LOW_MSC1_CD
-		__gpio_as_irq_rise_edge(MSC1_HOTPLUG_PIN);
+		__gpio_as_irq_high_level(MSC1_HOTPLUG_PIN);
 #else
-		__gpio_as_irq_fall_edge(MSC1_HOTPLUG_PIN);
+		__gpio_as_irq_low_level(MSC1_HOTPLUG_PIN);
 #endif
 	else		      /* wait for insert */
 #if ACTIVE_LOW_MSC1_CD
-		__gpio_as_irq_fall_edge(MSC1_HOTPLUG_PIN);
+		__gpio_as_irq_low_level(MSC1_HOTPLUG_PIN);
 #else
-		__gpio_as_irq_rise_edge(MSC1_HOTPLUG_PIN);
+		__gpio_as_irq_high_level(MSC1_HOTPLUG_PIN);
 #endif
 }
-#endif
 
 struct jz_mmc_platform_data lepus_tf_data = {
 #ifndef CONFIG_JZ_MSC1_SDIO_SUPPORT
@@ -385,8 +492,70 @@ struct jz_mmc_platform_data lepus_tf_data = {
 	.cpm_start	= lepus_tf_cpm_start,
 	.status		= lepus_tf_status,
 	.plug_change	= lepus_tf_plug_change,
-	.max_bus_width  = MMC_CAP_SD_HIGHSPEED | MMC_CAP_4_BIT_DATA,
+	.max_bus_width  = MMC_CAP_SD_HIGHSPEED
+#ifdef CONFIG_JZ_MSC1_BUS_4
+	| MMC_CAP_4_BIT_DATA
+#endif
+	,
+
 #ifdef CONFIG_JZ_MSC1_BUS_1
+	.bus_width      = 1,
+#else
+	.bus_width      = 4,
+#endif
+};
+
+static void lepus_msc2_gpio_init(struct device *dev)
+{
+	return;
+}
+
+static void lepus_msc2_power_on(struct device *dev)
+{
+	return;
+}
+
+static void lepus_msc2_power_off(struct device *dev)
+{
+	return;
+}
+
+static void lepus_msc2_cpm_start(struct device *dev)
+{
+	cpm_start_clock(CGM_MSC2);
+}
+
+static unsigned int lepus_msc2_status(struct device *dev)
+{
+	return 0;	      /* default: no card */
+}
+
+static void lepus_msc2_plug_change(int state)
+{
+	return;
+}
+
+struct jz_mmc_platform_data lepus_msc2_data = {
+#ifndef CONFIG_JZ_MSC2_SDIO_SUPPORT
+	.support_sdio   = 0,
+#else
+	.support_sdio   = 1,
+#endif
+	.ocr_mask	= MMC_VDD_32_33 | MMC_VDD_33_34,
+	.status_irq	= 0, //MSC1_HOTPLUG_IRQ,
+	.detect_pin     = 0, //GPIO_SD1_CD_N,
+	.init           = lepus_msc2_gpio_init,
+	.power_on       = lepus_msc2_power_on,
+	.power_off      = lepus_msc2_power_off,
+	.cpm_start	= lepus_msc2_cpm_start,
+	.status		= lepus_msc2_status,
+	.plug_change	= lepus_msc2_plug_change,
+	.max_bus_width  = MMC_CAP_SD_HIGHSPEED
+#ifdef CONFIG_JZ_MSC2_BUS_4
+	| MMC_CAP_4_BIT_DATA
+#endif
+	,
+#ifdef CONFIG_JZ_MSC2_BUS_1
 	.bus_width      = 1,
 #else
 	.bus_width      = 4,
@@ -395,15 +564,9 @@ struct jz_mmc_platform_data lepus_tf_data = {
 
 void __init board_msc_init(void)
 {
-#ifdef CONFIG_JZ_MSC0
-	printk("add msc0......\n");
 	jz_add_msc_devices(0, &lepus_sd_data);
-#endif
-
-#ifdef CONFIG_JZ_MSC1
-	printk("add msc1......\n");
 	jz_add_msc_devices(1, &lepus_tf_data);
-#endif
+	jz_add_msc_devices(2, &lepus_msc2_data);
 }
 
 static void f4760_timer_callback(void)
@@ -430,6 +593,9 @@ static void __init board_gpio_setup(void)
 	 */
 }
 
+static struct ft5x0x_ts_platform_data ft5x0x_ts_pdata = {
+	        .intr = GPIO_TS_I2C_INT,
+};
 static struct i2c_board_info lepus_i2c0_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("cm3511", 0x30),
@@ -441,13 +607,69 @@ static struct i2c_board_info lepus_i2c0_devs[] __initdata = {
 		I2C_BOARD_INFO("ov7690", 0x21),
 	},
 	{
+	        I2C_BOARD_INFO(FT5X0X_NAME, 0x36),
+	       .irq = GPIO_TS_I2C_IRQ,
+	       .platform_data = &ft5x0x_ts_pdata,
+	},
+	{
+	},
+};
+/* SPI devices */
+struct spi_board_info jz4760_spi0_board_info[]  = {
+	[0] = {
+		.modalias       = "spidev0",
+		.bus_num        = 0,
+		.chip_select    = 0,
+		.max_speed_hz   = 120000,
+/*		.platform_data	= &spitest,*/
+	},
+	[1] = {
+		.modalias       = "spitest",
+		.bus_num        = 0,
+		.chip_select    = 1,
+		.max_speed_hz   = 2500000,
+/*		.platform_data	= */
+	},
+};
+struct spi_board_info jz4760_spi1_board_info[]  = {
+	[0] = {
+		.modalias       = "spidev1",
+		.bus_num        = 1,
+		.chip_select    = 0,
+		.max_speed_hz   = 12000000,
 	},
 };
 
+#ifdef CONFIG_JZ4760_HDMI_DISPLAY
+static struct i2c_board_info ep932_i2c_devs[] __initdata = {
+        {
+                I2C_BOARD_INFO("jz_ep932", 0x38),
+        },
+        {
+                I2C_BOARD_INFO("jz_edid", 0xa0 >> 1),
+        },
+        #if 0
+        {
+                I2C_BOARD_INFO("jz_hdcp_rx", 0x74 >> 1),
+        },
+        {
+                I2C_BOARD_INFO("jz_hey", 0xa8 >> 1),
+        },
+        #endif
+};
+#endif
+
+
 void __init board_i2c_init(void) {
 	i2c_register_board_info(0, lepus_i2c0_devs, ARRAY_SIZE(lepus_i2c0_devs));
+	#ifdef CONFIG_JZ4760_HDMI_DISPLAY
+  i2c_register_board_info(0, ep932_i2c_devs, ARRAY_SIZE(ep932_i2c_devs));
+#endif
 }
-
+void __init board_spi_init(void){
+	spi_register_board_info(jz4760_spi0_board_info,ARRAY_SIZE(jz4760_spi0_board_info));
+	spi_register_board_info(jz4760_spi1_board_info,ARRAY_SIZE(jz4760_spi1_board_info));
+}
 void __init jz_board_setup(void)
 {
 	printk("JZ4760 Lepus board setup\n");

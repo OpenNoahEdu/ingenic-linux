@@ -15,9 +15,8 @@
 #include <linux/resource.h>
 
 #include <asm/jzsoc.h>
-
-
-#include <asm/jzmmc/jz_mmc_platform_data.h>
+#include <../sound/oss/jz_audio.h>
+#include <linux/spi/spi.h>
 
 extern void __init board_msc_init(void);
 
@@ -123,7 +122,7 @@ static struct resource jz_mmc_resources[] = {
 static u64 jz_mmc_dmamask =  ~(u32)0;
 
 static struct platform_device jz_mmc_device = {
-	.name = "jz-mmc",
+	.name = "jz-msc",
 	.id = 0,
 	.dev = {
 		.dma_mask               = &jz_mmc_dmamask,
@@ -155,7 +154,7 @@ static struct resource jz_msc0_resources[] = {
 static u64 jz_msc0_dmamask =  ~(u32)0;
 
 static struct platform_device jz_msc0_device = {
-	.name = "jz-msc0",
+	.name = "jz-msc",
 	.id = 0,
 	.dev = {
 		.dma_mask               = &jz_msc0_dmamask,
@@ -188,7 +187,7 @@ static struct resource jz_msc1_resources[] = {
 static u64 jz_msc1_dmamask =  ~(u32)0;
 
 static struct platform_device jz_msc1_device = {
-	.name = "jz-msc1",
+	.name = "jz-msc",
 	.id = 1,
 	.dev = {
 		.dma_mask               = &jz_msc1_dmamask,
@@ -248,6 +247,152 @@ static struct platform_device jz_i2c_device = {
 };
 
 
+/** AX88796C controller **/
+static struct resource ax88796c_resources[] = {
+	[0] = {
+		.start          = CPHYSADDR(0xac000000),
+		.end            = CPHYSADDR(0xac000000) + 0x6800 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start          = 118,
+		.end            = 118,
+		.flags          = IORESOURCE_IRQ,
+	}
+};
+
+static u64 ax88796c_dmamask =  ~(u32)0;
+
+static struct platform_device ax88796c_dev = {
+	.name = "ax88796c",
+	.id = 0,
+	.dev = {
+		.dma_mask               = &ax88796c_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(ax88796c_resources),
+	.resource       = ax88796c_resources,
+};
+
+//////////////////////////////////////////////////////////
+#define SND(num, desc) { .name = desc, .id = num }
+static struct snd_endpoint snd_endpoints_list[] = {
+ SND(0, "HANDSET"),
+ SND(1, "SPEAKER"),
+ SND(2, "HEADSET"),
+
+};
+#undef SND
+
+static struct jz_snd_endpoints vogue_snd_endpoints = {
+      .endpoints = snd_endpoints_list,
+      .num = ARRAY_SIZE(snd_endpoints_list),
+};
+
+static struct platform_device vogue_snd_device = {
+    .name = "mixer",
+    .id = -1,
+    .dev = {
+      .platform_data = &vogue_snd_endpoints,
+    },
+};
+///////////////////////////////////////////////////////////
+/* SSI controller --- SPI (0) */
+#ifndef CONFIG_JZ_SPI_BOARD_INFO_REGISTER
+#define __jz_spi0_board_info 	NULL
+#define __jz_spi1_board_info 	NULL
+#else
+extern struct spi_board_info jz4750_spi0_board_info[];
+extern struct spi_board_info jz4750_spi1_board_info[];
+#define __jz_spi0_board_info 	&jz4750_spi0_board_info[0]
+#define __jz_spi1_board_info 	&jz4750_spi1_board_info[0]
+#endif
+
+struct jz47xx_spi_info spi0_info_cfg = {
+	.chnl = 0,
+	.bus_num = 0,
+	.board_size = 2,				/* spi设备数目*/
+#ifdef CONFIG_JZ_SPI_BOARD_INFO_REGISTER
+	.board_info = __jz_spi0_board_info,
+#else
+	.board_info = NULL,
+#endif
+//	.set_cs = spi_gpio_cs,
+	.set_cs = NULL,
+	.pin_cs ={
+		PIN_SSI_CE0,
+		32*2+31,				/*apus: GPC31 --- SW6 --- BOOT_SEL1 (dummy, example) */
+//		32*4+16,				/*lepus: TP56 */
+	},
+};
+static struct resource jz_spi0_resource[] = {
+	[0] = {
+		.start          = CPHYSADDR(SSI_BASE),
+		.end            = CPHYSADDR(SSI_BASE) + 0x2000 - 1,
+		.flags 			= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_SSI0,
+		.end   = IRQ_SSI0,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+static u64 jz_spi0_dmamask =  ~(u32)0;
+
+struct platform_device jz_spi0_device = {
+	.name		  = "jz47xx-spi0",
+	.id		  = 0,
+	.num_resources	  = ARRAY_SIZE(jz_spi0_resource),
+	.resource	  = jz_spi0_resource,
+        .dev              = {
+                .dma_mask = &jz_spi0_dmamask,
+                .coherent_dma_mask = 0xffffffffUL,
+                .platform_data = & spi0_info_cfg,
+        }
+};
+
+/* SSI controller --- SPI (1) */
+struct jz47xx_spi_info spi1_info_cfg = {
+	.chnl = 1,
+	.bus_num = 1,
+	.board_size = 1,
+#ifdef CONFIG_JZ_SPI_BOARD_INFO_REGISTER
+	.board_info = __jz_spi1_board_info,
+#else
+	.board_info = NULL,
+#endif
+//	.set_cs = spi_gpio_cs,
+	.set_cs = NULL,
+	.pins_config = NULL,
+	.pin_cs ={
+		PIN_SSI_CE0,
+	},
+};
+static struct resource jz_spi1_resource[] = {
+	[0] = {
+		.start          = CPHYSADDR(SSI_BASE) + 0x2000,
+		.end            = CPHYSADDR(SSI_BASE) + 0x4000 - 1,
+		.flags 			= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_SSI1,
+		.end   = IRQ_SSI1,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+static u64 jz_spi1_dmamask =  ~(u32)0;
+
+struct platform_device jz_spi1_device = {
+	.name		  = "jz47xx-spi1",
+	.id		  = 1,
+	.num_resources	  = ARRAY_SIZE(jz_spi1_resource),
+	.resource	  = jz_spi1_resource,
+        .dev              = {
+                .dma_mask = &jz_spi1_dmamask,
+                .coherent_dma_mask = 0xffffffffUL,
+                .platform_data = & spi1_info_cfg,
+        }
+};
 
 /* All */
 static struct platform_device *jz_platform_devices[] __initdata = {
@@ -256,11 +401,22 @@ static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz_usb_gdt_device,
 	//	&jz_mmc_device,
 	&jz_i2c_device,
+	&vogue_snd_device,
+	&ax88796c_dev,
+	&jz_spi0_device,
+	&jz_spi1_device,
 };
 
+extern void __init board_i2c_init(void);
+extern void __init board_spi_init(void);
 static int __init jz_platform_init(void)
 {
+	board_i2c_init();
 	board_msc_init();
+#ifndef CONFIG_JZ_SPI_BOARD_INFO_REGISTER
+	board_spi_init();
+#endif
+
 	return platform_add_devices(jz_platform_devices, ARRAY_SIZE(jz_platform_devices));
 }
 

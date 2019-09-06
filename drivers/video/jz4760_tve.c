@@ -19,7 +19,7 @@
 #include "jz4760_tve.h"
 
 struct jz4760tve_info jz4760_tve_info_PAL = {
-	.ctrl = (4 << TVE_CTRL_YCDLY_BIT) | TVE_CTRL_SYNCT | TVE_CTRL_PAL | TVE_CTRL_SWRST,	/* PAL, SVIDEO */
+	.ctrl = TVE_CTRL_ECVBS | (4 << TVE_CTRL_YCDLY_BIT) | TVE_CTRL_SYNCT | TVE_CTRL_PAL | TVE_CTRL_SWRST,	/* PAL, SVIDEO */
 	.frcfg = (23 << TVE_FRCFG_L1ST_BIT) | (625 << TVE_FRCFG_NLINE_BIT),
 	.slcfg1 = (800<<TVE_SLCFG1_WHITEL_BIT) | (282<<TVE_SLCFG1_BLACKL_BIT),
 	.slcfg2 = (296<<TVE_SLCFG2_VBLANKL_BIT) | (240<<TVE_SLCFG2_BLANKL_BIT),
@@ -36,7 +36,7 @@ struct jz4760tve_info jz4760_tve_info_PAL = {
 };
 
 struct jz4760tve_info jz4760_tve_info_NTSC = {
-	.ctrl = (4 << TVE_CTRL_YCDLY_BIT) | TVE_CTRL_SWRST,	/* NTSC, SVIDEO */
+	.ctrl = TVE_CTRL_ECVBS | (4 << TVE_CTRL_YCDLY_BIT) | TVE_CTRL_SWRST,	/* NTSC, SVIDEO */
 	.frcfg = (21 << TVE_FRCFG_L1ST_BIT) | (525 << TVE_FRCFG_NLINE_BIT),
 	.slcfg1 = (800<<TVE_SLCFG1_WHITEL_BIT) | (282<<TVE_SLCFG1_BLACKL_BIT),
 	.slcfg2 = (296<<TVE_SLCFG2_VBLANKL_BIT) | (240<<TVE_SLCFG2_BLANKL_BIT),

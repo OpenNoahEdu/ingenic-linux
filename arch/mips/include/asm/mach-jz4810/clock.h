@@ -16,7 +16,7 @@
 #define __ASM_JZ4810_CLOCK_H__
 
 #ifndef JZ_EXTAL
-#define JZ_EXTAL		33000000   /* 3.6864 MHz */
+#define JZ_EXTAL		24000000   /* 3.6864 MHz */
 #endif
 #ifndef JZ_EXTAL2
 #define JZ_EXTAL2		32768     /* 32.768 KHz */

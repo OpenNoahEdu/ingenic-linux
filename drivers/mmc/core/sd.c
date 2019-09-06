@@ -110,13 +110,19 @@ static int mmc_decode_csd(struct mmc_card *card)
 		e = UNSTUFF_BITS(resp, 47, 3);
 		m = UNSTUFF_BITS(resp, 62, 12);
 
+#if 0
+		if(!strcmp(mmc_hostname(card->host) ,"mmc0")){
 #if defined(CONFIG_JZ_BOOT_FROM_MSC0)
-		csd->capacity	  = (1 + m) << (e + 2);
-		csd->capacity	  -= 16384;
+			csd->capacity	  = (1 + m) << (e + 2);
+			csd->capacity	  -= 16384;
 #else
-		csd->capacity	  = (1 + m) << (e + 2);
+			csd->capacity	  = (1 + m) << (e + 2);			
+#endif			
+		}
+		else
+			csd->capacity	  = (1 + m) << (e + 2);			
 #endif
-
+		csd->capacity	  = (1 + m) << (e + 2);			
 		csd->read_blkbits = UNSTUFF_BITS(resp, 80, 4);
 		csd->read_partial = UNSTUFF_BITS(resp, 79, 1);
 		csd->write_misalign = UNSTUFF_BITS(resp, 78, 1);
@@ -629,6 +635,8 @@ static void mmc_sd_resume(struct mmc_host *host)
 static const struct mmc_bus_ops mmc_sd_ops = {
 	.remove = mmc_sd_remove,
 	.detect = mmc_sd_detect,
+//	.sysfs_add = mmc_sd_sysfs_add,
+//	.sysfs_remove = mmc_sd_sysfs_remove,
 	.suspend = mmc_sd_suspend,
 	.resume = mmc_sd_resume,
 };

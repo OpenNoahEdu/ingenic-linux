@@ -27,6 +27,12 @@
 /*======================================================================
  * SYSTEM GPIO
  */
+
+#define GPIO_I2C1_SDA           (32*1+20)       /* GPB20 */
+#define GPIO_I2C1_SCK           (32*1+21)       /* GPB21 */
+
+#define GPIO_POWER_ON           (32 * 0 + 30)  /* GPA30 */
+
 #define GPIO_DISP_OFF_N		(32 * 4 + 11) /* GPE11 */ //???
 
 #define GPIO_SD0_VCC_EN_N	(32 * 4 + 2) /* GPE02 */
@@ -99,12 +105,66 @@
 #define MSC1_HOTPLUG_PIN	GPIO_SD1_CD_N
 #define MSC1_HOTPLUG_IRQ	(IRQ_GPIO_0 + GPIO_SD1_CD_N)
 
+#define __msc0_init_io()			\
+do {						\
+	__gpio_as_output(GPIO_SD0_VCC_EN_N);	\
+	__gpio_as_input(GPIO_SD0_CD_N);		\
+} while (0)
+
+#define __msc0_enable_power()			\
+do {						\
+	__gpio_clear_pin(GPIO_SD0_VCC_EN_N);	\
+} while (0)
+
+#define __msc0_disable_power()			\
+do {						\
+	__gpio_set_pin(GPIO_SD0_VCC_EN_N);	\
+} while (0)
+
+#define __msc0_card_detected(s)			\
+({						\
+	int detected = 1;			\
+	if (__gpio_get_pin(GPIO_SD0_CD_N))	\
+		detected = 0;			\
+	detected;				\
+})
+
+#define __msc1_init_io()			\
+do {						\
+	__gpio_as_output(GPIO_SD1_VCC_EN_N);	\
+	__gpio_as_input(GPIO_SD1_CD_N);		\
+} while (0)
+
+#define __msc1_enable_power()			\
+do {						\
+	__gpio_clear_pin(GPIO_SD1_VCC_EN_N);	\
+} while (0)
+
+#define __msc1_disable_power()			\
+do {						\
+	__gpio_set_pin(GPIO_SD1_VCC_EN_N);	\
+} while (0)
+
+#define __msc1_card_detected(s)			\
+({						\
+	int detected = 1;			\
+	if (__gpio_get_pin(GPIO_SD1_CD_N))	\
+		detected = 0;			\
+	detected;				\
+})
+
+
+
 /*======================================================================
  * LCD backlight
  */
 #define LCD_PWM_CHN 4    /* pwm channel */
 #define LCD_PWM_FULL 256
 #define PWM_BACKLIGHT_CHIP	0	/*0: digital pusle; 1: PWM*/
+#define LCD_DEFAULT_BACKLIGHT           80
+#define LCD_MAX_BACKLIGHT               100
+#define LCD_MIN_BACKLIGHT               1
+
 
 #if 1
 #if PWM_BACKLIGHT_CHIP
@@ -189,5 +249,7 @@ do {								\
  */
 #define ACTIVE_LOW_MSC0_CD	1 /* work when GPIO_SD1_CD_N is low */
 #define ACTIVE_LOW_MSC1_CD	0 /* work when GPIO_SD1_CD_N is low */
+
+#define JZ_EARLY_UART_BASE UART1_BASE
 
 #endif /* __ASM_JZ4760_CYGNUS_H__ */

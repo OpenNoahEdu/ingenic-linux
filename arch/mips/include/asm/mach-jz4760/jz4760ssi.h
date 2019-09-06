@@ -20,13 +20,13 @@
  * SSI (Synchronous Serial Interface)
  *************************************************************************/
 /* n = 0, 1 (SSI0, SSI1) */
-#define	SSI_DR(n)		(SSI0_BASE + 0x000 + (n)*0x2000)
-#define	SSI_CR0(n)		(SSI0_BASE + 0x004 + (n)*0x2000)
-#define	SSI_CR1(n)		(SSI0_BASE + 0x008 + (n)*0x2000)
-#define	SSI_SR(n)		(SSI0_BASE + 0x00C + (n)*0x2000)
-#define	SSI_ITR(n)		(SSI0_BASE + 0x010 + (n)*0x2000)
-#define	SSI_ICR(n)		(SSI0_BASE + 0x014 + (n)*0x2000)
-#define	SSI_GR(n)		(SSI0_BASE + 0x018 + (n)*0x2000)
+#define	SSI_DR(n)		(SSI0_BASE + 0x000 + (n)*0x1000)
+#define	SSI_CR0(n)		(SSI0_BASE + 0x004 + (n)*0x1000)
+#define	SSI_CR1(n)		(SSI0_BASE + 0x008 + (n)*0x1000)
+#define	SSI_SR(n)		(SSI0_BASE + 0x00C + (n)*0x1000)
+#define	SSI_ITR(n)		(SSI0_BASE + 0x010 + (n)*0x1000)
+#define	SSI_ICR(n)		(SSI0_BASE + 0x014 + (n)*0x1000)
+#define	SSI_GR(n)		(SSI0_BASE + 0x018 + (n)*0x1000)
 
 #define	REG_SSI_DR(n)		REG32(SSI_DR(n))
 #define	REG_SSI_CR0(n)		REG16(SSI_CR0(n))
@@ -90,7 +90,7 @@
   #define SSI_CR1_FMAT_MW1	  (2 << SSI_CR1_FMAT_BIT) /* National Microwire 1 format */
   #define SSI_CR1_FMAT_MW2	  (3 << SSI_CR1_FMAT_BIT) /* National Microwire 2 format */
 #define SSI_CR1_TTRG_BIT	16 /* SSI1 TX trigger */
-#define SSI_CR1_TTRG_MASK	(0xf << SSI_CR1_TTRG_BIT) 
+#define SSI_CR1_TTRG_MASK	(0xf << SSI_CR1_TTRG_BIT)
 #define SSI_CR1_MCOM_BIT	12
 #define SSI_CR1_MCOM_MASK	(0xf << SSI_CR1_MCOM_BIT)
   #define SSI_CR1_MCOM_1BIT	  (0x0 << SSI_CR1_MCOM_BIT) /* 1-bit command selected */
@@ -272,7 +272,7 @@ do { 						\
 /* frmhl,endian,mcom,flen,pha,pol MASK */
 #define SSICR1_MISC_MASK 					\
 	( SSI_CR1_FRMHL_MASK | SSI_CR1_LFST | SSI_CR1_MCOM_MASK	\
-	  | SSI_CR1_FLEN_MASK | SSI_CR1_PHA | SSI_CR1_POL )	
+	  | SSI_CR1_FLEN_MASK | SSI_CR1_PHA | SSI_CR1_POL )
 
 #define __ssi_spi_set_misc(n,frmhl,endian,flen,mcom,pha,pol)		\
 	do {								\
@@ -287,7 +287,7 @@ do { 						\
 #define __ssi_set_lsb(n) ( REG_SSI_CR1(n) |= SSI_CR1_LFST )
 
 #define __ssi_set_frame_length(n, m)					\
-	REG_SSI_CR1(n) = (REG_SSI_CR1(n) & ~SSI_CR1_FLEN_MASK) | (((m) - 2) << 4) 
+	REG_SSI_CR1(n) = (REG_SSI_CR1(n) & ~SSI_CR1_FLEN_MASK) | (((m) - 2) << 4)
 
 /* m = 1 - 16 */
 #define __ssi_set_microwire_command_length(n,m)				\
@@ -341,7 +341,18 @@ do { 						\
 #define __ssi_transmit_data(n, v) 	(REG_SSI_DR(n) = (v))
 
 
+#define __ssi_set_grdiv(n,v)			(REG_SSI_GR(n) = v)
+#define __ssi_get_grdiv(n)				(REG_SSI_GR(n))
 
+#define __ssi_txfifo_half_empty_intr(n)  \
+	( REG_SSI_CR0(n) & SSI_CR0_TIE )
+#define __ssi_rxfifo_half_full_intr(n)	\
+	( REG_SSI_CR0(n) & SSI_CR0_RIE )
+	
+#define __ssi_tx_error_intr(n)		\
+	( REG_SSI_CR0(n) & SSI_CR0_TEIE )
+#define __ssi_rx_error_intr(n)		\
+	( REG_SSI_CR0(n) & SSI_CR0_REIE )	
 
 
 #endif /* __MIPS_ASSEMBLER */

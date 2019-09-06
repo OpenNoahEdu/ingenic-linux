@@ -33,9 +33,9 @@
 #include "jz_codec.h"
 #include "jz_i2s_dbg.h"
 
-#if defined CONFIG_PM
-#undef CONFIG_PM
-#endif
+//#if defined CONFIG_PM
+//#undef CONFIG_PM
+//#endif
 
 #define DMA_ID_I2S_TX			DMA_ID_AIC_TX
 #define DMA_ID_I2S_RX			DMA_ID_AIC_RX
@@ -55,8 +55,8 @@
 #define FORCE_STOP			1
 #define PIPE_TRANS			1
 
-#define AUDIO_LOCK(lock, flags)		spin_lock_irqsave(lock, flags)
-#define AUDIO_UNLOCK(lock, flags)	spin_unlock_irqrestore(lock, flags)
+#define AUDIO_LOCK(lock, flags)		spin_lock_irqsave(&lock, flags)
+#define AUDIO_UNLOCK(lock, flags)	spin_unlock_irqrestore(&lock, flags)
 
 #define THIS_AUDIO_NODE(p)		list_entry(p, audio_node, list)
 #define ALIGN_PAGE_SIZE(x)		(((x) + PAGE_SIZE) / PAGE_SIZE * PAGE_SIZE)
@@ -180,6 +180,13 @@ static audio_pipe in_endpoint= {
 static struct i2s_codec the_codecs[NR_I2S];
 static struct jz_i2s_controller_info *the_i2s_controller = NULL;
 static int audio_mix_modcnt = 0;
+static audio_node *last_read_node = NULL;
+static int g_play_first = 0;
+
+#ifdef CONFIG_JZ_EBOOK_HARD
+int audio_device_open = 0;
+volatile int audio_device_pm_state = 0;
+#endif
 
 /*
  * Debug functions
@@ -289,12 +296,13 @@ void mixer_print_ioc_cmd(int cmd)
 //#ifdef REG_DEBUG
 void dump_aic_regs(const char *str)
 {
-	char *regname[] = {"aicfr","aiccr","aiccr1","aiccr2","i2scr","aicsr","acsr","i2ssr"};
+	char *regname[] = {"aicfr","aiccr","aiccr1","aiccr2","i2scr","aicsr","acsr","i2ssr",
+			   "accar", "accdr", "acsar", "acsdr", "i2sdiv", "aicdr"};
 	int i;
 	unsigned int addr;
 
 	printk("AIC regs dump, %s\n", str);
-	for (i = 0; i < 0x1c; i += 4) {
+	for (i = 0; i <= 0x34; i += 4) {
 		addr = 0xb0020000 + i;
 		printk("%s\t0x%08x -> 0x%08x\n", regname[i/4], addr, *(unsigned int *)addr);
 	}
@@ -577,10 +585,6 @@ static irqreturn_t jz_i2s_dma_irq (int irq, void *dev_id)
 		err = 1;
 		DPRINT_IRQ("!!!! DMA ADDR ERROR\n");
 	}
-	if (dma_state & DMAC_DCCSR_INV) {
-		err = 1;
-		DPRINT_IRQ("!!!! DMA descriptor invalid\n");
-	}
 	if (dma_state & DMAC_DCCSR_CT) {
 		DPRINT_IRQ("!!!! DMA descriptor finish\n");
 	}
@@ -664,8 +668,11 @@ static int jz_request_aic_dma(int dev_id, const char *dev_str,
 	}
 
 	// Open AIC_TX and AIC_RX
+#ifdef CONFIG_SOC_JZ4760
 	REG_DMAC_DMACKE(1) = 1 << (DMA_RX_CHAN - HALF_DMA_NUM) | 1 << (DMA_TX_CHAN - HALF_DMA_NUM);
-
+#else
+	REG_DMAC_DMACKS(1) = 1 << (DMA_RX_CHAN - HALF_DMA_NUM) | 1 << (DMA_TX_CHAN - HALF_DMA_NUM);
+#endif
 	return i;
 }
 
@@ -1098,7 +1105,10 @@ _L_AUDIO_CLOSE_EP_RET:
 
 int audio_resizemem_endpoint(audio_pipe *endpoint, unsigned int pagesize, unsigned int count)
 {
-	int ret = init_audio_node(&endpoint->mem, pagesize, count);
+	int ret;
+	if((endpoint->fragsize == pagesize)&&(endpoint->fragstotal == count))
+	return 1;//debug by wll
+	ret = init_audio_node(&endpoint->mem, pagesize, count);
 	if (ret) {
 		endpoint->fragsize = pagesize;
 		endpoint->fragstotal = count;
@@ -1358,6 +1368,14 @@ static int jz_i2s_ioctl_mixdev(struct inode *inode, struct file *file, unsigned 
 	long	val = 0;
 	int	ret, rc = 0;
 
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+	/* add by qinbh, control the aic clock */
+	int reg = REG_CPM_CLKGR;
+//	__cpm_start_aic1();
+#endif
+
+
 	ENTER();
 
 	DPRINT_IOC("[mixer IOCTL]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
@@ -1430,7 +1448,7 @@ static int jz_i2s_ioctl_mixdev(struct inode *inode, struct file *file, unsigned 
 		DPRINT_IOC("SOUND_MIXER_WRITE_VOLUME <- %lu\n", val);
 
 		codec->audio_volume = val;
-		codec_ioctrl(codec, CODEC_SET_VOLUME, val);
+		codec_ioctrl(codec, CODEC_SET_REPLAY_VOLUME, val);
 		return 0;
 
 	case SOUND_MIXER_READ_VOLUME:
@@ -1446,7 +1464,7 @@ static int jz_i2s_ioctl_mixdev(struct inode *inode, struct file *file, unsigned 
 		}
 		codec->mic_gain = val;
 		codec->use_mic_line_flag = USE_MIC;
-		codec_ioctrl(codec, CODEC_SET_MIC, val);
+		codec_ioctrl(codec, CODEC_SET_MIC_VOLUME, val);
 		return 0;
 
 	case SOUND_MIXER_READ_MIC:
@@ -1537,6 +1555,12 @@ static int jz_i2s_ioctl_mixdev(struct inode *inode, struct file *file, unsigned 
 	}
 	audio_mix_modcnt++;
 
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+	/* add by qinbh */
+	REG_CPM_CLKGR = reg;
+#endif
+
 	LEAVE();
 	return rc;
 }
@@ -1591,6 +1615,7 @@ static void jz_i2s_reinit_hw(struct i2s_codec *codec, int mode)
 	__i2s_disable_loopback();
 	__i2s_set_transmit_trigger(4);
 	__i2s_set_receive_trigger(3);
+	__i2s_send_rfirst();
 
 	LEAVE();
 }
@@ -1601,7 +1626,7 @@ static int jz_codec_set_speed(struct i2s_codec *codec, int rate, int mode)
 
 	/* 8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000, 99999999 ? */
 	if (mode & CODEC_RMODE) {
-		rate = codec_ioctrl(codec, CODEC_SET_RECORD_SPEED, rate);
+		rate = codec_ioctrl(codec, CODEC_SET_RECORD_RATE, rate);
 		if (rate > 0) {
 			codec->record_audio_rate = rate;
 		} else {
@@ -1609,7 +1634,7 @@ static int jz_codec_set_speed(struct i2s_codec *codec, int rate, int mode)
 		}
 	}
 	if (mode & CODEC_WMODE) {
-		rate = codec_ioctrl(codec, CODEC_SET_REPLAY_SPEED, rate);
+		rate = codec_ioctrl(codec, CODEC_SET_REPLAY_RATE, rate);
 		if (rate > 0) {
 			codec->replay_audio_rate = rate;
 		} else {
@@ -1637,8 +1662,10 @@ static short jz_codec_set_channels(struct i2s_codec *codec, short channels, int 
 		codec->replay_codec_channel = channels;
 		if (channels == 1) {
 			__aic_enable_mono2stereo();
+			__aic_out_channel_select(0);
 		} else {
 			__aic_disable_mono2stereo();
+			__aic_out_channel_select(1);
 		}
 	}
 
@@ -2017,6 +2044,8 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 {
 	struct jz_i2s_controller_info *controller = (struct jz_i2s_controller_info *) file->private_data;
 	int mode = 0;
+	int codec_closed = 0;
+
 
 	ENTER();
 
@@ -2029,23 +2058,36 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		return -ENODEV;
 	}
 	if ((file->f_mode & FMODE_READ) && controller->pin_endpoint) {
-		printk("Read mode, %s\n", __FUNCTION__);
+//		printk("Read mode, %s\n", __FUNCTION__);
 		mode |= CODEC_RMODE;
 		audio_close_endpoint(controller->pin_endpoint, FORCE_STOP);
 		controller->pin_endpoint = NULL;
 
 		__i2s_disable_receive_dma();
+		jz_codec_close(controller->i2s_codec, mode);
 		__i2s_disable_record();
 	}
 
 	if ((file->f_mode & FMODE_WRITE) && controller->pout_endpoint) {
-		printk("Write mode, %s\n", __FUNCTION__);
+//		printk("Write mode, %s\n", __FUNCTION__);
 		mode |= CODEC_WMODE;
 		audio_close_endpoint(controller->pout_endpoint, NOMAL_STOP);
 		controller->pout_endpoint = NULL;
 
 		__i2s_disable_transmit_dma();
+
+		jz_codec_close(controller->i2s_codec, mode);
+		__i2s_enable_replay();
+		msleep(1);
+
 		__i2s_disable_replay();
+		codec_closed = 1;
+
+
+#ifdef CONFIG_JZ_EBOOK_HARD
+//		printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+		__gpio_clear_pin(GPIO_SPK_SHUD);
+#endif
 	}
 
 
@@ -2053,7 +2095,15 @@ static int jz_audio_release(struct inode *inode, struct file *file)
 		__i2s_disable();
 	}
 
-	jz_codec_close(controller->i2s_codec, mode);
+	last_read_node = NULL;
+
+//	jz_codec_close(controller->i2s_codec, mode);
+
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+//	__cpm_stop_aic1();
+	audio_device_open = 0;
+#endif
 
 	LEAVE();
 	return 0;
@@ -2071,6 +2121,10 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 	if (controller == NULL) {
 		return -ENODEV;
 	}
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+//	__cpm_start_aic1();
+#endif
 
 	if (controller->pin_endpoint || controller->pout_endpoint) {
 		reset = 0;
@@ -2097,6 +2151,9 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 	}
    	file->private_data = controller;
 
+	/* we should turn codec and anti-pop first */
+	jz_codec_anti_pop(controller->i2s_codec, mode);
+
 	if (mode & CODEC_RMODE){
 /*
 		jz_codec_set_channels(codec, 2, CODEC_RMODE);
@@ -2109,12 +2166,23 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 		codec->user_need_mono = 0;
 
 		set_controller_triger(controller, &in_endpoint, codec->record_codec_channel, codec->record_format);
+
+
 	}
 	if (mode & CODEC_WMODE) {
 		jz_codec_set_channels(codec, 2, CODEC_WMODE);
 		jz_codec_set_format(codec, 16, CODEC_WMODE);
 		jz_codec_set_speed(codec, 44100, CODEC_WMODE);
 		set_controller_triger(controller, &out_endpoint, codec->replay_codec_channel, codec->replay_format);
+#ifdef CONFIG_JZ_EBOOK_HARD
+//		printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+		while (audio_device_pm_state == 1) schedule();
+		audio_device_open = 1;
+		if ((__gpio_get_pin(GPIO_HPONE_PLUG))) /* opposite logic with D21 */
+		{
+			__gpio_set_pin(GPIO_SPK_SHUD);
+		}
+#endif
 	}
 
 	DPRINT_IOC("============ default_codec record ===============\n"
@@ -2149,7 +2217,7 @@ static int jz_audio_open(struct inode *inode, struct file *file)
 	//DUMP_AIC_REGS();
 	DPRINT_TRC(".... jz_audio_open\n");
 
-	jz_codec_anti_pop(controller->i2s_codec, mode);
+	g_play_first = 0;
 
 	LEAVE();
 	return 0;
@@ -2253,7 +2321,7 @@ static int jz_audio_ioctl(struct inode *inode, struct file *file, unsigned int c
 			rc = -EFAULT;
 		}
 
-		printk("\nSNDCTL_DSP_SETFMT ... set to %d\n", val);
+//		printk("\nSNDCTL_DSP_SETFMT ... set to %d\n", val);
 
 		if (val == AFMT_QUERY) {
 			if (mode & CODEC_RMODE) {
@@ -2289,12 +2357,14 @@ static int jz_audio_ioctl(struct inode *inode, struct file *file, unsigned int c
 		//printk("\nSNDCTL_DSP_CHANNELS ... set to %d\n", val);
 
 		/* if mono, change to 2, and set 1 to codec->user_need_mono */
-		if (val == 1) {
-			val = 2;
-			codec->user_need_mono = 1;
+		if (mode & CODEC_RMODE) {
+			if (val == 1) {
+				val = 2;
+				codec->user_need_mono = 1;
 
-		} else {
-			codec->user_need_mono = 0;
+			} else {
+				codec->user_need_mono = 0;
+			}
 		}
 
 		/* Following lines could be marked as nothing will be changed */
@@ -2562,16 +2632,27 @@ static ssize_t jz_audio_write(struct file *file, const char __user *buffer, size
 {
 	struct jz_i2s_controller_info *controller = (struct jz_i2s_controller_info *)file->private_data;
 	audio_pipe *pout_endpoint = controller->pout_endpoint;
+	struct i2s_codec *codec = (struct i2s_codec *)controller->i2s_codec;
 	size_t	usecount = 0;
 	int	bat_cnt = -1;
 	int	rem_cnt = 0;
 
+	if (!g_play_first) {
+		// first play, trun on dac mute
+		codec_ioctrl(codec, CODEC_FIRST_OUTPUT, 0);
+		g_play_first = 1;
+		if (codec->audio_volume == 0)
+			codec_ioctrl(codec, CODEC_DAC_MUTE, 1);
+	}
+
 	ENTER();
 
-//	dump_dlv_regs(__FUNCTION__);
-//	dump_aic_regs(__FUNCTION__);
+	//dump_dlv_regs(__FUNCTION__);
+	//dump_aic_regs(__FUNCTION__);
 
-	DPRINT("write data count = %d\n", count);
+	// wll@20101020
+//	printk("===>enter %s: \n", __FUNCTION__);
+//	printk("write data count = %d\n", count);
 
 	while (count >= pout_endpoint->fragsize) {
 
@@ -2658,19 +2739,25 @@ static ssize_t jz_audio_write(struct file *file, const char __user *buffer, size
 static inline int endpoint_get_userdata(audio_pipe *endpoint, const char __user *buffer, size_t count)
 {
 	unsigned long	flags;
-	audio_node	*node;
+	audio_node	*node = last_read_node;
 	int	ret;
 
 	/* counter for node buffer, raw data */
 	int	node_buff_cnt = 0;
-	/* counter for node buffer after filte, fixed data */
-	int	fixed_buff_cnt = 0;
 
 	ENTER();
 
-	AUDIO_LOCK(endpoint->lock, flags);
-	node = get_audio_usenode(endpoint->mem);
-	AUDIO_UNLOCK(endpoint->lock, flags);
+	if (!node) {
+		AUDIO_LOCK(endpoint->lock, flags);
+		node = get_audio_usenode(endpoint->mem);
+		AUDIO_UNLOCK(endpoint->lock, flags);
+
+		if (node && endpoint->filter) {
+			node_buff_cnt = node->end - node->start;
+			node_buff_cnt = endpoint->filter((void *)(node->pBuf + node->start), node_buff_cnt);
+			node->end = node->start + node_buff_cnt;
+		}
+	}
 
 	DPRINT(">>>> %s mode\n", endpoint->is_non_block ? "non block" : "block");
 
@@ -2701,60 +2788,40 @@ static inline int endpoint_get_userdata(audio_pipe *endpoint, const char __user 
 		node = get_audio_usenode(endpoint->mem);
 		endpoint->avialable_couter = 0;
 		AUDIO_UNLOCK(endpoint->lock, flags);
+
+		if (node && endpoint->filter) {
+			node_buff_cnt = node->end - node->start;
+			node_buff_cnt = endpoint->filter((void *)(node->pBuf + node->start), node_buff_cnt);
+			node->end = node->start + node_buff_cnt;
+		}
 	}
 
 	if (node && (node_buff_cnt = node->end - node->start)) {
 		DPRINT("node_buff_cnt = %d, count = %d\n", node_buff_cnt, count);
 
-		if (endpoint->filter) {
-/*
-			printk("filter 3 ... %d\n", node_buff_cnt);
-			{
-				int i;
-				for (i = 100; i < 112; i++) {
-					printk("*(nod->pBuf + node_start + %d) = 0x%02x\n",
-					       i, *(char *)(node->pBuf + node->start + i));
-				}
-			}
-*/
-			/* ret indicate that final data length when copy_to_user
-			 * (node->end - node->start) may not equals to ret !
-			 */
-			fixed_buff_cnt = endpoint->filter((void *)(node->pBuf + node->start), node_buff_cnt);
-/*
-			{
-				int i;
-				for (i = 100; i < 112; i++) {
-					printk("*(nod->pBuf + node_start + %d) = 0x%02x\n",
-					       i, *(char *)(node->pBuf + node->start + i));
-				}
-			}
-*/
-		} else {
-			fixed_buff_cnt = node_buff_cnt;
-		}
-
-		if (count >= (size_t)fixed_buff_cnt) {
-			DPRINT(">>>> count >= fixed_buff_cnt, copy_to_user, fixed_buff_cnt = %d\n", fixed_buff_cnt);
-			ret = copy_to_user((void *)buffer, (void *)(node->pBuf + node->start), fixed_buff_cnt);
+		if (count >= (size_t)node_buff_cnt) {
+			DPRINT(">>>> count >= fixed_buff_cnt, copy_to_user count = %d\n", node_buff_cnt);
+			ret = copy_to_user((void *)buffer, (void *)(node->pBuf + node->start), node_buff_cnt);
 			if (ret) {
 				printk("JZ I2S: copy_to_user failed, return %d\n", ret);
 				return -EFAULT;
 			}
 			put_audio_freenode(endpoint->mem, node);
+			last_read_node = NULL;
 		} else {
-			DPRINT(">>>> count < fixed_buff_cnt, copy_to_user, fixed_buff_cnt = %d\n", fixed_buff_cnt);
+			DPRINT(">>>> count < fixed_buff_cnt, copy_to_user count = %d\n", count);
 			ret = copy_to_user((void *)buffer,(void *)(node->pBuf + node->start), count);
 			if (ret) {
 				printk("JZ I2S: copy_to_user failed, return %d\n", ret);
 				return -EFAULT;
 			}
-			node->start += node_buff_cnt;
+			node->start += count;
+			last_read_node = node;
 		}
 	}
 
 	LEAVE();
-	return (fixed_buff_cnt < count ? fixed_buff_cnt : count);
+	return (node_buff_cnt < count ? node_buff_cnt : count);
 }
 
 static ssize_t jz_audio_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
@@ -2886,48 +2953,34 @@ static void __exit unload_jz_i2s(struct jz_i2s_controller_info *controller)
 
 //--------------------------------------------------------------------
 #ifdef CONFIG_PM
-static int jz_i2s_suspend(struct jz_i2s_controller_info *controller, int state)
+static int jz_i2s_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	int i;
+	struct i2s_codec *codec;
+	//audio_sync_endpoint(&out_endpoint);
+	//msleep(30);
+	for(i = 0;i < NR_I2S; i++){
+		codec = &the_codecs[i];
+		if (codec && codec->codecs_ioctrl) {
+			codec->codecs_ioctrl(codec, CODEC_I2S_SUSPEND, 0);
+		}
+	}
+
+//	printk("Aic and codec are suspended!\n");
+	return 0;
+}
+
+static int jz_i2s_resume(struct platform_device *pdev)
 {
 	int i;
 	struct i2s_codec *codec;
 	for(i = 0;i < NR_I2S; i++){
 		codec = &the_codecs[i];
-		codec->codes_ioctrl(codec, I2S_SUSPEND_CODEC, 0);
-	}
-	printk("Aic and codec are suspended!\n");
-	return 0;
-}
-
-static int jz_i2s_resume(struct jz_i2s_controller_info *controller)
-{
-	int i;
-	struct i2s_codec *codec;
-	for(i = 0;i < NR_I2S; i++){
-		codec = &the_codecs[i];
-		codec->codes_ioctrl(codec, I2S_RESUME_CODEC,0);
+		if (codec && codec->codecs_ioctrl) {
+			codec->codecs_ioctrl(codec, CODEC_I2S_RESUME, 0);
+		}
 	}
 	return 0;
-}
-
-static int jz_i2s_pm_callback(struct pm_dev *pm_dev, pm_request_t req, void *data)
-{
-	int ret;
-	struct jz_i2s_controller_info *controller = pm_dev->data;
-
-	if (!controller) return -EINVAL;
-
-	switch (req) {
-	case PM_SUSPEND:
-		ret = jz_i2s_suspend(controller, (int)data);
-		break;
-	case PM_RESUME:
-		ret = jz_i2s_resume(controller);
-		break;
-	default:
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
 }
 #endif /* CONFIG_PM */
 
@@ -2962,15 +3015,8 @@ void i2s_controller_init(void)
 
 	ENTER();
 
-	REG_CPM_I2SCDR = 0;
-
-	__cpm_select_i2sclk_exclk();
-//	__cpm_exclk_div2();
-	__cpm_enable_pll_change();
-
-	/* ??? legacy ???
-	printk("cpccr 0x%08x\n", *(unsigned int *)0xb0000000);
-	*/
+	/* Select exclk as i2s clock */
+	cpm_set_clock(CGU_I2SCLK, JZ_EXTAL);
 
 	aicfr = (8 << 12) | (8 << 8) | (AIC_FR_ICDC | AIC_FR_LSMP | AIC_FR_AUSEL);
 	REG_AIC_FR = aicfr;
@@ -2989,6 +3035,13 @@ static int __init init_jz_i2s(struct platform_device *pdev)
 	int fragsize;
 	int fragstotal;
 
+	printk("===>enter %s\n", __func__);
+
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+//	__cpm_start_aic1();
+#endif
+
 	cpm_start_clock(CGM_AIC);
 
 	REG_AIC_I2SCR |= AIC_I2SCR_ESCLK;
@@ -2999,7 +3052,8 @@ static int __init init_jz_i2s(struct platform_device *pdev)
 		return -1;
 	}
 
-	default_codec->codecs_ioctrl(default_codec, CODEC_SET_MODE, 0);
+	//default_codec->codecs_ioctrl(default_codec, CODEC_SET_MODE, 0);
+	default_codec->codecs_ioctrl(default_codec, CODEC_INIT, 0);
 
 	if ((errno = probe_jz_i2s(&the_i2s_controller)) < 0) {
 		return errno;
@@ -3024,13 +3078,12 @@ static int __init init_jz_i2s(struct platform_device *pdev)
 	audio_init_endpoint(&out_endpoint, fragsize, fragstotal);
 	audio_init_endpoint(&in_endpoint, fragsize, fragstotal);
 
-#ifdef CONFIG_PM
-	the_i2s_controller->pm = pm_register(PM_SYS_DEV, PM_SYS_UNKNOWN,
-					 jz_i2s_pm_callback);
-	if (the_i2s_controller->pm) {
-		the_i2s_controller->pm->data = i2s_controller;
-	}
+#ifdef CONFIG_JZ_EBOOK_HARD
+//	printk("DEBUG: %s, %d\n", __FUNCTION__, __LINE__);
+//	__cpm_stop_aic1();
+	audio_device_open = 0;
 #endif
+
 	printk("JZ I2S OSS audio driver initialized\n");
 
 	LEAVE();
@@ -3057,6 +3110,8 @@ static struct platform_driver snd_plat_driver = {
 		.name	= "mixer",
 		.owner	= THIS_MODULE,
 	},
+	.suspend	= jz_i2s_suspend,
+	.resume		= jz_i2s_resume,
 };
 
 static int __init snd_init(void)

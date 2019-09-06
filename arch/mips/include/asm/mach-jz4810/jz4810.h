@@ -39,6 +39,7 @@
 #include <asm/mach-jz4810/jz4810otg.h>
 #include <asm/mach-jz4810/jz4810otp.h>
 #include <asm/mach-jz4810/jz4810owi.h>
+#include <asm/mach-jz4810/jz4810ost.h>
 #include <asm/mach-jz4810/jz4810pcm.h>
 #include <asm/mach-jz4810/jz4810rtc.h>
 #include <asm/mach-jz4810/jz4810sadc.h>
@@ -49,6 +50,7 @@
 #include <asm/mach-jz4810/jz4810tve.h>
 #include <asm/mach-jz4810/jz4810uart.h>
 #include <asm/mach-jz4810/jz4810wdt.h>
+#include <asm/mach-jz4810/jz4810aosd.h>
 
 #include <asm/mach-jz4810/dma.h>
 #include <asm/mach-jz4810/misc.h>

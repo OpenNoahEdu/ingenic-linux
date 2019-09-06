@@ -156,8 +156,8 @@ static void __init soc_dmac_setup(void)
 
 static void __init jz_soc_setup(void)
 {
-	soc_cpm_setup();
-	soc_harb_setup();
+//	soc_cpm_setup();
+//	soc_harb_setup();
 //	soc_emc_setup();
 	soc_dmac_setup();
 }
@@ -172,7 +172,8 @@ static void __init jz_serial_setup(void)
 	s.flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST;
 	s.iotype = SERIAL_IO_MEM;
 	s.regshift = 2;
-	s.uartclk = jz_clocks.extalclk ;
+	s.uartclk = 12000000;
+//	s.uartclk = jz_clocks.extalclk ;
 
 	s.line = 0;
 	s.membase = (u8 *)UART0_BASE;
@@ -288,22 +289,16 @@ void __init plat_mem_setup(void)
 {
 	char *argptr;
 
-	serial_puts("jz plat_mem_setup \n");
 	argptr = prom_getcmdline();
-	serial_puts("jz plat_mem_setup 002\n");
 
-#if 1
 	__asm__ (
 		"li    $2, 0xa9000000 \n\t"
 		"mtc0  $2, $5, 4      \n\t"
 		"nop                  \n\t"
 		::"r"(2));
-#endif
 
 	/* IO/MEM resources. Which will be the addtion value in `inX' and
 	 * `outX' macros defined in asm/io.h */
-	serial_puts("jz plat_mem_setup 003\n");
-
 	set_io_port_base(0);
 	ioport_resource.start	= 0x00000000;
 	ioport_resource.end	= 0xffffffff;
@@ -313,14 +308,13 @@ void __init plat_mem_setup(void)
 	_machine_restart = jz_restart;
 	_machine_halt = jz_halt;
 	pm_power_off = jz_power_off;
-	serial_puts("jz plat_mem_setup 004\n");
 
 	jz_soc_setup();
-
-	serial_puts("jz plat_mem_setup 005\n");
 	jz_serial_setup();
-	serial_puts("jz plat_mem_setup 006\n");
 	jz_board_setup();
-	serial_puts("jz plat_mem_setup 007\n");
+
+#ifdef CONFIG_PM
+        jz_pm_init();
+#endif
 }
 

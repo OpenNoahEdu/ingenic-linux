@@ -31,7 +31,7 @@
 #define DMAC_DCCSR(n) (DMAC_BASE + ((n)/HALF_DMA_NUM*0x100 + 0x10 + ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM) * 0x20)) /* DMA control/status */
 #define DMAC_DCMD(n)  (DMAC_BASE + ((n)/HALF_DMA_NUM*0x100 + 0x14 + ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM) * 0x20)) /* DMA command */
 #define DMAC_DDA(n)   (DMAC_BASE + ((n)/HALF_DMA_NUM*0x100 + 0x18 + ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM) * 0x20)) /* DMA descriptor address */
-#define DMAC_DSD(n)   (DMAC_BASE + ((n)/HALF_DMA_NUM*0x100 + 0xc0 + ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM) * 0x04)) /* DMA Stride Address */
+#define DMAC_DSD(n)   (DMAC_BASE + ((n)/HALF_DMA_NUM*0x100 + 0x1c + ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM) * 0x04)) /* DMA Stride Address */
 
 #define DMAC_DMACR(m)	(DMAC_BASE + 0x0300 + 0x100 * (m))              /* DMA control register */
 #define DMAC_DMAIPR(m)	(DMAC_BASE + 0x0304 + 0x100 * (m))              /* DMA interrupt pending */
@@ -56,102 +56,105 @@
 // DMA request source register
 #define DMAC_DRSR_RS_BIT	0
 #define DMAC_DRSR_RS_MASK	(0x3f << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_EXT	(0 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_NAND	(1 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_BCH_ENC	(2 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_BCH_DEC	(3 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_AUTO	(8 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_TSSIIN	(9 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART3OUT	(14 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART3IN	(15 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART2OUT	(16 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART2IN	(17 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART1OUT	(18 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART1IN	(19 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART0OUT	(20 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_UART0IN	(21 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_SSI0OUT	(22 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_SSI0IN	(23 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_AICOUT	(24 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_AICIN	(25 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_MSC0OUT	(26 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_MSC0IN	(27 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_TCU	(28 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_SADC	(29 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_MSC1OUT	(30 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_MSC1IN	(31 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_SSI1OUT	(32 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_SSI1IN	(33 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_PMOUT	(34 << DMAC_DRSR_RS_BIT)
-  #define DMAC_DRSR_RS_PMIN	(35 << DMAC_DRSR_RS_BIT)
+/* 0~7 is reserved */
+#define DMAC_DRSR_RS_AUTO	(8 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_TSSIIN	(9 << DMAC_DRSR_RS_BIT)
+/* 10 ~ 11 is reserved */
+#define DMAC_DRSR_RS_EXTERN	(12 << DMAC_DRSR_RS_BIT)
+/* 13 is reserved */
+#define DMAC_DRSR_RS_UART3OUT	(14 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART3IN	(15 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART2OUT	(16 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART2IN	(17 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART1OUT	(18 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART1IN	(19 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART0OUT	(20 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_UART0IN	(21 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_SSI0OUT	(22 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_SSI0IN	(23 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_AICOUT	(24 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_AICIN	(25 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC0OUT	(26 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC0IN	(27 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_TCU	(28 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_SADC	(29 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC1OUT	(30 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC1IN	(31 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_SSI1OUT	(32 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_SSI1IN	(33 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_PMOUT	(34 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_PMIN	(35 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC2OUT	(36 << DMAC_DRSR_RS_BIT)
+#define DMAC_DRSR_RS_MSC2IN	(37 << DMAC_DRSR_RS_BIT)
+/* others are reserved */
 
 // DMA channel control/status register
 #define DMAC_DCCSR_NDES		(1 << 31) /* descriptor (0) or not (1) ? */
 #define DMAC_DCCSR_DES8    	(1 << 30) /* Descriptor 8 Word */
 #define DMAC_DCCSR_DES4    	(0 << 30) /* Descriptor 4 Word */
+/* [29:24] reserved */
 #define DMAC_DCCSR_CDOA_BIT	16        /* copy of DMA offset address */
 #define DMAC_DCCSR_CDOA_MASK	(0xff << DMAC_DCCSR_CDOA_BIT)
-#define DMAC_DCCSR_BERR		(1 << 7)  /* BCH error within this transfer, Only for channel 0 */
-#define DMAC_DCCSR_INV		(1 << 6)  /* descriptor invalid */
+/* [15:5] reserved */
 #define DMAC_DCCSR_AR		(1 << 4)  /* address error */
 #define DMAC_DCCSR_TT		(1 << 3)  /* transfer terminated */
 #define DMAC_DCCSR_HLT		(1 << 2)  /* DMA halted */
 #define DMAC_DCCSR_CT		(1 << 1)  /* count terminated */
 #define DMAC_DCCSR_EN		(1 << 0)  /* channel enable bit */
 
-// DMA channel command register 
+// DMA channel command register
 #define DMAC_DCMD_EACKS_LOW  	(1 << 31) /* External DACK Output Level Select, active low */
 #define DMAC_DCMD_EACKS_HIGH  	(0 << 31) /* External DACK Output Level Select, active high */
 #define DMAC_DCMD_EACKM_WRITE 	(1 << 30) /* External DACK Output Mode Select, output in write cycle */
 #define DMAC_DCMD_EACKM_READ 	(0 << 30) /* External DACK Output Mode Select, output in read cycle */
 #define DMAC_DCMD_ERDM_BIT      28        /* External DREQ Detection Mode Select */
 #define DMAC_DCMD_ERDM_MASK     (0x03 << DMAC_DCMD_ERDM_BIT)
-  #define DMAC_DCMD_ERDM_LOW    (0 << DMAC_DCMD_ERDM_BIT)
-  #define DMAC_DCMD_ERDM_FALL   (1 << DMAC_DCMD_ERDM_BIT)
-  #define DMAC_DCMD_ERDM_HIGH   (2 << DMAC_DCMD_ERDM_BIT)
-  #define DMAC_DCMD_ERDM_RISE   (3 << DMAC_DCMD_ERDM_BIT)
-#define DMAC_DCMD_BLAST		(1 << 25) /* BCH last */
+#define DMAC_DCMD_ERDM_LOW    (0 << DMAC_DCMD_ERDM_BIT)
+#define DMAC_DCMD_ERDM_FALL   (1 << DMAC_DCMD_ERDM_BIT)
+#define DMAC_DCMD_ERDM_HIGH   (2 << DMAC_DCMD_ERDM_BIT)
+#define DMAC_DCMD_ERDM_RISE   (3 << DMAC_DCMD_ERDM_BIT)
+/* [27:24] reserved */
 #define DMAC_DCMD_SAI		(1 << 23) /* source address increment */
 #define DMAC_DCMD_DAI		(1 << 22) /* dest address increment */
 #define DMAC_DCMD_RDIL_BIT	16        /* request detection interval length */
 #define DMAC_DCMD_RDIL_MASK	(0x0f << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_IGN	(0 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_2	(1 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_4	(2 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_8	(3 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_12	(4 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_16	(5 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_20	(6 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_24	(7 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_28	(8 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_32	(9 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_48	(10 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_60	(11 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_64	(12 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_124	(13 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_128	(14 << DMAC_DCMD_RDIL_BIT)
-  #define DMAC_DCMD_RDIL_200	(15 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_IGN	(0 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_2	(1 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_4	(2 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_8	(3 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_12	(4 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_16	(5 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_20	(6 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_24	(7 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_28	(8 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_32	(9 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_48	(10 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_60	(11 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_64	(12 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_124	(13 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_128	(14 << DMAC_DCMD_RDIL_BIT)
+#define DMAC_DCMD_RDIL_200	(15 << DMAC_DCMD_RDIL_BIT)
 #define DMAC_DCMD_SWDH_BIT	14  /* source port width */
 #define DMAC_DCMD_SWDH_MASK	(0x03 << DMAC_DCMD_SWDH_BIT)
-  #define DMAC_DCMD_SWDH_32	(0 << DMAC_DCMD_SWDH_BIT)
-  #define DMAC_DCMD_SWDH_8	(1 << DMAC_DCMD_SWDH_BIT)
-  #define DMAC_DCMD_SWDH_16	(2 << DMAC_DCMD_SWDH_BIT)
+#define DMAC_DCMD_SWDH_32	(0 << DMAC_DCMD_SWDH_BIT)
+#define DMAC_DCMD_SWDH_8	(1 << DMAC_DCMD_SWDH_BIT)
+#define DMAC_DCMD_SWDH_16	(2 << DMAC_DCMD_SWDH_BIT)
 #define DMAC_DCMD_DWDH_BIT	12  /* dest port width */
 #define DMAC_DCMD_DWDH_MASK	(0x03 << DMAC_DCMD_DWDH_BIT)
-  #define DMAC_DCMD_DWDH_32	(0 << DMAC_DCMD_DWDH_BIT)
-  #define DMAC_DCMD_DWDH_8	(1 << DMAC_DCMD_DWDH_BIT)
-  #define DMAC_DCMD_DWDH_16	(2 << DMAC_DCMD_DWDH_BIT)
+#define DMAC_DCMD_DWDH_32	(0 << DMAC_DCMD_DWDH_BIT)
+#define DMAC_DCMD_DWDH_8	(1 << DMAC_DCMD_DWDH_BIT)
+#define DMAC_DCMD_DWDH_16	(2 << DMAC_DCMD_DWDH_BIT)
+/* bit11 reserved */
 #define DMAC_DCMD_DS_BIT	8  /* transfer data size of a data unit */
 #define DMAC_DCMD_DS_MASK	(0x07 << DMAC_DCMD_DS_BIT)
-  #define DMAC_DCMD_DS_32BIT	(0 << DMAC_DCMD_DS_BIT)
-  #define DMAC_DCMD_DS_8BIT	(1 << DMAC_DCMD_DS_BIT)
-  #define DMAC_DCMD_DS_16BIT	(2 << DMAC_DCMD_DS_BIT)
-  #define DMAC_DCMD_DS_16BYTE	(3 << DMAC_DCMD_DS_BIT)
-  #define DMAC_DCMD_DS_32BYTE	(4 << DMAC_DCMD_DS_BIT)
-#define DMAC_DCMD_STDE   	(1 << 5)  /* Stride Disable/Enable */
-#define DMAC_DCMD_DES_V		(1 << 4)  /* descriptor valid flag */
-#define DMAC_DCMD_DES_VM	(1 << 3)  /* descriptor valid mask: 1:support V-bit */
-#define DMAC_DCMD_DES_VIE	(1 << 2)  /* DMA valid error interrupt enable */
+#define DMAC_DCMD_DS_32BIT	(0 << DMAC_DCMD_DS_BIT)
+#define DMAC_DCMD_DS_8BIT	(1 << DMAC_DCMD_DS_BIT)
+#define DMAC_DCMD_DS_16BIT	(2 << DMAC_DCMD_DS_BIT)
+#define DMAC_DCMD_DS_16BYTE	(3 << DMAC_DCMD_DS_BIT)
+#define DMAC_DCMD_DS_32BYTE	(4 << DMAC_DCMD_DS_BIT)
+#define DMAC_DCMD_DS_64BYTE	(5 << DMAC_DCMD_DS_BIT)
+/* [7:3] reserved */
+#define DMAC_DCMD_STDE   	(1 << 2)  /* Stride Disable/Enable */
 #define DMAC_DCMD_TIE		(1 << 1)  /* DMA transfer interrupt enable */
 #define DMAC_DCMD_LINK		(1 << 0)  /* descriptor link enable */
 
@@ -160,6 +163,7 @@
 #define DMAC_DDA_BASE_MASK	(0x0fffff << DMAC_DDA_BASE_BIT)
 #define DMAC_DDA_OFFSET_BIT	4   /* descriptor offset address */
 #define DMAC_DDA_OFFSET_MASK	(0x0ff << DMAC_DDA_OFFSET_BIT)
+/* [3:0] reserved */
 
 // DMA stride address register
 #define DMAC_DSD_TSD_BIT        16  /* target stride address */
@@ -173,14 +177,17 @@
 #define DMAC_DMACR_FTSSI	(1 << 29)  /* TSSI Fast DMA mode */
 #define DMAC_DMACR_FUART	(1 << 28)  /* UART Fast DMA mode */
 #define DMAC_DMACR_FAIC		(1 << 27)  /* AIC Fast DMA mode */
+/* [26:10] reserved */
 #define DMAC_DMACR_PR_BIT	8  /* channel priority mode */
 #define DMAC_DMACR_PR_MASK	(0x03 << DMAC_DMACR_PR_BIT)
-  #define DMAC_DMACR_PR_012345	(0 << DMAC_DMACR_PR_BIT)
-  #define DMAC_DMACR_PR_120345	(1 << DMAC_DMACR_PR_BIT)
-  #define DMAC_DMACR_PR_230145	(2 << DMAC_DMACR_PR_BIT)
-  #define DMAC_DMACR_PR_340125	(3 << DMAC_DMACR_PR_BIT)
+#define DMAC_DMACR_PR_012345	(0 << DMAC_DMACR_PR_BIT)
+#define DMAC_DMACR_PR_120345	(1 << DMAC_DMACR_PR_BIT)
+#define DMAC_DMACR_PR_230145	(2 << DMAC_DMACR_PR_BIT)
+#define DMAC_DMACR_PR_340125	(3 << DMAC_DMACR_PR_BIT)
+/* [7:4] resered */
 #define DMAC_DMACR_HLT		(1 << 3)  /* DMA halt flag */
 #define DMAC_DMACR_AR		(1 << 2)  /* address error flag */
+/* bit1 reserved */
 #define DMAC_DMACR_DMAE		(1 << 0)  /* DMA enable bit */
 
 // DMA doorbell register
@@ -217,55 +224,55 @@
 
 /* m is the DMA controller index (0, 1), n is the DMA channel index (0 - 11) */
 
-#define __dmac_enable_module(m) \
+#define __dmac_enable_module(m)						\
 	( REG_DMAC_DMACR(m) |= DMAC_DMACR_DMAE | DMAC_DMACR_PR_012345 )
-#define __dmac_disable_module(m) \
+#define __dmac_disable_module(m)			\
 	( REG_DMAC_DMACR(m) &= ~DMAC_DMACR_DMAE )
 
 /* p=0,1,2,3 */
-#define __dmac_set_priority(m,p)			\
-do {							\
-	REG_DMAC_DMACR(m) &= ~DMAC_DMACR_PR_MASK;	\
-	REG_DMAC_DMACR(m) |= ((p) << DMAC_DMACR_PR_BIT);	\
-} while (0)
+#define __dmac_set_priority(m,p)					\
+	do {								\
+		REG_DMAC_DMACR(m) &= ~DMAC_DMACR_PR_MASK;		\
+		REG_DMAC_DMACR(m) |= ((p) << DMAC_DMACR_PR_BIT);	\
+	} while (0)
 
 #define __dmac_test_halt_error(m) ( REG_DMAC_DMACR(m) & DMAC_DMACR_HLT )
 #define __dmac_test_addr_error(m) ( REG_DMAC_DMACR(m) & DMAC_DMACR_AR )
 
-#define __dmac_channel_enable_clk(n) \
+#define __dmac_channel_enable_clk(n)					\
 	REG_DMAC_DMACKE((n)/HALF_DMA_NUM) |= 1 << ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM);
 
-#define __dmac_enable_descriptor(n) \
-  ( REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_NDES )
-#define __dmac_disable_descriptor(n) \
-  ( REG_DMAC_DCCSR((n)) |= DMAC_DCCSR_NDES )
+#define __dmac_enable_descriptor(n)			\
+	( REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_NDES )
+#define __dmac_disable_descriptor(n)			\
+	( REG_DMAC_DCCSR((n)) |= DMAC_DCCSR_NDES )
 
-#define __dmac_enable_channel(n)                 \
-do {                                             \
-	REG_DMAC_DCCSR((n)) |= DMAC_DCCSR_EN;    \
-} while (0)
-#define __dmac_disable_channel(n)                \
-do {                                             \
-	REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_EN;   \
-} while (0)
-#define __dmac_channel_enabled(n) \
-  ( REG_DMAC_DCCSR((n)) & DMAC_DCCSR_EN )
+#define __dmac_enable_channel(n)			\
+	do {						\
+		REG_DMAC_DCCSR((n)) |= DMAC_DCCSR_EN;	\
+	} while (0)
+#define __dmac_disable_channel(n)			\
+	do {						\
+		REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_EN;	\
+	} while (0)
+#define __dmac_channel_enabled(n)		\
+	( REG_DMAC_DCCSR((n)) & DMAC_DCCSR_EN )
 
-#define __dmac_channel_enable_irq(n) \
-  ( REG_DMAC_DCMD((n)) |= DMAC_DCMD_TIE )
-#define __dmac_channel_disable_irq(n) \
-  ( REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_TIE )
+#define __dmac_channel_enable_irq(n)		\
+	( REG_DMAC_DCMD((n)) |= DMAC_DCMD_TIE )
+#define __dmac_channel_disable_irq(n)			\
+	( REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_TIE )
 
-#define __dmac_channel_transmit_halt_detected(n) \
-  (  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_HLT )
-#define __dmac_channel_transmit_end_detected(n) \
-  (  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_TT )
-#define __dmac_channel_address_error_detected(n) \
-  (  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_AR )
-#define __dmac_channel_count_terminated_detected(n) \
-  (  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_CT )
-#define __dmac_channel_descriptor_invalid_detected(n) \
-  (  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_INV )
+#define __dmac_channel_transmit_halt_detected(n)	\
+	(  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_HLT )
+#define __dmac_channel_transmit_end_detected(n)		\
+	(  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_TT )
+#define __dmac_channel_address_error_detected(n)	\
+	(  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_AR )
+#define __dmac_channel_count_terminated_detected(n)	\
+	(  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_CT )
+#define __dmac_channel_descriptor_invalid_detected(n)	\
+	(  REG_DMAC_DCCSR((n)) & DMAC_DCCSR_INV )
 
 #define __dmac_channel_clear_transmit_halt(n)				\
 	do {								\
@@ -273,8 +280,8 @@ do {                                             \
 		REG_DMAC_DCCSR(n) &= ~DMAC_DCCSR_HLT;			\
 		REG_DMAC_DMACR(n/HALF_DMA_NUM) &= ~DMAC_DMACR_HLT;	\
 	} while (0)
-#define __dmac_channel_clear_transmit_end(n) \
-  (  REG_DMAC_DCCSR(n) &= ~DMAC_DCCSR_TT )
+#define __dmac_channel_clear_transmit_end(n)		\
+	(  REG_DMAC_DCCSR(n) &= ~DMAC_DCCSR_TT )
 #define __dmac_channel_clear_address_error(n)				\
 	do {								\
 		REG_DMAC_DDA(n) = 0; /* clear descriptor address register */ \
@@ -284,73 +291,73 @@ do {                                             \
 		REG_DMAC_DCCSR(n) &= ~DMAC_DCCSR_AR;			\
 		REG_DMAC_DMACR(n/HALF_DMA_NUM) &= ~DMAC_DMACR_AR;	\
 	} while (0)
-#define __dmac_channel_clear_count_terminated(n) \
-  (  REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_CT )
-#define __dmac_channel_clear_descriptor_invalid(n) \
-  (  REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_INV )
+#define __dmac_channel_clear_count_terminated(n)	\
+	(  REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_CT )
+#define __dmac_channel_clear_descriptor_invalid(n)	\
+	(  REG_DMAC_DCCSR((n)) &= ~DMAC_DCCSR_INV )
 
-#define __dmac_channel_set_transfer_unit_32bit(n)	\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_32BIT;	\
-} while (0)
+#define __dmac_channel_set_transfer_unit_32bit(n)		\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_32BIT;	\
+	} while (0)
 
-#define __dmac_channel_set_transfer_unit_16bit(n)	\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_16BIT;	\
-} while (0)
+#define __dmac_channel_set_transfer_unit_16bit(n)		\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_16BIT;	\
+	} while (0)
 
-#define __dmac_channel_set_transfer_unit_8bit(n)	\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_8BIT;	\
-} while (0)
+#define __dmac_channel_set_transfer_unit_8bit(n)		\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_8BIT;	\
+	} while (0)
 
-#define __dmac_channel_set_transfer_unit_16byte(n)	\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_16BYTE;	\
-} while (0)
+#define __dmac_channel_set_transfer_unit_16byte(n)		\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_16BYTE;	\
+	} while (0)
 
-#define __dmac_channel_set_transfer_unit_32byte(n)	\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_32BYTE;	\
-} while (0)
-
-/* w=8,16,32 */
-#define __dmac_channel_set_dest_port_width(n,w)		\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DWDH_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_DWDH_##w;	\
-} while (0)
+#define __dmac_channel_set_transfer_unit_32byte(n)		\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DS_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DS_32BYTE;	\
+	} while (0)
 
 /* w=8,16,32 */
-#define __dmac_channel_set_src_port_width(n,w)		\
-do {							\
-	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_SWDH_MASK;	\
-	REG_DMAC_DCMD((n)) |= DMAC_DCMD_SWDH_##w;	\
-} while (0)
+#define __dmac_channel_set_dest_port_width(n,w)			\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DWDH_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_DWDH_##w;	\
+	} while (0)
+
+/* w=8,16,32 */
+#define __dmac_channel_set_src_port_width(n,w)			\
+	do {							\
+		REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_SWDH_MASK;	\
+		REG_DMAC_DCMD((n)) |= DMAC_DCMD_SWDH_##w;	\
+	} while (0)
 
 /* v=0-15 */
 #define __dmac_channel_set_rdil(n,v)				\
-do {								\
+	do {							\
 	REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_RDIL_MASK;		\
 	REG_DMAC_DCMD((n) |= ((v) << DMAC_DCMD_RDIL_BIT);	\
-} while (0)
+		      } while (0)
 
-#define __dmac_channel_dest_addr_fixed(n) \
-  (  REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DAI )
-#define __dmac_channel_dest_addr_increment(n) \
-  (  REG_DMAC_DCMD((n)) |= DMAC_DCMD_DAI )
+#define __dmac_channel_dest_addr_fixed(n)		\
+	(  REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_DAI )
+#define __dmac_channel_dest_addr_increment(n)		\
+	(  REG_DMAC_DCMD((n)) |= DMAC_DCMD_DAI )
 
-#define __dmac_channel_src_addr_fixed(n) \
-  (  REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_SAI )
-#define __dmac_channel_src_addr_increment(n) \
-  (  REG_DMAC_DCMD((n)) |= DMAC_DCMD_SAI )
+#define __dmac_channel_src_addr_fixed(n)		\
+	(  REG_DMAC_DCMD((n)) &= ~DMAC_DCMD_SAI )
+#define __dmac_channel_src_addr_increment(n)		\
+	(  REG_DMAC_DCMD((n)) |= DMAC_DCMD_SAI )
 
-#define __dmac_channel_set_doorbell(n)	\
+#define __dmac_channel_set_doorbell(n)					\
 	(  REG_DMAC_DMADBSR((n)/HALF_DMA_NUM) = (1 << ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM)) )
 
 #define __dmac_channel_irq_detected(n)  ( REG_DMAC_DMAIPR((n)/HALF_DMA_NUM) & (1 << ((n)-(n)/HALF_DMA_NUM*HALF_DMA_NUM)) )

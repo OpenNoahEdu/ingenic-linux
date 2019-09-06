@@ -61,6 +61,17 @@ static struct file_operations tcsm_fops =
 static int tcsm_open(struct inode *inode, struct file *filp)
 {
   struct pt_regs *info = task_pt_regs(current);
+
+#ifdef CONFIG_SOC_JZ4760B
+  REG_CPM_CLKGR1 &= ~(CLKGR1_AUX | CLKGR1_OSD );
+#endif
+
+#if defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
+  REG_CPM_CLKGR1 &= ~ (CLKGR1_AHB1 | CLKGR1_CABAC | CLKGR1_SRAM | CLKGR1_DCT | CLKGR1_DBLK | CLKGR1_MC | CLKGR1_ME);
+  REG_CPM_LCR &= ~(1 << 30);
+  while(REG_CPM_LCR & LCR_PDAHB1S);
+  REG_CPM_CLKGR1 |= (CLKGR1_ME);
+#endif
  
   info->cp0_status &= ~0x10;// clear UM bit
   info->cp0_status |= 0x08000000; // set RP bit   a tricky
@@ -71,6 +82,15 @@ static int tcsm_open(struct inode *inode, struct file *filp)
 static int tcsm_release(struct inode *inode, struct file *filp)
 {
   struct pt_regs *info = task_pt_regs(current);
+
+#ifdef CONFIG_SOC_JZ4760B
+  REG_CPM_CLKGR1 |= (CLKGR1_AUX | CLKGR1_OSD);
+#endif
+
+#if defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
+  REG_CPM_CLKGR1 |= (CLKGR1_AHB1 | CLKGR1_CABAC | CLKGR1_SRAM | CLKGR1_DCT | CLKGR1_DBLK | CLKGR1_MC | CLKGR1_ME);
+  REG_CPM_LCR |= (1 << 30);
+#endif
 
   info->cp0_status |= 0x10;// set UM bit
   info->cp0_status &= ~0x08000000; // clear RP bit  a tricky

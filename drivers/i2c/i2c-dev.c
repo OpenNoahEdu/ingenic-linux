@@ -443,7 +443,7 @@ static long i2cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case I2C_SET_CLOCK:
 #if defined(CONFIG_SOC_JZ4750)
  		arg = *(unsigned long *)arg;		
-		i2c_jz_setclk(arg);
+		i2c_jz_setclk(NULL, arg);
 #endif
 		break;
 

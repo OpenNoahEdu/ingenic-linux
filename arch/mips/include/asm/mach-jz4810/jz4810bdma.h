@@ -28,11 +28,13 @@
 #define BDMAC_DSD(n)   		(BDMAC_BASE + (0x1c + (n) * 0x20)) /* DMA Stride Address */
 #define BDMAC_DNT(n)  		(BDMAC_BASE + (0xc0 + (n) * 0x04)) /* NAND Detect Timer */
 
-#define BDMAC_DMACR			(BDMAC_BASE + 0x0300) 	/* DMA control register */
+#define BDMAC_DMACR		(BDMAC_BASE + 0x0300) 	/* DMA control register */
 #define BDMAC_DMAIPR		(BDMAC_BASE + 0x0304) 	/* DMA interrupt pending */
 #define BDMAC_DMADBR		(BDMAC_BASE + 0x0308) 	/* DMA doorbell */
 #define BDMAC_DMADBSR		(BDMAC_BASE + 0x030C) 	/* DMA doorbell set */
 #define BDMAC_DMACKE  		(BDMAC_BASE + 0x0310)
+#define BDMAC_DMACKES  		(BDMAC_BASE + 0x0314)
+#define BDMAC_DMACKEC  		(BDMAC_BASE + 0x0318)
 
 #define REG_BDMAC_DSAR(n)	REG32(BDMAC_DSAR((n)))
 #define REG_BDMAC_DTAR(n)	REG32(BDMAC_DTAR((n)))
@@ -49,26 +51,43 @@
 #define REG_BDMAC_DMADBR	REG32(BDMAC_DMADBR)
 #define REG_BDMAC_DMADBSR	REG32(BDMAC_DMADBSR)
 #define REG_BDMAC_DMACKE    REG32(BDMAC_DMACKE)
+#define REG_BDMAC_DMACKES    REG32(BDMAC_DMACKES)
+#define REG_BDMAC_DMACKEC    REG32(BDMAC_DMACKEC)
+
+//BDMA nand detect timer register
+#define BDMAC_DNTR_DNTE          (1 << 15)  /* Nand request 0 detect timer enable */
+#define BDMAC_DNTR_DNT(n)        ((n) << 0) /* Nand request 0 detect timer value */
+#define BDMAC_DNTR_DNTE1          (1 << 31)  /* Nand request 1 detect timer enable */
+#define BDMAC_DNTR_DNT1(n)        ((n) << 23) /* Nand request 1 detect timer value */
+
 
 // BDMA request source register
 #define BDMAC_DRSR_RS_BIT	0
-  #define BDMAC_DRSR_RS_MASK	(0x3f << DMAC_DRSR_RS_BIT)
-  #define BDMAC_DRSR_RS_NAND	(1 << DMAC_DRSR_RS_BIT)
-  #define BDMAC_DRSR_RS_BCH_ENC	(2 << DMAC_DRSR_RS_BIT)
-  #define BDMAC_DRSR_RS_BCH_DEC	(3 << DMAC_DRSR_RS_BIT)
-  #define BDMAC_DRSR_RS_AUTO	(8 << DMAC_DRSR_RS_BIT)
-  #define BDMAC_DRSR_RS_EXT	(12 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_MASK	(0x3f << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_BCH_ENC	(2 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_BCH_DEC	(3 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_NAND0	(6 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_NAND1	(7 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_AUTO	(8 << DMAC_DRSR_RS_BIT)
+#define BDMAC_DRSR_RS_EXT	(12 << DMAC_DRSR_RS_BIT)
 
 // BDMA channel control/status register
 #define BDMAC_DCCSR_NDES	(1 << 31) /* descriptor (0) or not (1) ? */
 #define BDMAC_DCCSR_DES8    	(1 << 30) /* Descriptor 8 Word */
 #define BDMAC_DCCSR_DES4    	(0 << 30) /* Descriptor 4 Word */
+#define BDMAC_DCCSR_LASTMD0    	(0 << 28) /* BCH Decoding last mode 0, there's one descriptor for decoding blcok*/
+#define BDMAC_DCCSR_LASTMD1    	(1 << 28) /* BCH Decoding last mode 1, there's two descriptor for decoding blcok*/
+#define BDMAC_DCCSR_LASTMD2    	(2 << 28) /* BCH Decoding last mode 2, there's three descriptor for decoding blcok*/
+#define BDMAC_DCCSR_FRBS(n)	((n) << 24)
 #define BDMAC_DCCSR_CDOA_BIT	16        /* copy of DMA offset address */
-  #define BDMAC_DCCSR_CDOA_MASK	(0xff << BDMACC_DCCSR_CDOA_BIT)
-#define BDMAC_DCCSR_BERR	(1 << 7)  /* BCH error within this transfer, Only for channel 0 */
+#define BDMAC_DCCSR_CDOA_MASK	(0xff << BDMACC_DCCSR_CDOA_BIT)
+#define BDMAC_DCCSR_BERR	(0x1f << 7)  /* BCH error within this transfer, Only for channel 0 */
+#define BDMAC_DCCSR_BUERR       (1 << 5)  /* BCH uncorrectable error, only for channel 0 */
+#define BDMAC_DCCSR_NSERR       (1 << 5)  /* status error, only for channel 1 */
 #define BDMAC_DCCSR_AR		(1 << 4)  /* address error */
 #define BDMAC_DCCSR_TT		(1 << 3)  /* transfer terminated */
 #define BDMAC_DCCSR_HLT		(1 << 2)  /* DMA halted */
+#define BDMAC_DCCSR_BAC		(1 << 1)  /* BCH auto correction */
 #define BDMAC_DCCSR_EN		(1 << 0)  /* channel enable bit */
 
 // BDMA channel command register
@@ -106,6 +125,7 @@
 #define BDMAC_DCMD_NRD   	(1 << 7)  /* NAND direct read */
 #define BDMAC_DCMD_NWR   	(1 << 6)  /* NAND direct write */
 #define BDMAC_DCMD_NAC   	(1 << 5)  /* NAND AL/CL enable */
+#define BDMAC_DCMD_NSTA		(1 << 4)  /* Nand Status Transfer Enable */
 #define BDMAC_DCMD_STDE   	(1 << 2)  /* Stride Disable/Enable */
 #define BDMAC_DCMD_TIE		(1 << 1)  /* DMA transfer interrupt enable */
 #define BDMAC_DCMD_LINK		(1 << 0)  /* descriptor link enable */
@@ -191,7 +211,10 @@ do {                                             \
   (  REG_BDMAC_DCCSR((n)) & BDMAC_DCCSR_HLT )
 #define __bdmac_channel_transmit_end_detected(n) \
   (  REG_BDMAC_DCCSR((n)) & BDMAC_DCCSR_TT )
-#define __bdmac_channel_address_error_detected(n) \
+/* Nand ops status error, only for channel 1 */
+#define __bdmac_channel_status_error_detected() \
+  (  REG_BDMAC_DCCSR(1) & BDMAC_DCCSR_NSERR )
+#define __bdmac_channel_address_error_detected(n)	\
   (  REG_BDMAC_DCCSR((n)) & BDMAC_DCCSR_AR )
 #define __bdmac_channel_count_terminated_detected(n) \
   (  REG_BDMAC_DCCSR((n)) & BDMAC_DCCSR_CT )
@@ -208,6 +231,8 @@ do {                                             \
 	} while (0)
 #define __bdmac_channel_clear_transmit_end(n) \
   (  REG_BDMAC_DCCSR(n) &= ~BDMAC_DCCSR_TT )
+#define __bdmac_channel_clear_status_error() \
+  ( REG_BDMAC_DCCSR(1) &= ~BDMAC_DCCSR_NSERR )
 #define __bdmac_channel_clear_address_error(n)				\
 	do {								\
 		REG_BDMAC_DDA(n) = 0; /* clear descriptor address register */ \

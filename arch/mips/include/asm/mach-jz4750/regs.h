@@ -1578,6 +1578,10 @@
 /*************************************************************************
  * MSC
  ************************************************************************/
+#define JZ_MAX_MSC_NUM 2
+
+#define JZ_MSC_ID_INVALID(msc_id) ( ((msc_id) < 0) || ( (msc_id) > JZ_MAX_MSC_NUM ) )
+
 /* n = 0, 1 (MSC0, MSC1) */
 #define	MSC_STRPCL(n)		(MSC_BASE + (n)*0x1000 + 0x000)
 #define	MSC_STAT(n)		(MSC_BASE + (n)*0x1000 + 0x004)
@@ -1602,7 +1606,7 @@
 #define	REG_MSC_CLKRT(n)	REG16(MSC_CLKRT(n))
 #define	REG_MSC_CMDAT(n)	REG32(MSC_CMDAT(n))
 #define	REG_MSC_RESTO(n)	REG16(MSC_RESTO(n))
-#define	REG_MSC_RDTO(n)		REG16(MSC_RDTO(n))
+#define	REG_MSC_RDTO(n)		REG32(MSC_RDTO(n))
 #define	REG_MSC_BLKLEN(n)	REG16(MSC_BLKLEN(n))
 #define	REG_MSC_NOB(n)		REG16(MSC_NOB(n))
 #define	REG_MSC_SNOB(n)		REG16(MSC_SNOB(n))

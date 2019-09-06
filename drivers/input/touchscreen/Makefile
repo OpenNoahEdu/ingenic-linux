@@ -19,6 +19,7 @@ obj-$(CONFIG_TOUCHSCREEN_FUJITSU)	+= fujitsu_ts.o
 obj-$(CONFIG_TOUCHSCREEN_INEXIO)	+= inexio.o
 obj-$(CONFIG_TOUCHSCREEN_JZ)		+= jz_ts.o
 obj-$(CONFIG_TOUCHSCREEN_JZ4760)	+= jz4760_ts.o
+obj-$(CONFIG_TOUCHSCREEN_JZ4760B)	+= jz4760b_ts.o
 obj-$(CONFIG_TOUCHSCREEN_MIGOR)		+= migor_ts.o
 obj-$(CONFIG_TOUCHSCREEN_MTOUCH)	+= mtouch.o
 obj-$(CONFIG_TOUCHSCREEN_MK712)		+= mk712.o

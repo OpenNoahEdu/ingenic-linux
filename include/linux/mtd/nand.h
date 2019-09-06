@@ -37,14 +37,30 @@ extern void nand_release (struct mtd_info *mtd);
 extern void nand_wait_ready(struct mtd_info *mtd);
 
 /* The maximum number of NAND chips in an array */
-#define NAND_MAX_CHIPS		8
+#if defined(CONFIG_MTD_NAND_CS6)
+#define NAND_MAX_CHIPS		6
+#elif defined(CONFIG_MTD_NAND_CS5)
+#define NAND_MAX_CHIPS		5
+#elif defined(CONFIG_MTD_NAND_CS4)
+#define NAND_MAX_CHIPS		4
+#elif defined(CONFIG_MTD_NAND_CS3)
+#define NAND_MAX_CHIPS		3
+#elif defined(CONFIG_MTD_NAND_CS2)
+#define NAND_MAX_CHIPS		2
+#elif defined(CONFIG_MTD_NAND_JZ4760B)
+#define NAND_MAX_CHIPS		1
+#else
+#define NAND_MAX_CHIPS		0
+#endif
+
 
 /* This constant declares the max. oobsize / page, which
  * is supported now. If you add a chip with bigger oobsize/page
  * adjust this accordingly.
  */
-#define NAND_MAX_OOBSIZE	256
+#define NAND_MAX_OOBSIZE	512
 #define NAND_MAX_PAGESIZE	8192
+#define NAND_MAX_ERRSIZE	60
 
 /*
  * Constants for hardware specific CLE/ALE/NCE function
@@ -127,6 +143,11 @@ typedef enum {
 	NAND_ECC_HW,
 	NAND_ECC_HW_SYNDROME,
 } nand_ecc_modes_t;
+
+typedef enum {
+	NAND_DATA_HW_BCH,
+	NAND_OOB_HW_BCH,
+} hw_bch_obj;
 
 /*
  * Constants for Hardware ECC
@@ -458,9 +479,25 @@ struct nand_chip {
 struct nand_flash_dev {
 	char *name;
 	int id;
+	uint32_t extid;
+	int realplanenum;
+	int dienum;
+	int tals;
+	int talh;
+	int trp;
+	int twp;
+	int trhw;
+	int trhr;
 	unsigned long pagesize;
-	u64 chipsize;
 	unsigned long erasesize;
+	uint32_t oobsize;
+	int rowcycle;
+	int maxbadblocks;
+	int maxvalidblocks;
+	int eccblock;
+	int eccbit;
+	int buswidth;
+	int badblockpos;	
 	unsigned long options;
 };
 

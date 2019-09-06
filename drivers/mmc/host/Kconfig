@@ -32,10 +32,17 @@ config JZ_MMC_BUS_4
 
 endchoice
 
+config MMC_JZSOC
+	tristate "Ingenic MMC/SD/SDIO controller support"
+	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B
+	default y
+	help
+	  this selects Ingenic MMC/SD/SDIO controller support, it was automatically selected
+
 
 config JZ_MSC0
 	tristate "JZ SOC Multimedia/SD/SDIO host controller 0 support"
-	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	depends on SOC_JZ4750 || SOC_JZ4760 || SOC_JZ4760B || (SOC_JZ4750D && (!MTD_NAND))
 	help
 	  this selects the Ingenic Multimedia/SD/SDIO host controller 0.
 	  If you have a Ingenic platform with a Multimedia Card slot,
@@ -72,6 +79,7 @@ endchoice
 config JZ_MSC0_SDIO_SUPPORT
 	bool "SDIO support for Multimedia/SD/SDIO controller 0"
 	depends on JZ_MSC0
+	depends on !JZ_SYSTEM_AT_CARD
 	help
 	  SDIO support for MSC0.
 
@@ -79,7 +87,7 @@ config JZ_MSC0_SDIO_SUPPORT
 
 config JZ_MSC1
 	tristate "JZ SOC Multimedia/SD/SDIO host controller 1 support"
-	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	depends on MMC_JZSOC
 	help
 	  this selects the Ingenic Multimedia/SD/SDIO host controller 1.
 	  If you have a Ingenic platform with a Multimedia Card slot,
@@ -123,7 +131,7 @@ config JZ_MSC1_SDIO_SUPPORT
 
 config JZ_MSC2
 	tristate "JZ SOC Multimedia/SD/SDIO host controller 2 support"
-	depends on SOC_JZ4760
+	depends on MMC_JZSOC && (SOC_JZ4760 || SOC_JZ4760B)
 	help
 	  this selects the Ingenic Multimedia/SD/SDIO host controller 2.
 	  If you have a Ingenic platform with a Multimedia Card slot,
@@ -165,15 +173,23 @@ config JZ_MSC2_SDIO_SUPPORT
 
 	  If unsure,say N.
 
-config JZ_BOOT_FROM_MSC0
-	tristate "Boot from Ingenic Multimedia/SD/SDIO Card Interface 0 support"
-	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
-	depends on JZ_MSC0
+config JZ_SYSTEM_AT_CARD
+	bool "System at MMC/SD  support"
+	depends on SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B
+	depends on JZ_MSC0 
 	help
-	  This selects boot from the Multimedia/SD/SDIO Card.
+	  This selects uboot kernel fs at the Multimedia/SD/SDIO Card.
 
 	  If unsure,say N.
 
+config JZ_RECOVERY_SUPPORT
+    tristate "Ingenic Liunx Recovery tool support for card system"
+    depends on SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B
+    depends on JZ_SYSTEM_AT_CARD
+    default n
+    help
+      This selects Ingenic Liunx Recovery tool support.
+      
 config MMC_ARMMMCI
 	tristate "ARM AMBA Multimedia Card Interface support"
 	depends on ARM_AMBA

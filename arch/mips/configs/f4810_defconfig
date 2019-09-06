@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.31.3
-# Sat Jun 19 16:47:21 2010
+# Fri Dec 10 15:32:55 2010
 #
 CONFIG_MIPS=y
 
@@ -22,6 +22,9 @@ CONFIG_MIPS=y
 # CONFIG_JZ4760_F4760 is not set
 # CONFIG_JZ4760_CYGNUS is not set
 # CONFIG_JZ4760_ALTAIR is not set
+# CONFIG_JZ4760_LEPUS is not set
+# CONFIG_JZ4760B_CYGNUS is not set
+# CONFIG_JZ4760B_LEPUS is not set
 CONFIG_JZ4810_F4810=y
 # CONFIG_MACH_ALCHEMY is not set
 # CONFIG_AR7 is not set
@@ -399,7 +402,109 @@ CONFIG_PREVENT_FIRMWARE_BUILD=y
 # CONFIG_FW_LOADER is not set
 # CONFIG_SYS_HYPERVISOR is not set
 # CONFIG_CONNECTOR is not set
-# CONFIG_MTD is not set
+CONFIG_MTD=y
+# CONFIG_MTD_DEBUG is not set
+# CONFIG_MTD_CONCAT is not set
+CONFIG_MTD_PARTITIONS=y
+# CONFIG_MTD_TESTS is not set
+# CONFIG_MTD_REDBOOT_PARTS is not set
+# CONFIG_MTD_CMDLINE_PARTS is not set
+# CONFIG_MTD_AR7_PARTS is not set
+
+#
+# User Modules And Translation Layers
+#
+CONFIG_MTD_CHAR=y
+CONFIG_MTD_BLKDEVS=y
+CONFIG_MTD_BLOCK=y
+# CONFIG_FTL is not set
+# CONFIG_NFTL is not set
+# CONFIG_INFTL is not set
+# CONFIG_RFD_FTL is not set
+# CONFIG_SSFDC is not set
+# CONFIG_MTD_OOPS is not set
+
+#
+# RAM/ROM/Flash chip drivers
+#
+# CONFIG_MTD_CFI is not set
+# CONFIG_MTD_JEDECPROBE is not set
+CONFIG_MTD_MAP_BANK_WIDTH_1=y
+CONFIG_MTD_MAP_BANK_WIDTH_2=y
+CONFIG_MTD_MAP_BANK_WIDTH_4=y
+# CONFIG_MTD_MAP_BANK_WIDTH_8 is not set
+# CONFIG_MTD_MAP_BANK_WIDTH_16 is not set
+# CONFIG_MTD_MAP_BANK_WIDTH_32 is not set
+CONFIG_MTD_CFI_I1=y
+CONFIG_MTD_CFI_I2=y
+# CONFIG_MTD_CFI_I4 is not set
+# CONFIG_MTD_CFI_I8 is not set
+# CONFIG_MTD_RAM is not set
+# CONFIG_MTD_ROM is not set
+# CONFIG_MTD_ABSENT is not set
+
+#
+# Mapping drivers for chip access
+#
+# CONFIG_MTD_COMPLEX_MAPPINGS is not set
+# CONFIG_MTD_PLATRAM is not set
+
+#
+# Self-contained MTD device drivers
+#
+# CONFIG_MTD_SLRAM is not set
+# CONFIG_MTD_PHRAM is not set
+# CONFIG_MTD_MTDRAM is not set
+# CONFIG_MTD_BLOCK2MTD is not set
+
+#
+# Disk-On-Chip Device Drivers
+#
+# CONFIG_MTD_DOC2000 is not set
+# CONFIG_MTD_DOC2001 is not set
+# CONFIG_MTD_DOC2001PLUS is not set
+CONFIG_MTD_NAND=y
+CONFIG_MTD_NAND_JZ4810=y
+# CONFIG_MTD_NAND_CS2 is not set
+# CONFIG_MTD_NAND_CS3 is not set
+# CONFIG_MTD_NAND_CS4 is not set
+# CONFIG_MTD_NAND_MULTI_PLANE is not set
+CONFIG_MTD_NAND_BUS_WIDTH_8=y
+# CONFIG_MTD_NAND_BUS_WIDTH_16 is not set
+# CONFIG_MTD_HW_HM_ECC is not set
+# CONFIG_MTD_SW_HM_ECC is not set
+# CONFIG_MTD_HW_RS_ECC is not set
+CONFIG_MTD_HW_BCH_ECC=y
+# CONFIG_MTD_HW_BCH_4BIT is not set
+CONFIG_MTD_HW_BCH_8BIT=y
+# CONFIG_MTD_HW_BCH_12BIT is not set
+# CONFIG_MTD_HW_BCH_16BIT is not set
+# CONFIG_MTD_HW_BCH_20BIT is not set
+# CONFIG_MTD_HW_BCH_24BIT is not set
+CONFIG_MTD_NAND_DMA=y
+# CONFIG_MTD_NAND_DMABUF is not set
+# CONFIG_ALLOCATE_MTDBLOCK_JZ_EARLY is not set
+# CONFIG_MTD_MTDBLOCK_WRITE_VERIFY_ENABLE is not set
+CONFIG_MTD_OOB_COPIES=3
+CONFIG_MTD_BADBLOCK_FLAG_PAGE=0
+# CONFIG_MTD_NAND_VERIFY_WRITE is not set
+# CONFIG_MTD_NAND_ECC_SMC is not set
+# CONFIG_MTD_NAND_MUSEUM_IDS is not set
+CONFIG_MTD_NAND_IDS=y
+# CONFIG_MTD_NAND_DISKONCHIP is not set
+# CONFIG_MTD_NAND_NANDSIM is not set
+# CONFIG_MTD_NAND_PLATFORM is not set
+# CONFIG_MTD_ONENAND is not set
+
+#
+# LPDDR flash memory drivers
+#
+# CONFIG_MTD_LPDDR is not set
+
+#
+# UBI - Unsorted block images
+#
+# CONFIG_MTD_UBI is not set
 # CONFIG_PARPORT is not set
 CONFIG_BLK_DEV=y
 # CONFIG_BLK_DEV_COW_COMMON is not set
@@ -485,7 +590,6 @@ CONFIG_PHYLIB=y
 CONFIG_NET_ETHERNET=y
 CONFIG_MII=y
 # CONFIG_JZ_ETH is not set
-# CONFIG_JZCS8900 is not set
 CONFIG_JZ4760_ETH=y
 # CONFIG_AX88796 is not set
 # CONFIG_SMC91X is not set
@@ -585,7 +689,6 @@ CONFIG_LEGACY_PTY_COUNT=2
 # CONFIG_IPMI_HANDLER is not set
 # CONFIG_HW_RANDOM is not set
 # CONFIG_RTC_PCF8563 is not set
-# CONFIG_RTC_JZ is not set
 # CONFIG_R3964 is not set
 # CONFIG_RAW_DRIVER is not set
 # CONFIG_TCG_TPM is not set
@@ -808,6 +911,16 @@ CONFIG_NLS_UTF8=y
 #
 # Yaffs2 Filesystems
 #
+CONFIG_YAFFS_FS=y
+CONFIG_YAFFS_YAFFS1=y
+# CONFIG_YAFFS_DOES_ECC is not set
+CONFIG_YAFFS_YAFFS2=y
+CONFIG_YAFFS_AUTO_YAFFS2=y
+# CONFIG_YAFFS_DISABLE_LAZY_LOAD is not set
+# CONFIG_YAFFS_DISABLE_WIDE_TNODES is not set
+CONFIG_YAFFS_DISABLE_CHUNK_ERASED_CHECK=y
+CONFIG_YAFFS_SHORT_NAMES_IN_RAM=y
+CONFIG_YAFFS_CHECKPOINT_RESERVED_BLOCKS=10
 
 #
 # Kernel hacking

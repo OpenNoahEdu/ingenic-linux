@@ -29,6 +29,7 @@
 #include <linux/init.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
+#include <linux/timer.h>
 #include <linux/proc_fs.h>
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
@@ -66,6 +67,7 @@ static unsigned int use_dma = 1;   /* 1: use DMA, 0: use PIO */
 module_param(use_dma, int, 0);
 MODULE_PARM_DESC(use_dma, "DMA mode enable flag");
 
+
 /*
  *  Local definintions.
  */
@@ -90,6 +92,22 @@ static char *state_names[] = {
 	"DATA_STATE_RECV"
 };
 #endif
+
+//#define TEST_ON_WIN7
+#ifdef TEST_ON_WIN7
+/* used for WIN7 OR VISTA TEST */
+static unsigned int out_flag = 0;
+struct timer_list irq_timer;
+static void irq_timer_func(unsigned long data)
+{
+
+	if (out_flag) {
+		out_flag = 0;
+		printk(" PC removed???.\n");
+	}
+}
+#endif
+
 
 /*
  * Local declarations.
@@ -140,6 +158,7 @@ static struct usb_ep_ops jz4740_ep_ops = {
 	.fifo_status	= jz4740_fifo_status,
 	.fifo_flush	= jz4740_fifo_flush,
 };
+
 
 /*-------------------------------------------------------------------------*/
 
@@ -248,6 +267,7 @@ static __inline__ int read_packet(struct jz4740_ep *ep,
 	u8 *buf;
 	int length, nlong, nbyte;
 	volatile u32 *fifo = (volatile u32 *)ep->fifo;
+	char *tmp = req->req.buf;
 
 	buf = req->req.buf + req->req.actual;
 	prefetchw(buf);
@@ -268,6 +288,10 @@ static __inline__ int read_packet(struct jz4740_ep *ep,
 		*buf++ = *((volatile u8 *)fifo);
 	}
 
+#ifdef  TEST_ON_WIN7
+	if (tmp[15] == 0x35)
+		out_flag = 1;
+#endif
 	return length;
 }
 
@@ -387,6 +411,8 @@ static void udc_enable(struct jz4740_udc *dev)
 	 * transistor on and pull the USBDP pin HIGH.
 	 */
 	usb_setb(USB_REG_POWER, USB_POWER_SOFTCONN);
+
+	
 }
 
 /*-------------------------------------------------------------------------*/
@@ -2075,6 +2101,10 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 	/* Check for Bulk-OUT DMA interrupt */
 	if (intr_dma & 0x2) {
 		int ep_num;
+#ifdef TEST_ON_WIN7
+		if (out_flag)
+			out_flag = 0;
+#endif
 		ep_num = (usb_readl(USB_REG_CNTL2) >> 4) & 0xf;
 		jz4740_out_epn(dev, ep_num, intr_out);
 	}
@@ -2110,6 +2140,11 @@ static irqreturn_t jz4740_udc_irq(int irq, void *_dev)
 #endif
 
 	spin_unlock(&dev->lock);
+
+#ifdef	TEST_ON_WIN7
+	if (out_flag == 1)
+		mod_timer(&irq_timer, 400+jiffies);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -2228,6 +2263,10 @@ static int jz4740_udc_probe(struct platform_device *pdev)
 
 	DEBUG("%s\n", __FUNCTION__);
 
+#ifdef 	TEST_ON_WIN7
+	setup_timer(&irq_timer, irq_timer_func, 0);
+#endif
+
 	spin_lock_init(&dev->lock);
 	the_controller = dev;
 
@@ -2316,6 +2355,9 @@ static void __exit udc_exit (void)
 {
 	platform_driver_unregister(&udc_driver);
 	platform_device_unregister(&the_udc_pdev);
+#ifdef TEST_ON_WIN7
+	del_timer(&irq_timer);
+#endif
 }
 
 module_init(udc_init);

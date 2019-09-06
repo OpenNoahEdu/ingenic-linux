@@ -113,10 +113,14 @@ static uint32_t YCALCBLOCKS(uint64_t partition_size, uint32_t block_size)
 #include "yportenv.h"
 #include "yaffs_guts.h"
 
-unsigned yaffs_traceMask = YAFFS_TRACE_ALWAYS | 
-			   YAFFS_TRACE_BAD_BLOCKS/* | 
-			    YAFFS_TRACE_CHECKPOINT*/
-			   /* | 0xFFFFFFFF */; 
+#if 1
+	unsigned yaffs_traceMask = 0x0; 
+#else
+	unsigned yaffs_traceMask = YAFFS_TRACE_ALWAYS | 
+				   YAFFS_TRACE_BAD_BLOCKS | 
+			    	   YAFFS_TRACE_CHECKPOINT |
+				   0xFFFFFFFF ; 
+#endif
 
 #include <linux/mtd/mtd.h>
 #include "yaffs_mtdif.h"
@@ -1655,6 +1659,25 @@ static int yaffs_do_sync_fs(struct super_block *sb)
 }
 **/
 
+static int yaffs_do_sync_fs(struct super_block *sb)
+{
+	yaffs_Device *dev = yaffs_SuperToDevice(sb);
+	struct mtd_info *mtd = yaffs_SuperToDevice(sb)->genericDevice;
+	
+	yaffs_GrossLock(dev);
+     	 
+	yaffs_FlushEntireDeviceCache(dev);
+    	
+	yaffs_CheckpointSave(dev);
+ 
+	if (mtd->sync)
+		mtd->sync(mtd);
+
+	yaffs_GrossUnlock(dev);
+
+	return 0;
+}
+
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 static void yaffs_write_super(struct super_block *sb)
 #else
@@ -1678,6 +1701,8 @@ static int yaffs_sync_fs(struct super_block *sb)
 
 	T(YAFFS_TRACE_OS, (KERN_DEBUG "yaffs_sync_fs\n"));
 	
+	yaffs_do_sync_fs(sb);
+		
 	return 0; /* yaffs_do_sync_fs(sb);*/
 	
 }
@@ -1902,6 +1927,8 @@ static struct super_block *yaffs_internal_read_super(int yaffsVersion,
 	T(YAFFS_TRACE_OS, (" oobblock %d\n", mtd->oobblock));
 #endif
 	T(YAFFS_TRACE_OS, (" oobsize %d\n", mtd->oobsize));
+	T(YAFFS_TRACE_OS, (" validsize %d\n", mtd->validsize));
+	T(YAFFS_TRACE_OS, (" freesize %d\n", mtd->freesize));
 	T(YAFFS_TRACE_OS, (" erasesize %d\n", mtd->erasesize));
 	T(YAFFS_TRACE_OS, (" size %lld\n", mtd->size));
 	
@@ -2030,7 +2057,11 @@ static struct super_block *yaffs_internal_read_super(int yaffsVersion,
 		dev->spareBuffer = YMALLOC(mtd->oobsize);
 		dev->isYaffs2 = 1;
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
+#if !defined(CONFIG_SOC_JZ4760B)
 		dev->nDataBytesPerChunk = mtd->writesize;
+#else
+		dev->nDataBytesPerChunk = mtd->validsize;
+#endif
 		dev->nChunksPerBlock = mtd->erasesize / mtd->writesize;
 #else
 		dev->nDataBytesPerChunk = mtd->oobblock;

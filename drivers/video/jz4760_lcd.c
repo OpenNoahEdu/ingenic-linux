@@ -291,10 +291,179 @@ struct jz4760lcd_info jz4760_lcd_panel = {
 		 .fg0 = {32, 0, 0, 640, 480}, /* bpp, x, y, w, h */
 		 .fg1 = {32, 0, 0, 640, 480}, /* bpp, x, y, w, h */
 	 },
+
 #else
 #error "Select LCD panel first!!!"
 #endif
 };
+
+#if defined(CONFIG_JZ4760_HDMI_DISPLAY)  
+#define   AIC_FR_TFTH_BIT         16
+#define   AIC_FR_RFTH_BIT         24
+
+#define PANEL_MODE_HDMI_480P    3
+#define PANEL_MODE_HDMI_576P    4
+#define PANEL_MODE_HDMI_720P50  5
+#define PANEL_MODE_HDMI_720P60  6
+
+struct jz4760lcd_info jz4760_info_hdmi_480p = {                            
+        .panel = {                                                     
+                .cfg = LCD_CFG_MODE_GENERIC_TFT | LCD_CFG_MODE_TFT_24BIT |
+                       LCD_CFG_NEWDES | LCD_CFG_RECOVER |                 
+                       LCD_CFG_PCP | LCD_CFG_HSP | LCD_CFG_VSP,           
+                .slcd_cfg = 0,                                            
+		.ctrl = LCD_CTRL_BST_32,                                  
+		//  width,height,freq,hsync,vsync,elw,blw,efw,bfw         
+		640,480, 60, 96, 2,48,16,  33,10,       //HDMI-480P       
+		//800,600,58,128,4,88,40,23,1,i
+		//1024,768,60,136,6,160,24,29,3,
+	},                                      
+        .osd = {                                
+                .osd_cfg =  LCD_OSDC_OSDEN      |               // Use OSD mode
+                 LCD_OSDC_ALPHAEN                       |               // enable alpha
+                 LCD_OSDC_F0EN                          ,               // enable Foreground0    
+                // LCD_OSDC_F1EN,                                         // enable Foreground1    
+		
+                 .osd_ctrl = 0,                                         // disable ipu,          
+                 .rgb_ctrl = 0,                                                                  
+                 .bgcolor = 0x000000,                           // set background color Black    
+                 .colorkey0 = 0,                                        // disable colorkey
+                 .colorkey1 = 0,                                        // disable colorkey
+                 .alpha = 0xa0,                                         // alpha value
+                 .ipu_restart = 0x8000085d,                     // ipu restart
+                 .fg_change = FG_CHANGE_ALL,            // change all initially
+		 .fg0 = {32, 0, 0, 640, 480},   // bpp, x, y, w, h
+                 .fg1 = {32, 0, 0, 640, 480},       // bpp, x, y, w, h
+        },
+};
+struct jz4760lcd_info jz4760_info_hdmi_576p = {                            
+        .panel = {                                                     
+                .cfg = LCD_CFG_MODE_GENERIC_TFT | LCD_CFG_MODE_TFT_24BIT |
+                       LCD_CFG_NEWDES | LCD_CFG_RECOVER |                 
+                       LCD_CFG_PCP | LCD_CFG_HSP | LCD_CFG_VSP,           
+                .slcd_cfg = 0,                                            
+		.ctrl = LCD_CTRL_BST_32,                                  
+		//  width,height,freq,hsync,vsync,elw,blw,efw,bfw         
+		720,576,50,64,5,68,12,40,4,                               
+		//800,600,58,128,4,88,40,23,1,i
+		//1024,768,60,136,6,160,24,29,3,
+	},                                      
+        .osd = {                                
+                .osd_cfg =  LCD_OSDC_OSDEN      |               // Use OSD mode
+                 LCD_OSDC_ALPHAEN                       |               // enable alpha
+                 LCD_OSDC_F0EN                          ,               // enable Foreground0    
+                // LCD_OSDC_F1EN,                                         // enable Foreground1    
+		
+                 .osd_ctrl = 0,                                         // disable ipu,          
+                 .rgb_ctrl = 0,                                                                  
+                 .bgcolor = 0x000000,                           // set background color Black    
+                 .colorkey0 = 0,                                        // disable colorkey
+                 .colorkey1 = 0,                                        // disable colorkey
+                 .alpha = 0xa0,                                         // alpha value
+                 .ipu_restart = 0x8000085d,                     // ipu restart
+                 .fg_change = FG_CHANGE_ALL,            // change all initially
+				 .fg0 = {32, 0, 0, 720, 576},   // bpp, x, y, w, h
+                 .fg1 = {32, 0, 0, 720, 576},       // bpp, x, y, w, h
+        },
+};
+struct jz4760lcd_info jz4760_info_hdmi_720p50 = {                            
+        .panel = {                                                     
+                .cfg = LCD_CFG_MODE_GENERIC_TFT | LCD_CFG_MODE_TFT_24BIT |
+                       LCD_CFG_NEWDES | LCD_CFG_RECOVER |                 
+                       LCD_CFG_PCP | LCD_CFG_HSP | LCD_CFG_VSP,           
+                .slcd_cfg = 0,                                            
+		.ctrl = LCD_CTRL_BST_32,                                  
+		//  width,height,freq,hsync,vsync,elw,blw,efw,bfw         
+                1280,720,50,40,5,440,220,20,5,
+	//	1280, 720, 50, 152, 15, 22, 200, 14, 1
+	//	1280,720,46,1,1,121,259,6,19,                       
+		//800,600,58,128,4,88,40,23,1,i
+		//1024,768,60,136,6,160,24,29,3,
+	},                                      
+        .osd = {                                
+                .osd_cfg =  LCD_OSDC_OSDEN      |               // Use OSD mode
+                 LCD_OSDC_ALPHAEN                       |               // enable alpha
+                 LCD_OSDC_F0EN                          ,               // enable Foreground0    
+                // LCD_OSDC_F1EN,                                         // enable Foreground1    
+		
+                 .osd_ctrl = 0,                                         // disable ipu,          
+                 .rgb_ctrl = 0,                                                                  
+                 .bgcolor = 0x000000,                           // set background color Black    
+                 .colorkey0 = 0,                                        // disable colorkey
+                 .colorkey1 = 0,                                        // disable colorkey
+		.alpha = 0xa0,                                         // alpha value
+		.ipu_restart = 0x8000085d,                     // ipu restart
+		.fg_change = FG_CHANGE_ALL,            // change all initially
+		.fg0 = {32, 0, 0, 1280, 720},   // bpp, x, y, w, h
+                 .fg1 = {32, 0, 0, 1280, 720},       // bpp, x, y, w, h
+        },
+};
+struct jz4760lcd_info jz4760_info_hdmi_720p60 = {                            
+        .panel = {                                                     
+                .cfg = LCD_CFG_MODE_GENERIC_TFT | LCD_CFG_MODE_TFT_24BIT |
+                       LCD_CFG_NEWDES | LCD_CFG_RECOVER |                 
+                       LCD_CFG_PCP | LCD_CFG_HSP | LCD_CFG_VSP,           
+                .slcd_cfg = 0,                                            
+		.ctrl = LCD_CTRL_BST_32,                                  
+		//  width,height,freq,hsync,vsync,elw,blw,efw,bfw         
+		1280,720,60,40,5,110,220,20,5,//74250000                  
+		//800,600,58,128,4,88,40,23,1,i
+		//1024,768,60,136,6,160,24,29,3,
+	},                                      
+        .osd = {                                
+                .osd_cfg =  LCD_OSDC_OSDEN      |               // Use OSD mode
+                 LCD_OSDC_ALPHAEN                       |               // enable alpha
+                 LCD_OSDC_F0EN                          ,               // enable Foreground0    
+                // LCD_OSDC_F1EN,                                         // enable Foreground1    
+		
+                 .osd_ctrl = 0,                                         // disable ipu,          
+                 .rgb_ctrl = 0,                                                                  
+                 .bgcolor = 0x000000,                           // set background color Black    
+                 .colorkey0 = 0,                                        // disable colorkey
+                 .colorkey1 = 0,                                        // disable colorkey
+                 .alpha = 0xa0,                                         // alpha value
+                 .ipu_restart = 0x8000085d,                     // ipu restart
+                 .fg_change = FG_CHANGE_ALL,            // change all initially
+		 .fg0 = {32, 0, 0, 1280, 720},   // bpp, x, y, w, h
+                 .fg1 = {32, 0, 0, 1280, 720},       // bpp, x, y, w, h
+        },
+};
+
+static void set_i2s_external_codec(void)
+{
+#if	defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760B_CYGNUS)
+	/* gpio defined based on CYGNUS board */
+        __gpio_as_func1(3*32 + 12); //blck
+        __gpio_as_func0(3*32 + 13); //sync
+        __gpio_as_func0(4*32 + 7);  //sd0
+        __gpio_as_func0(4*32 + 11); //sd1
+        __gpio_as_func0(4*32 + 12); //sd2
+        __gpio_as_func0(4*32 + 13); //sd3
+#endif
+
+
+        __i2s_external_codec();
+
+        __aic_select_i2s();
+        __i2s_select_i2s();
+        __i2s_as_master();
+
+        REG_AIC_I2SCR |= AIC_I2SCR_ESCLK;
+
+        __i2s_disable_record();
+        __i2s_disable_replay();
+        __i2s_disable_loopback();
+
+        REG_AIC_FR &= ~AIC_FR_TFTH_MASK;
+        REG_AIC_FR |= ((8) << AIC_FR_TFTH_BIT);
+        REG_AIC_FR &= ~AIC_FR_RFTH_MASK;
+        REG_AIC_FR |= ((8) << AIC_FR_RFTH_BIT);
+
+        __i2s_enable();
+
+}
+#endif
+
 
 struct jz4760lcd_info jz4760_info_tve = {
 	.panel = {
@@ -467,8 +636,8 @@ static void ctrl_disable(void)
 		__lcd_clr_ena(); /* Smart lcd and TVE mode only support quick disable */
 	else {
 		int cnt;
-		/* when CPU main freq is 336MHz,wait for 16ms */
-		cnt = 336000 * 16;
+		/* when CPU main freq is 336MHz,wait for 30ms */
+		cnt = 528000 * 30;
 		__lcd_set_dis(); /* regular disable */
 		//__lcd_clr_ena();
 		while(!__lcd_disable_done() && cnt) {
@@ -597,10 +766,10 @@ static void jz4760lcd_info_switch_to_TVE(int mode)
 		info->panel.fclk = TVE_FREQ_PAL;
 		w = ( osd_lcd->fg0.w < TVE_WIDTH_PAL )? osd_lcd->fg0.w:TVE_WIDTH_PAL;
 		h = ( osd_lcd->fg0.h < TVE_HEIGHT_PAL )?osd_lcd->fg0.h:TVE_HEIGHT_PAL;
-//		x = ((TVE_WIDTH_PAL - w) >> 2) << 1;
-//		y = ((TVE_HEIGHT_PAL - h) >> 2) << 1;
-		x = 0;
-		y = 0;
+		x = ((TVE_WIDTH_PAL - w) >> 2) << 1;
+		y = ((TVE_HEIGHT_PAL - h) >> 2) << 1;
+//		x = 0;
+//		y = 0;
 
 		info->osd.fg0.bpp = osd_lcd->fg0.bpp;
 		info->osd.fg0.x = x;
@@ -609,10 +778,10 @@ static void jz4760lcd_info_switch_to_TVE(int mode)
 		info->osd.fg0.h = h;
 		w = ( osd_lcd->fg1.w < TVE_WIDTH_PAL )? osd_lcd->fg1.w:TVE_WIDTH_PAL;
 		h = ( osd_lcd->fg1.h < TVE_HEIGHT_PAL )?osd_lcd->fg1.h:TVE_HEIGHT_PAL;
-//		x = ((TVE_WIDTH_PAL-w) >> 2) << 1;
-//		y = ((TVE_HEIGHT_PAL-h) >> 2) << 1;
-		x = 0;
-		y = 0;
+		x = ((TVE_WIDTH_PAL-w) >> 2) << 1;
+		y = ((TVE_HEIGHT_PAL-h) >> 2) << 1;
+//		x = 0;
+//		y = 0;
 
 		info->osd.fg1.bpp = 32;	/* use RGB888 in TVE mode*/
 		info->osd.fg1.x = x;
@@ -709,33 +878,87 @@ static int jz4760fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long 
 
 		break;
 
-#ifdef CONFIG_FB_JZ4760_TVE
 	case FBIO_MODE_SWITCH:
 		D("FBIO_MODE_SWITCH");
 		switch (arg) {
+#ifdef CONFIG_FB_JZ4760_TVE
 			case PANEL_MODE_TVE_PAL: 	/* switch to TVE_PAL mode */
 			case PANEL_MODE_TVE_NTSC: 	/* switch to TVE_NTSC mode */
 				jz4760lcd_info_switch_to_TVE(arg);
 				jz4760tve_init(arg); /* tve controller init */
 				udelay(100);
+				cpm_start_clock(CGM_TVE);
 				jz4760tve_enable_tve();
 				/* turn off lcd backlight */
 				screen_off();
 				break;
+#endif
+#if defined(CONFIG_JZ4760_HDMI_DISPLAY)  
+ 			case PANEL_MODE_HDMI_480P:
+   				set_i2s_external_codec();
+				/* turn off TVE, turn off DACn... */
+				//jz4760tve_disable_tve();
+				jz4760_lcd_info =&jz4760_info_hdmi_480p ;
+				/* turn on lcd backlight */
+				screen_off();
+				break;
+
+			case PANEL_MODE_HDMI_576P:
+   				set_i2s_external_codec();
+				/* turn off TVE, turn off DACn... */
+				//jz4760tve_disable_tve();
+				jz4760_lcd_info =&jz4760_info_hdmi_576p ;
+				/* turn on lcd backlight */
+				screen_off();
+				break;
+
+			case PANEL_MODE_HDMI_720P50:
+#if defined(CONFIG_SOC_JZ4760B)
+				REG_LCD_PCFG = 0xc0000888;
+                                REG_GPIO_PXSLC(2) = 0;
+                                REG_GPIO_PXDS1S(2) |= 1 << 8;
+                                REG_GPIO_PXDS0S(2) = 0x0fffffff;
+
+#endif
+				set_i2s_external_codec();
+				/* turn off TVE, turn off DACn... */
+				//jz4760tve_disable_tve();
+				jz4760_lcd_info =&jz4760_info_hdmi_720p50 ;
+				/* turn on lcd backlight */
+				screen_off();
+				break;
+
+			case PANEL_MODE_HDMI_720P60:
+#if defined(CONFIG_SOC_JZ4760B)
+				REG_LCD_PCFG = 0xc0000888;
+                                REG_GPIO_PXSLC(2) = 0;
+                                REG_GPIO_PXDS1S(2) |= 1 << 8;
+                                REG_GPIO_PXDS0S(2) = 0x0fffffff;
+#endif
+   				set_i2s_external_codec();
+				/* turn off TVE, turn off DACn... */
+				//jz4760tve_disable_tve();
+				jz4760_lcd_info =&jz4760_info_hdmi_720p60 ;
+				/* turn on lcd backlight */
+				screen_off();
+				break;
+#endif	//CONFIG_JZ4760_HDMI_DISPLAY
 			case PANEL_MODE_LCD_PANEL: 	/* switch to LCD mode */
 			default :
 				/* turn off TVE, turn off DACn... */
+#ifdef CONFIG_FB_JZ4760_TVE
 				jz4760tve_disable_tve();
+				cpm_stop_clock(CGM_TVE);
+#endif
 				jz4760_lcd_info = &jz4760_lcd_panel;
 				/* turn on lcd backlight */
 				screen_on();
 				break;
 		}
-
 		jz4760fb_deep_set_mode(jz4760_lcd_info);
-
 		break;
 
+#ifdef CONFIG_FB_JZ4760_TVE
 	case FBIO_GET_TVE_MODE:
 		D("fbio get TVE mode\n");
 		if (copy_to_user(argp, jz4760_tve_info, sizeof(struct jz4760tve_info)))
@@ -1169,9 +1392,12 @@ static int jz4760fb_map_smem(struct lcd_cfb_info *cfb)
 	needroom += ((w * bpp + 7) >> 3) * h;
 #endif // two layer
 
-	for (page_shift = 0; page_shift < 12; page_shift++)
+	for (page_shift = 0; page_shift < 13; page_shift++)
 		if ((PAGE_SIZE << page_shift) >= needroom)
 			break;
+#if defined(CONFIG_JZ4760_HDMI_DISPLAY)
+	page_shift = 11;
+#endif
 	lcd_palette = (unsigned char *)__get_free_pages(GFP_KERNEL, 0);
 	lcd_frame0 = (unsigned char *)__get_free_pages(GFP_KERNEL, page_shift);
 
@@ -1738,14 +1964,17 @@ static void jz4760fb_change_clock( struct jz4760lcd_info * lcd_info )
 		pclk = val * (lcd_info->panel.w*3 + lcd_info->panel.hsw + lcd_info->panel.elw + lcd_info->panel.blw) * (lcd_info->panel.h + lcd_info->panel.vsw + lcd_info->panel.efw + lcd_info->panel.bfw); /* Pixclk */
 	}
 
+#ifdef CONFIG_FB_JZ4760_TVE
 	/********* In TVE mode PCLK = 27MHz ***********/
 	if ( lcd_info->panel.cfg & LCD_CFG_TVEN ) { 		/* LCDC output to TVE */
+//	   	__cpm_stop_tve();
+		OUTREG32(CPM_CPPCR0,((90<< CPPCR0_PLLM_LSB)|(2<<CPPCR0_PLLN_LSB)|(1<<CPPCR0_PLLOD_LSB)|(0x20<<CPPCR0_PLLST_LSB)|CPPCR0_PLLEN));	
 		REG_CPM_LPCDR  |= LPCDR_LTCS;
 		pclk = 27000000;
 		val = __cpm_get_pllout2() / pclk; /* pclk */
 		val--;
 		__cpm_set_pixdiv(val);
-
+//		__cpm_start_tve();
 
 		D("REG_CPM_LPCDR = 0x%08x\n", REG_CPM_LPCDR);
 #if 0
@@ -1764,7 +1993,9 @@ static void jz4760fb_change_clock( struct jz4760lcd_info * lcd_info )
 
 		REG_CPM_CPCCR |= CPCCR_CE ; /* update divide */
 	}
-	else { 		/* LCDC output to  LCD panel */
+	else 
+#endif
+	{ 		/* LCDC output to  LCD panel */
 		val = __cpm_get_pllout2() / pclk; /* pclk */
 		val--;
 		D("ratio: val = %d\n", val);
@@ -1786,6 +2017,7 @@ static void jz4760fb_change_clock( struct jz4760lcd_info * lcd_info )
 		__cpm_set_ldiv( val );
 #endif
 #endif
+		__cpm_select_pixclk_lcd();
 		REG_CPM_CPCCR |= CPCCR_CE ; /* update divide */
 
 	}
@@ -1893,7 +2125,8 @@ static int jz4760_fb_suspend(struct platform_device *pdev, pm_message_t state)
 	printk("%s(): called.\n", __func__);
 
 	screen_off();
-	ctrl_disable();
+	//ctrl_disable();
+	__lcd_clr_ena();
 
 	__cpm_stop_lcd();
 
@@ -1910,13 +2143,8 @@ static int jz4760_fb_resume(struct platform_device *pdev)
 	printk("%s(): called.\n", __func__);
 
 	__cpm_start_lcd();
-
-	__gpio_set_pin(GPIO_DISP_OFF_N);
-	__lcd_special_on();
+	screen_on();
 	__lcd_set_ena();
-	mdelay(200);
-
-	__lcd_set_backlight_level(cfb->backlight_level);
 
 	return 0;
 }

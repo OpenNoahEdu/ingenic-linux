@@ -45,7 +45,7 @@
 #define TS_SCAN_INTERVAL	0
 
 /* from qwerty.kl of android */
-#define  DPAD_CENTER            232
+#define  DPAD_CENTER            28
 #define  DPAD_DOWN              108
 #define  DPAD_UP                103
 #define  DPAD_LEFT              105
@@ -390,7 +390,6 @@ static irqreturn_t key_interrupt(int irq, void * dev_id)
 {
 	struct jz_ts_t *ts = dev_id;
 
-	dprintk("key_interrup entered.\n");
 
 	__gpio_as_input(GPIO_ADKEY_INT);
 

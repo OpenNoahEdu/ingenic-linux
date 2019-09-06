@@ -80,7 +80,7 @@
 #define LCD_INT			(32 * 0 + 16) /* GPA16 interrupt pin */
 #define LCD_INT_IRQ		(IRQ_GPIO_0 + LCD_INT)
 
-/* 
+/*
  * E-Compass and G-Sensor
  */
 #define COMPASS_RSTN	(32*3+5)	/* GPD5 */
@@ -105,7 +105,7 @@
 #define MSC1_HOTPLUG_PIN	GPIO_SD1_CD_N
 #define MSC1_HOTPLUG_IRQ	(IRQ_GPIO_0 + GPIO_SD1_CD_N)
 
-/*====================================================================== 
+/*======================================================================
  * Modem
  */
 #if defined(CONFIG_GSM_IW368)
@@ -212,5 +212,7 @@ do {								\
  */
 #define ACTIVE_LOW_MSC0_CD	1 /* work when GPIO_SD1_CD_N is low */
 #define ACTIVE_LOW_MSC1_CD	0 /* work when GPIO_SD1_CD_N is low */
+
+#define JZ_EARLY_UART_BASE UART1_BASE
 
 #endif /* __ASM_JZ4760_ALTAIR_H__ */

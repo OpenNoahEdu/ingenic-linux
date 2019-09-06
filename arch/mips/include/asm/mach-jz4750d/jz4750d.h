@@ -19,6 +19,7 @@
 #include <asm/mach-jz4750d/ops.h>
 #include <asm/mach-jz4750d/dma.h>
 #include <asm/mach-jz4750d/misc.h>
+#include <asm/mach-jz4750d/platform.h>
 
 /*------------------------------------------------------------------
  * Platform definitions

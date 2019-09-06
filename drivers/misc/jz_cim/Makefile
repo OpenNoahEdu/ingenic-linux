@@ -10,6 +10,9 @@ obj-$(CONFIG_JZ4750_AQUILA)	+= jz_cim_board_aquila.o
 obj-$(CONFIG_JZ4760_ALTAIR)	+= jz_cim_board_altair.o
 obj-$(CONFIG_JZ4760_PT701)	+= jz_cim_board_pt701.o
 obj-$(CONFIG_JZ4760_LEPUS)	+= jz_cim_board_lepus.o
+obj-$(CONFIG_JZ4760B_LEPUS)	+= jz_cim_board_lepus.o
+obj-$(CONFIG_JZ4760_F4760)	+= jz_cim_board_f4760.o
+obj-$(CONFIG_JZ4810_F4810)	+= jz_cim_board_f4810.o
 
 obj-$(CONFIG_OV7690)		+= camera_source/ov7690/
 obj-$(CONFIG_OV3640)		+= camera_source/ov3640/

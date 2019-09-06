@@ -214,7 +214,11 @@ void init_set(struct i2c_client *client)
 	sensor_write_reg16(client,0x304c,0x85);
 	sensor_write_reg16(client,0x300e,0x39);
 	sensor_write_reg16(client,0x300f,0xa1);//12.5fps -> 25fps
-	sensor_write_reg16(client,0x3011,0x00);
+#ifdef CONFIG_JZ4810_F4810
+	sensor_write_reg16(client,0x3011,0x5); /* default 0x00, change ov3640 PCLK DIV here --- by Lutts*/
+#else
+	sensor_write_reg16(client,0x3011,0x0); /* default 0x00, change ov3640 PCLK DIV here --- by Lutts*/
+#endif
 	sensor_write_reg16(client,0x3010,0x81);
 	sensor_write_reg16(client,0x302e,0xA0);
 	sensor_write_reg16(client,0x302d,0x00);
@@ -259,13 +263,18 @@ void capture_reg_set(struct i2c_client *client)
 	sensor_write_reg16(client,0x3010,0x20);
 	sensor_write_reg16(client,0x304c,0x81);
 	sensor_write_reg16(client,0x3366,0x10);
-	sensor_write_reg16(client,0x3011,0x00);
-
+#ifdef CONFIG_JZ4810_F4810
+	sensor_write_reg16(client,0x3011,0x5); /* default 0x00, change ov3640 PCLK DIV here --- by lutts */
+#else
+	sensor_write_reg16(client,0x3011,0x0); /* default 0x00, change ov3640 PCLK DIV here --- by lutts */
+#endif
 	sensor_write_reg16(client,0x3f00,0x02);//disable overlay
 }
 
-void preview_set(struct i2c_client *client)                   
-{                               
+void preview_set(struct i2c_client *client)
+{
+	unsigned char value;
+
 	if(mode == CAMERA_MODE_PREVIEW) // 0 for preview
 		return;
 
@@ -304,7 +313,11 @@ void preview_set(struct i2c_client *client)
 	sensor_write_reg16(client,0x300e,0x39);
 	sensor_write_reg16(client,0x300f,0xa1);//12.5fps -> 25fps
 	sensor_write_reg16(client,0x3010,0x81);
-	sensor_write_reg16(client,0x3011,0x00);
+#ifdef CONFIG_JZ4810_F4810
+	sensor_write_reg16(client,0x3011,0x5); /* default: 0x00, change ov3640 PCLK here --- by Lutts */
+#else
+	sensor_write_reg16(client,0x3011,0x0); /* default: 0x00, change ov3640 PCLK here --- by Lutts */
+#endif
 	sensor_write_reg16(client,0x302e,0xa0);
 	sensor_write_reg16(client,0x302d,0x00);
 	sensor_write_reg16(client,0x3071,0x82);
@@ -313,18 +326,64 @@ void preview_set(struct i2c_client *client)
 	sensor_write_reg16(client,0x3100,0x02);
 	sensor_write_reg16(client,0x3301,0xde);
 	sensor_write_reg16(client,0x3304,0xfc);
-	sensor_write_reg16(client,0x3400,0x00);
-	sensor_write_reg16(client,0x3404,0x00);
+
+	/* reg 0x3404 */
+#define YUV422_YUYV 0x00
+#define YUV422_YVYU 0X01
+#define YUV422_UYVY 0x02
+#define YUV422_VYUY 0x03
+
+#define YUV444_YUV 0x0E
+#define YUV444_YVU 0x0F
+#define YUV444_UYV 0x1C
+#define YUV444_VYU 0x1D
+#define YUV444_UVY 0x1E
+#define YUV444_VUY 0x1F
+	sensor_write_reg16(client,0x3400,0x00); /* source */
+	//sensor_write_reg16(client,0x3404,0x00); /* fmt control */
+	sensor_write_reg16(client,0x3404,YUV422_YUYV);
+	//sensor_write_reg16(client,0x3404, YUV422_YVYU);
+	//sensor_write_reg16(client,0x3404, YUV422_UYVY);
+	//sensor_write_reg16(client,0x3404, YUV422_VYUY);
+
+	//sensor_write_reg16(client,0x3404, YUV444_YUV);
+	//sensor_write_reg16(client,0x3404, YUV444_YVU);
+	//sensor_write_reg16(client,0x3404, YUV444_UVY);
+	//sensor_write_reg16(client,0x3404, YUV444_VUY);
+
 	sensor_write_reg16(client,0x3600,0xc0);
 
 	sensor_write_reg16(client,0x3013,0xf7);
+
+
+	/* slcao */
+	/* HSYNC mode */
+#ifdef CONFIG_JZ4810_F4810
+	value = sensor_read_reg16(client, 0x3646);
+	value |= 0x40;
+
+	/* test pattern(color bar) */
+	value = sensor_read_reg16(client, 0x307b);
+	value &= ~0x3;
+	sensor_write_reg16(client, 0x307b, value | 0x2);
+
+	value = sensor_read_reg16(client, 0x306c);
+	sensor_write_reg16(client, 0x306c, value & ~0x10);
+
+	value = sensor_read_reg16(client, 0x307d);
+	sensor_write_reg16(client,0x307d,value | 0x80);
+
+	//value = sensor_read_reg16(client, 0x3080);
+	//sensor_write_reg16(client,0x3080,value | 0x80);
+#endif
+
 	/************************************************************/
 
 
 	ov3640_stop_focus(client);
 
 	mode = CAMERA_MODE_PREVIEW;
-} 
+}
 
 void size_switch(struct i2c_client *client,int width,int height,int setmode)
 {
@@ -398,7 +457,7 @@ void size_switch(struct i2c_client *client,int width,int height,int setmode)
 		sensor_write_reg16(client,0x3302, 0xef);
 		sensor_write_reg16(client,0x335f, 0x34);
 		sensor_write_reg16(client,0x3360, 0x0c);
-		sensor_write_reg16(client,0x3361, 0x04);	
+		sensor_write_reg16(client,0x3361, 0x04);
 	}
 
 	sensor_write_reg16(client,0x3362, (unsigned char)((((width+8)>>8) & 0x0F) + (((height+4)>>4)&0x70)) );
@@ -419,33 +478,33 @@ void size_switch(struct i2c_client *client,int width,int height,int setmode)
 void capture_set(struct i2c_client *client)
 {
 	uint8_t reg0x3001;
-	uint8_t reg0x3002,reg0x3003,reg0x3013;        
-	uint8_t reg0x3028,reg0x3029; 
-	uint8_t reg0x302a,reg0x302b; 
+	uint8_t reg0x3002,reg0x3003,reg0x3013;
+	uint8_t reg0x3028,reg0x3029;
+	uint8_t reg0x302a,reg0x302b;
 	uint8_t reg0x302d,reg0x302e;
-	uint16_t shutter; 
-	uint16_t extra_lines, Preview_Exposure; 
-	uint16_t Preview_Gain16; 
-	uint16_t Preview_dummy_pixel; 
+	uint16_t shutter;
+	uint16_t extra_lines, Preview_Exposure;
+	uint16_t Preview_Gain16;
+	uint16_t Preview_dummy_pixel;
 	uint16_t Capture_max_gain16, Capture_banding_Filter;
-	uint16_t Preview_line_width,Capture_line_width,Capture_maximum_shutter; 
-	uint16_t Capture_Exposure; 
+	uint16_t Preview_line_width,Capture_line_width,Capture_maximum_shutter;
+	uint16_t Capture_Exposure;
 
-	uint8_t Mclk =24; //MHz 
-	uint8_t Preview_PCLK_frequency, Capture_PCLK_frequency; 
-	uint32_t Gain_Exposure,Capture_Gain16; 
-	uint8_t Gain; 
+	uint8_t Mclk =24; //MHz
+	uint8_t Preview_PCLK_frequency, Capture_PCLK_frequency;
+	uint32_t Gain_Exposure,Capture_Gain16;
+	uint8_t Gain;
 
-	uint8_t capture_max_gain = 31;// parm,from 4* gain to 2* gain 
-	uint8_t Default_Reg0x3028 = 0x09; 
-	uint8_t Default_Reg0x3029 = 0x47; 
-	uint8_t Cap_Default_Reg0x302a = 0x06; 
-	uint8_t Cap_Default_Reg0x302b = 0x20; 
-	uint16_t capture_Dummy_pixel = 0; 
-	uint16_t capture_dummy_lines = 0; 
+	uint8_t capture_max_gain = 31;// parm,from 4* gain to 2* gain
+	uint8_t Default_Reg0x3028 = 0x09;
+	uint8_t Default_Reg0x3029 = 0x47;
+	uint8_t Cap_Default_Reg0x302a = 0x06;
+	uint8_t Cap_Default_Reg0x302b = 0x20;
+	uint16_t capture_Dummy_pixel = 0;
+	uint16_t capture_dummy_lines = 0;
 	//uint16_t Default_XGA_Line_Width = 1188;
-	uint16_t Default_QXGA_Line_Width = 2376; 
-	uint16_t Default_QXGA_maximum_shutter = 1563; 
+	uint16_t Default_QXGA_Line_Width = 2376;
+	uint16_t Default_QXGA_maximum_shutter = 1563;
 
 	if(mode == CAMERA_MODE_CAPTURE) // 1 for capture
 		return;
@@ -456,43 +515,43 @@ void capture_set(struct i2c_client *client)
 
 
 
-	// 1. Stop Preview 
-	//Stop AE/AG         
+	// 1. Stop Preview
+	//Stop AE/AG
 	reg0x3013 = sensor_read_reg16(client,0x3013);
 	reg0x3013 = reg0x3013 & 0xf8;
 	sensor_write_reg16(client,0x3013,reg0x3013);
 
-	//Read back preview shutter 
+	//Read back preview shutter
 	reg0x3002 = sensor_read_reg16(client,0x3002);
 	reg0x3003 = sensor_read_reg16(client,0x3003);
-	shutter = (reg0x3002 << 8) + reg0x3003; 
+	shutter = (reg0x3002 << 8) + reg0x3003;
 
-	//Read back extra line 
+	//Read back extra line
 	reg0x302d = sensor_read_reg16(client,0x302d);
 	reg0x302e = sensor_read_reg16(client,0x302e);
-	extra_lines = reg0x302e + (reg0x302d << 8); 
-	Preview_Exposure = shutter + extra_lines; 
+	extra_lines = reg0x302e + (reg0x302d << 8);
+	Preview_Exposure = shutter + extra_lines;
 
-	//Read Back Gain for preview 
+	//Read Back Gain for preview
 	reg0x3001 = sensor_read_reg16(client,0x3001);
-	Preview_Gain16 = (((reg0x3001 & 0xf0)>>4) + 1) * (16 + (reg0x3001 & 0x0f)); 
+	Preview_Gain16 = (((reg0x3001 & 0xf0)>>4) + 1) * (16 + (reg0x3001 & 0x0f));
 
-	//Read back dummy pixels 
+	//Read back dummy pixels
 	reg0x3028 = sensor_read_reg16(client,0x3028);
 	reg0x3029 = sensor_read_reg16(client,0x3029);
-	Preview_dummy_pixel = (((reg0x3028 - Default_Reg0x3028) & 0xf0)<<8) + reg0x3029-Default_Reg0x3029; 
+	Preview_dummy_pixel = (((reg0x3028 - Default_Reg0x3028) & 0xf0)<<8) + reg0x3029-Default_Reg0x3029;
 
-	Preview_PCLK_frequency = (64 - 50) * 1 * Mclk / 1.5 / 2 / 2;  
+	Preview_PCLK_frequency = (64 - 50) * 1 * Mclk / 1.5 / 2 / 2;
 	Capture_PCLK_frequency = (64 - 57) * 1 * Mclk / 1.5 / 2 / 3;  // 7.5fps 56MHz
 
-	// 2.Calculate Capture Exposure 
+	// 2.Calculate Capture Exposure
 	Capture_max_gain16 = capture_max_gain;
 
-	//In common, Preview_dummy_pixel,Preview_dummy_line,Capture_dummy_pixel and 
-	//Capture_dummy_line can be set to zero. 
+	//In common, Preview_dummy_pixel,Preview_dummy_line,Capture_dummy_pixel and
+	//Capture_dummy_line can be set to zero.
 	Preview_line_width = Default_QXGA_Line_Width + Preview_dummy_pixel ;
 
-	Capture_line_width = Default_QXGA_Line_Width + capture_Dummy_pixel; 
+	Capture_line_width = Default_QXGA_Line_Width + capture_Dummy_pixel;
 	if(extra_lines>5000)
 	{
 		Capture_Exposure = 16*11/10*Preview_Exposure * Capture_PCLK_frequency/Preview_PCLK_frequency *Preview_line_width/Capture_line_width;
@@ -504,137 +563,137 @@ void capture_set(struct i2c_client *client)
 	else if(extra_lines>100)
 	{
 		Capture_Exposure = 16*20/10*Preview_Exposure * Capture_PCLK_frequency/Preview_PCLK_frequency *Preview_line_width/Capture_line_width;
-	}  
+	}
 	else
 	{
 		Capture_Exposure = 16*22/10*Preview_Exposure * Capture_PCLK_frequency/Preview_PCLK_frequency *Preview_line_width/Capture_line_width;
 	}
 	if(Capture_Exposure == 0)
-	{ 
+	{
 		Capture_Exposure =1 ;
 	}
 
-	//Calculate banding filter value 
-	//If (50Hz) {Capture_banding_Filter = Capture_PCLK_Frequency/ 100/ (2*capture_line_width); 
-	//else {(60Hz)Capture_banding_Filter = Capture_PCLK_frequency /120 /(2*capture_line_width); 
-	Capture_banding_Filter = (uint16_t)((float)Capture_PCLK_frequency * 1000000 / 100/ (2*Capture_line_width)+0.5); 
+	//Calculate banding filter value
+	//If (50Hz) {Capture_banding_Filter = Capture_PCLK_Frequency/ 100/ (2*capture_line_width);
+	//else {(60Hz)Capture_banding_Filter = Capture_PCLK_frequency /120 /(2*capture_line_width);
+	Capture_banding_Filter = (uint16_t)((float)Capture_PCLK_frequency * 1000000 / 100/ (2*Capture_line_width)+0.5);
 
-	Capture_maximum_shutter = (Default_QXGA_maximum_shutter + capture_dummy_lines)/Capture_banding_Filter; 
-	Capture_maximum_shutter = Capture_maximum_shutter * Capture_banding_Filter; 
+	Capture_maximum_shutter = (Default_QXGA_maximum_shutter + capture_dummy_lines)/Capture_banding_Filter;
+	Capture_maximum_shutter = Capture_maximum_shutter * Capture_banding_Filter;
 
-	//redistribute gain and exposure 
-	Gain_Exposure = Preview_Gain16 * Capture_Exposure/16; 
+	//redistribute gain and exposure
+	Gain_Exposure = Preview_Gain16 * Capture_Exposure/16;
 	if( Gain_Exposure ==0)
-	{ 
-		Gain_Exposure =1; 
+	{
+		Gain_Exposure =1;
 	}
 
-	if (Gain_Exposure < (Capture_banding_Filter * 16)) 
-	{        
-		// Exposure < 1/100 
-		Capture_Exposure = Gain_Exposure /16; 
-		Capture_Gain16 = (Gain_Exposure*2 + 1)/Capture_Exposure/2; 
-	} 
-	else 
+	if (Gain_Exposure < (Capture_banding_Filter * 16))
+	{
+		// Exposure < 1/100
+		Capture_Exposure = Gain_Exposure /16;
+		Capture_Gain16 = (Gain_Exposure*2 + 1)/Capture_Exposure/2;
+	}
+	else
 
-	{ 
-		if (Gain_Exposure > Capture_maximum_shutter * 16) 
-		{        
-			// Exposure > Capture_Maximum_Shutter 
-			Capture_Exposure = Capture_maximum_shutter; 
-			Capture_Gain16 = (Gain_Exposure*2 + 1)/Capture_maximum_shutter/2; 
+	{
+		if (Gain_Exposure > Capture_maximum_shutter * 16)
+		{
+			// Exposure > Capture_Maximum_Shutter
+			Capture_Exposure = Capture_maximum_shutter;
+			Capture_Gain16 = (Gain_Exposure*2 + 1)/Capture_maximum_shutter/2;
 
-			if (Capture_Gain16 > Capture_max_gain16) 
-			{        
-				// gain reach maximum, insert extra line 
-				Capture_Exposure = Gain_Exposure*11/10/Capture_max_gain16; 
-				// For 50Hz, Exposure = n/100; For 60Hz, Exposure = n/120 
-				Capture_Exposure = Capture_Exposure/Capture_banding_Filter; 
-				Capture_Exposure =Capture_Exposure * Capture_banding_Filter; 
-				Capture_Gain16 = (Gain_Exposure *2+1)/ Capture_Exposure/2; 
-			} 
-		} 
-		else 
-		{        
-			// 1/100(120) < Exposure < Capture_Maximum_Shutter, Exposure = n/100(120) 
-			Capture_Exposure = Gain_Exposure/16/Capture_banding_Filter; 
-			Capture_Exposure = Capture_Exposure * Capture_banding_Filter; 
-			Capture_Gain16 = (Gain_Exposure*2 +1) / Capture_Exposure/2; 
-		} 
-	} 
+			if (Capture_Gain16 > Capture_max_gain16)
+			{
+				// gain reach maximum, insert extra line
+				Capture_Exposure = Gain_Exposure*11/10/Capture_max_gain16;
+				// For 50Hz, Exposure = n/100; For 60Hz, Exposure = n/120
+				Capture_Exposure = Capture_Exposure/Capture_banding_Filter;
+				Capture_Exposure =Capture_Exposure * Capture_banding_Filter;
+				Capture_Gain16 = (Gain_Exposure *2+1)/ Capture_Exposure/2;
+			}
+		}
+		else
+		{
+			// 1/100(120) < Exposure < Capture_Maximum_Shutter, Exposure = n/100(120)
+			Capture_Exposure = Gain_Exposure/16/Capture_banding_Filter;
+			Capture_Exposure = Capture_Exposure * Capture_banding_Filter;
+			Capture_Gain16 = (Gain_Exposure*2 +1) / Capture_Exposure/2;
+		}
+	}
 
-	// 3.Switch to QXGA 
-	/*// Write registers, change to QXGA resolution.*/ 
+	// 3.Switch to QXGA
+	/*// Write registers, change to QXGA resolution.*/
 /***********************************************************************/
 
 	capture_reg_set(client);
-	// 4.Write Registers 
-	//write dummy pixels 
+	// 4.Write Registers
+	//write dummy pixels
 	reg0x3029 = sensor_read_reg16(client,0x3029);
-	reg0x3029 = reg0x3029 + (capture_Dummy_pixel & 0x00ff); 
+	reg0x3029 = reg0x3029 + (capture_Dummy_pixel & 0x00ff);
 
 	reg0x3028 = sensor_read_reg16(client,0x3028);
-	reg0x3028 = (reg0x3028 & 0x0f) | ((capture_Dummy_pixel & 0x0f00)>>4); 
+	reg0x3028 = (reg0x3028 & 0x0f) | ((capture_Dummy_pixel & 0x0f00)>>4);
 
 
 	sensor_write_reg16(client,0x3028, reg0x3028);
 	sensor_write_reg16(client,0x3029, reg0x3029);
 
-	//Write Dummy Lines 
-	reg0x302b = (capture_dummy_lines & 0x00ff ) + Cap_Default_Reg0x302b; 
-	reg0x302a =( capture_dummy_lines >>8 ) + Cap_Default_Reg0x302a; 
+	//Write Dummy Lines
+	reg0x302b = (capture_dummy_lines & 0x00ff ) + Cap_Default_Reg0x302b;
+	reg0x302a =( capture_dummy_lines >>8 ) + Cap_Default_Reg0x302a;
 	sensor_write_reg16(client,0x302a, reg0x302a);
 	sensor_write_reg16(client,0x302b, reg0x302b);
 
-	//Write Exposure 
-	if (Capture_Exposure > Capture_maximum_shutter) 
-	{ 
-		shutter = Capture_maximum_shutter; 
+	//Write Exposure
+	if (Capture_Exposure > Capture_maximum_shutter)
+	{
+		shutter = Capture_maximum_shutter;
 		extra_lines = Capture_Exposure - Capture_maximum_shutter;
 	}
-	else 
-	{ 
-		shutter = Capture_Exposure; 
-		extra_lines = 0; 
-	} 
+	else
+	{
+		shutter = Capture_Exposure;
+		extra_lines = 0;
+	}
 
-	reg0x3003 = shutter & 0x00ff; 
-	reg0x3002 = (shutter>>8) & 0x00ff; 
+	reg0x3003 = shutter & 0x00ff;
+	reg0x3002 = (shutter>>8) & 0x00ff;
 	sensor_write_reg16(client,0x3003, reg0x3003);
 	sensor_write_reg16(client,0x3002, reg0x3002);
 
-	// Write extra line 
-	reg0x302e= extra_lines & 0x00ff; 
-	reg0x302d= extra_lines >> 8; 
+	// Write extra line
+	reg0x302e= extra_lines & 0x00ff;
+	reg0x302d= extra_lines >> 8;
 	sensor_write_reg16(client,0x302d, reg0x302d);
 	sensor_write_reg16(client,0x302e, reg0x302e);
 
-	// Write Gain 
-	Gain = 0; 
-	if (Capture_Gain16 > 31) 
-	{ 
-		Capture_Gain16 = Capture_Gain16 /2; 
-		Gain = 0x10; 
-	} 
-	if (Capture_Gain16 > 31) 
-	{ 
-		Capture_Gain16 = Capture_Gain16 /2; 
-		Gain = Gain| 0x20; 
-	} 
-	if (Capture_Gain16 > 31) 
-	{ 
-		Capture_Gain16 = Capture_Gain16 /2; 
-		Gain = Gain | 0x40; 
-	} 
-	if (Capture_Gain16 > 31) 
-	{ 
-		Capture_Gain16 = Capture_Gain16 /2; 
-		Gain = Gain | 0x80; 
-	} 
-	if (Capture_Gain16 > 16) 
-	{ 
-		Gain = Gain | ((uint32_t)Capture_Gain16 -16); 
-	} 
+	// Write Gain
+	Gain = 0;
+	if (Capture_Gain16 > 31)
+	{
+		Capture_Gain16 = Capture_Gain16 /2;
+		Gain = 0x10;
+	}
+	if (Capture_Gain16 > 31)
+	{
+		Capture_Gain16 = Capture_Gain16 /2;
+		Gain = Gain| 0x20;
+	}
+	if (Capture_Gain16 > 31)
+	{
+		Capture_Gain16 = Capture_Gain16 /2;
+		Gain = Gain | 0x40;
+	}
+	if (Capture_Gain16 > 31)
+	{
+		Capture_Gain16 = Capture_Gain16 /2;
+		Gain = Gain | 0x80;
+	}
+	if (Capture_Gain16 > 16)
+	{
+		Gain = Gain | ((uint32_t)Capture_Gain16 -16);
+	}
 
 	sensor_write_reg16(client,0x3001, Gain+0x05);
 //	mdelay(500);

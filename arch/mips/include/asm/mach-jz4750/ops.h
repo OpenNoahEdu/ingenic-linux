@@ -732,6 +732,20 @@ do {						\
 /* n = 0(SSI0), 1(SSI1) */
 #define __gpio_as_ssi(n)	 __gpio_as_ssi##n()
 
+#define __gpio_as_ssi0_x()			\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0x1c000000;	\
+	REG_GPIO_PXSELC(1) = 0x1c000000;	\
+	REG_GPIO_PXPES(1)  = 0x1c000000;	\
+} while (0)
+
+#define __gpio_as_ssi1_x()			\
+do {						\
+	REG_GPIO_PXFUNS(3) = 0x1c000000;	\
+	REG_GPIO_PXSELC(3) = 0x1c000000;	\
+	REG_GPIO_PXPES(3)  = 0x1c000000;	\
+} while (0)
+
 /*
  * I2C_SCK, I2C_SDA
  */
@@ -1040,7 +1054,7 @@ do {						\
 #define __cpm_get_uhcdiv() \
 	((REG_CPM_UHCCDR & CPM_UHCCDR_UHCDIV_MASK) >> CPM_UHCCDR_UHCDIV_BIT)
 #define __cpm_get_ssidiv() \
-	((REG_CPM_SSICCDR & CPM_SSICDR_SSICDIV_MASK) >> CPM_SSICDR_SSIDIV_BIT)
+	((REG_CPM_SSICDR & CPM_SSICDR_SSIDIV_MASK) >> CPM_SSICDR_SSIDIV_BIT)
 #define __cpm_get_pcmdiv(v) \
 	((REG_CPM_PCMCDR & CPM_PCMCDR_PCMCD_MASK) >> CPM_PCMCDR_PCMCD_BIT)
 
@@ -2330,7 +2344,19 @@ do { 						\
 #define __ssi_receive_data(n) 		REG_SSI_DR(n)
 #define __ssi_transmit_data(n, v) 	(REG_SSI_DR(n) = (v))
 
+#define __ssi_set_grdiv(n,v)			(REG_SSI_GR(n) = v)
+#define __ssi_get_grdiv(n)				(REG_SSI_GR(n))
 
+#define __ssi_txfifo_half_empty_intr(n)  \
+	( REG_SSI_CR0(n) & SSI_CR0_TIE )
+#define __ssi_rxfifo_half_full_intr(n)	\
+	( REG_SSI_CR0(n) & SSI_CR0_RIE )
+	
+#define __ssi_tx_error_intr(n)		\
+	( REG_SSI_CR0(n) & SSI_CR0_TEIE )
+#define __ssi_rx_error_intr(n)		\
+	( REG_SSI_CR0(n) & SSI_CR0_REIE )	
+	
 /***************************************************************************
  * CIM
  ***************************************************************************/

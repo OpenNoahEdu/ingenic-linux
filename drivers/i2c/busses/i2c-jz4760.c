@@ -36,33 +36,33 @@
 #define TIMEOUT         0xffff
 
 //#undef DEBUG
-#define DEBUG
+#define DEBUG 
 #ifdef DEBUG
 #define dprintk(x...)	printk(x)
 #else
 #define dprintk(x...) do{}while(0)
 #endif
 
+#define __para_printk()\
+do {\
+dprintk("cmd_flag=%d,cmd_cnt=%d,r_cnt=%d length=%d",cmd_flag[I2C_ID],cmd_cnt[I2C_ID],r_cnt[I2C_ID],length);\
+} while(0)
+
 #define __reg_printk()							\
 do {								        \
-dprintk("  cmd_flag=%d,cmd_cnt=%d,r_cnt=%d length=%d",cmd_flag[I2C_ID],cmd_cnt[I2C_ID],r_cnt[I2C_ID],length); \
 dprintk("  REG_I2C_STA(%d)=0x%x",I2C_ID,REG_I2C_STA(I2C_ID));		\
 dprintk("  REG_I2C_TXTL(%d)=0x%x",I2C_ID,REG_I2C_TXTL(I2C_ID));		\
 dprintk("  REG_I2C_INTST(%d)=0x%x",I2C_ID,REG_I2C_INTST(I2C_ID));	\
 dprintk("  REG_I2C_TXABRT(%d)=0x%x\n",I2C_ID,REG_I2C_TXABRT(I2C_ID));	\
 dprintk("------------------%s:%d\n",__FUNCTION__,__LINE__);				\
 } while(0)
-/* The value of the most significant byte of sub_addr
- * indicate the length of sub address:
- * zero:1 byte, non-zero:2 bytes
- */
 
 struct i2c_speed {
 	unsigned int speed;
 	unsigned char slave_addr;
 };
 static  struct i2c_speed jz4760_i2c_speed[I2C_CLIENT_NUM];
-static unsigned char current_device;
+static unsigned char current_device[2]={0x0,0x0};
 static int client_cnt = 0;
 static int i2c_ctrl_rest[2]  = {0,0};
 struct jz_i2c {
@@ -97,7 +97,7 @@ void i2c_jz_setclk(struct i2c_client *client,unsigned long i2cclk)
 }
 EXPORT_SYMBOL_GPL(i2c_jz_setclk);
 
-/*
+/* 
  *jz_i2c_irq
 */
 static unsigned char *msg_buf0,*msg_buf1;
@@ -111,18 +111,19 @@ static irqreturn_t jz_i2c_irq(int irqno, void *dev_id)
 	int I2C_ID = i2c->id;
 	int flags = i2c->msg->flags;
 	int timeout = TIMEOUT;
-
-	if (__i2c_abrt_7b_addr_nack(I2C_ID)) {
-		int ret;
+	
+	if (__i2c_abrt(I2C_ID) || __i2c_abrt_intr(I2C_ID)) {
 		cmd_flag[I2C_ID] = -1;
-		__i2c_clear_interrupts(ret,I2C_ID);
+		//printk("*****jz4760 i2c abort.\n");
+		//__reg_printk();
+		//__i2c_clear_interrupts(ret,I2C_ID);
 		REG_I2C_INTM(I2C_ID) = 0x0;
 		return IRQ_HANDLED;
 	}
 	/* first byte,when length > 1 */
-	if (cmd_flag[I2C_ID] == 0 && cmd_cnt[I2C_ID] > 1) {
+	if (cmd_flag[I2C_ID] == 0 && cmd_cnt[I2C_ID] > 1) { 
 		cmd_flag[I2C_ID] = 1;
-		if (flags & I2C_M_RD) {
+		if (flags & I2C_M_RD) {			
 			REG_I2C_DC(I2C_ID) = I2C_READ << 8;
 		} else {
 			if (I2C_ID == 0) {
@@ -174,14 +175,14 @@ static irqreturn_t jz_i2c_irq(int irqno, void *dev_id)
 			}
 		}
 	}
-
+	
 	return IRQ_HANDLED;
 }
 
 static int i2c_disable(int I2C_ID)
 {
 	int timeout = TIMEOUT;
-
+	
 	__i2c_disable(I2C_ID);
 	while(__i2c_is_enable(I2C_ID) && (timeout > 0)) {
 		udelay(1);
@@ -196,7 +197,7 @@ static int i2c_disable(int I2C_ID)
 static int i2c_enable(int I2C_ID)
 {
 	int timeout = TIMEOUT;
-
+	
 	__i2c_enable(I2C_ID);
 	while(__i2c_is_disable(I2C_ID) && (timeout > 0)) {
 		mdelay(1);
@@ -208,78 +209,48 @@ static int i2c_enable(int I2C_ID)
 		return 1;
 }
 #endif
-#if 0
-static int i2c_set_F_clk(int i2c_clk, int I2C_ID)
-{
-	int dev_clk = __cpm_get_pclk();
-	int count = 0;
-
-	REG_I2C_CTRL(I2C_ID) = 0x45 | i2c_ctrl_rest[I2C_ID];       /* high speed mode*/
-	if (i2c_clk < 100 || i2c_clk > 400)
-		goto Set_fclk_err;
-
-	count = dev_clk/(i2c_clk*1000) - 23;
-
-	if (count < 0)
-		goto Set_fclk_err;
-	if (count%2 == 0) {
-		REG_I2C_FHCNT(I2C_ID) = count/2 + 6;
-		REG_I2C_FLCNT(I2C_ID) = count/2 + 8;
-	} else {
-		REG_I2C_FHCNT(I2C_ID) = count/2 + 6;
-		REG_I2C_FLCNT(I2C_ID) = count/2 + 8 + 1;
-	}
-	return 0;
-
-Set_fclk_err:
-
-	printk("i2c set fclk faild,dev_clk=%d.\n",dev_clk);
-	return -1;
-}
-#endif
 
 static int i2c_set_clk(int i2c_clk, int I2C_ID)
 {
-	int dev_clk = cpm_get_clock(CGU_PCLK);
-	int count = 0;
-
-	if (i2c_clk < 0 || i2c_clk > 400)
+	int dev_clk_khz = cpm_get_clock(CGU_PCLK) / 1000;
+	int cnt_high = 0;	/* HIGH period count of the SCL clock */
+	int cnt_low = 0;	/* LOW period count of the SCL clock */
+	int cnt_period = 0;	/* period count of the SCL clock */
+	
+	if (i2c_clk <= 0 || i2c_clk > 400)
 		goto Set_clk_err;
 
-	count = dev_clk/(i2c_clk*1000) - 23;
-	if (count < 0)
-		goto Set_clk_err;
+	cnt_period = dev_clk_khz / i2c_clk;
+	if (i2c_clk <= 100) {
+		/* i2c standard mode, the min LOW and HIGH period are 4700 ns and 4000 ns */
+		cnt_high = (cnt_period * 4000) / (4700 + 4000);
+	} else {
+		/* i2c fast mode, the min LOW and HIGH period are 1300 ns and 600 ns */
+		cnt_high = (cnt_period * 600) / (1300 + 600);
+	}
+
+	cnt_low = cnt_period - cnt_high;
 
 	if (i2c_clk <= 100) {
 		REG_I2C_CTRL(I2C_ID) = 0x43 | i2c_ctrl_rest[I2C_ID];      /* standard speed mode*/
-		if (count%2 == 0) {
-			REG_I2C_SHCNT(I2C_ID) = count/2 + 6 - 5;
-			REG_I2C_SLCNT(I2C_ID) = count/2 + 8 + 5;
-		} else {
-			REG_I2C_SHCNT(I2C_ID) = count/2 + 6 -5;
-			REG_I2C_SLCNT(I2C_ID) = count/2 + 8 +5 + 1;
-		}
+		REG_I2C_SHCNT(I2C_ID) = I2CSHCNT_ADJUST(cnt_high);
+		REG_I2C_SLCNT(I2C_ID) = I2CSLCNT_ADJUST(cnt_low);
 	} else {
 		REG_I2C_CTRL(I2C_ID) = 0x45 | i2c_ctrl_rest[I2C_ID];       /* high speed mode*/
-		if (count%2 == 0) {
-			REG_I2C_FHCNT(I2C_ID) = count/2 + 6;
-			REG_I2C_FLCNT(I2C_ID) = count/2 + 8;
-		} else {
-			REG_I2C_FHCNT(I2C_ID) = count/2 + 6;
-			REG_I2C_FLCNT(I2C_ID) = count/2 + 8 + 1;
-		}
+		REG_I2C_FHCNT(I2C_ID) = I2CFLCNT_ADJUST(cnt_high);
+		REG_I2C_FLCNT(I2C_ID) = I2CFLCNT_ADJUST(cnt_low);
 	}
-	/* printk("i2c controler %d speed:%d\n",I2C_ID,i2c_speed[I2C_ID]); */
+
 	return 0;
 
 Set_clk_err:
-
-	printk("i2c set sclk faild,i2c_clk=%d,dev_clk=%d.\n",i2c_clk,dev_clk);
+	
+	printk("i2c set sclk faild,i2c_clk=%d KHz,dev_clk=%dKHz.\n", i2c_clk, dev_clk_khz);
 	return -1;
 }
 
 static void i2c_set_target(unsigned char address,int I2C_ID)
-{
+{	
 	while (!__i2c_txfifo_is_empty(I2C_ID) || __i2c_master_active(I2C_ID));
 	REG_I2C_TAR(I2C_ID) = address;  /* slave id needed write only once */
 }
@@ -293,13 +264,10 @@ static void i2c_init_as_master(int I2C_ID,unsigned char device)
 	for (i = 0; i < I2C_CLIENT_NUM; i++) {
 		if(device == jz4760_i2c_speed[i].slave_addr) {
 			i2c_set_clk(jz4760_i2c_speed[i].speed,I2C_ID);
-			printk("----------------------Device 0x%2x with i2c speed:%dK\n",jz4760_i2c_speed[i].slave_addr,
-			       jz4760_i2c_speed[i].speed );
 			break;
 		}
 	}
 	if (i == I2C_CLIENT_NUM) {
-		printk("+++++++++++++++++++++++++++++++i2c speed 100K.\n");
 		i2c_set_clk(100,I2C_ID);
 	}
 	REG_I2C_INTM(I2C_ID) = 0x0; /*mask all interrupt*/
@@ -307,46 +275,75 @@ static void i2c_init_as_master(int I2C_ID,unsigned char device)
 	REG_I2C_ENB(I2C_ID) = 1;   /*enable i2c*/
 }
 
-static int xfer_read(unsigned char device, unsigned char *buf,
-		     int length, struct jz_i2c *i2c)
+static DEFINE_SPINLOCK(i2c_read_lock);
+static int xfer_read_nostart(struct i2c_msg *msg1, struct i2c_msg *msg2, struct jz_i2c *i2c)
 {
-	int timeout,r_i = 0;
+	unsigned char *subaddr = msg1->buf;
+	unsigned char device = msg2->addr;
+	//unsigned char *buf   = msg2->buf;
+	//int length           = msg2->len;
+	int timeout,timeout_1,ret = 0;
 	int I2C_ID = i2c->id;
+	unsigned long irqflag;
+	
+	/*add for 0v2655 virtual I2C ID on 2010.6.5 and for hi704 on 2010.8.3*/
+	if (device == 0xaa || device == 0xbb)
+		device =0x30;
+	if(device == 0xcc)
+		device =0x21;
 
 #if defined(CONFIG_TOUCHSCREEN_JZ_MT4D)
 	if ((device == 0x40) && __gpio_get_pin(GPIO_ATTN)) {
 		return -87;
 	}
 #endif
-
 	i2c_set_target(device,I2C_ID);
 	cmd_flag[I2C_ID] = 0;
-	REG_I2C_INTM(I2C_ID) = 0x10;
+#if 1
+	REG_I2C_INTM(I2C_ID) = 0x40;
+	if (msg1->len == 1) {
+		REG_I2C_DC(I2C_ID) = (I2C_WRITE << 8) | *subaddr;
+	} else if (msg1->len == 2) {
+		spin_lock_irqsave(&i2c_read_lock, irqflag);
+		REG_I2C_DC(I2C_ID) = (I2C_WRITE << 8) | *subaddr++;
+		REG_I2C_DC(I2C_ID) = (I2C_WRITE << 8) | *subaddr;
+		spin_unlock_irqrestore(&i2c_read_lock, irqflag);
+	} else {
+		printk("your device subaddres is not support.\n");
+		return -7;
+	}
+#endif
+
+	REG_I2C_INTM(I2C_ID) = 0x50;
 	timeout = TIMEOUT;
 	while (cmd_flag[I2C_ID] != 2 && --timeout) {
 		if (cmd_flag[I2C_ID] == -1) {
-			r_i = 1;
+			ret = 1; /*device nack.*/
 			goto R_dev_err;
 		}
 		udelay(1);
 	}
 	if (!timeout) {
-		r_i = 4;
+		ret = 2; /*wait interrupt timeout.*/
 	      	goto R_timeout;
 	}
 
-       	while (r_cnt[I2C_ID]) {
-		while (!(REG_I2C_STA(I2C_ID) & I2C_STA_RFNE)) {
-			if ((cmd_flag[I2C_ID] == -1) ||
+	timeout_1 = TIMEOUT;
+	while (r_cnt[I2C_ID] && --timeout_1) {
+		timeout = TIMEOUT;
+		while ((!(REG_I2C_STA(I2C_ID) & I2C_STA_RFNE)) && (--timeout)) {
+			if ((cmd_flag[I2C_ID] == -1) || 
 			    (REG_I2C_INTST(I2C_ID) & I2C_INTST_TXABT) ||
 			    REG_I2C_TXABRT(I2C_ID)) {
-				int ret;
-				r_i = 2;
-				__reg_printk();
-				__i2c_clear_interrupts(ret,I2C_ID);
+				ret = 3; /*i2c abort or nack.*/
 				goto R_dev_err;
 			}
 		}
+		if (!timeout){
+			ret = 4;
+			goto R_timeout;
+		}
+
 		if (I2C_ID == 0) {
 			*msg_buf0++ = REG_I2C_DC(I2C_ID) & 0xff;
 		} else {
@@ -354,12 +351,16 @@ static int xfer_read(unsigned char device, unsigned char *buf,
 		}
 		r_cnt[I2C_ID]--;
 	}
+	if (!timeout_1) {
+		ret = 6; /*can not run here.*/
+		goto R_timeout;
+	}
 
 	timeout = TIMEOUT;
 	while ((REG_I2C_STA(I2C_ID) & I2C_STA_MSTACT) && --timeout)
 		udelay(10);
 	if (!timeout){
-      		r_i = 3;
+      		ret = 5; /*wait master inactive timeout.*/
 	      	goto R_timeout;
       	}
 
@@ -368,135 +369,281 @@ static int xfer_read(unsigned char device, unsigned char *buf,
 R_dev_err:
 R_timeout:
 
+	//__reg_printk();
+	__i2c_clear_interrupts(ret,I2C_ID);
 	i2c_init_as_master(I2C_ID,device);
-	if (r_i == 1) {
-		printk("Read i2c device 0x%2x failed in r_i = %d :device no ack.\n",device,r_i);
-	} else if (r_i == 2) {
-		printk("Read i2c device 0x%2x failed in r_i = %d :i2c abort.\n",device,r_i);
-	} else if (r_i == 3) {
-		printk("Read i2c device 0x%2x failed in r_i = %d :waite master inactive timeout.\n",device,r_i);
-	} else {
-		printk("Read i2c device 0x%2x failed in r_i = %d.\n",device,r_i);
+	//dprintk("Read i2c device:0x%2x failed, ret = %d.",device, ret);
+	return -ret;
+}
+
+static int xfer_read(unsigned char device, unsigned char *buf, 
+		     int length, struct jz_i2c *i2c)
+{
+	int timeout,timeout_1,ret = 0;
+	int I2C_ID = i2c->id;
+	
+	/*add for 0v2655 virtual I2C ID on 2010.6.5 and for hi704 on 2010.8.3*/
+	if (device == 0xaa || device == 0xbb)
+		device =0x30;
+	if(device == 0xcc)
+	  device =0x21;
+
+#if defined(CONFIG_TOUCHSCREEN_JZ_MT4D)
+	if ((device == 0x40) && __gpio_get_pin(GPIO_ATTN)) {
+		return -87;
 	}
-	return -ETIMEDOUT;
+#endif
+	i2c_set_target(device,I2C_ID);
+	cmd_flag[I2C_ID] = 0;
+	REG_I2C_INTM(I2C_ID) = 0x50;
+	timeout = TIMEOUT;
+	while (cmd_flag[I2C_ID] != 2 && --timeout) {
+		if (cmd_flag[I2C_ID] == -1) {
+			ret = 1; /*device nack.*/
+			goto R_dev_err;
+		}
+		udelay(1);
+	}
+	if (!timeout) {
+		ret = 2; /*wait interrupt timeout.*/
+	      	goto R_timeout;
+	}
+
+	timeout_1 = TIMEOUT;
+	while (r_cnt[I2C_ID] && --timeout_1) {
+		timeout = TIMEOUT;
+		while ((!(REG_I2C_STA(I2C_ID) & I2C_STA_RFNE)) && (--timeout)) {
+			if ((cmd_flag[I2C_ID] == -1) || 
+			    (REG_I2C_INTST(I2C_ID) & I2C_INTST_TXABT) ||
+			    REG_I2C_TXABRT(I2C_ID)) {
+				ret = 3; /*i2c abort or nack.*/
+				goto R_dev_err;
+			}
+		}
+		if (!timeout){
+			ret = 4;
+			goto R_timeout;
+		}
+
+		if (I2C_ID == 0) {
+			*msg_buf0++ = REG_I2C_DC(I2C_ID) & 0xff;
+		} else {
+			*msg_buf1++ = REG_I2C_DC(I2C_ID) & 0xff;
+		}
+		r_cnt[I2C_ID]--;
+	}
+	if (!timeout_1) {
+		ret = 6; /*can not run here.*/
+		goto R_timeout;
+	}
+
+	timeout = TIMEOUT;
+	while ((REG_I2C_STA(I2C_ID) & I2C_STA_MSTACT) && --timeout)
+		udelay(10);
+	if (!timeout){
+      		ret = 5; /*wait master inactive timeout.*/
+	      	goto R_timeout;
+      	}
+
+	return 0;
+
+R_dev_err:
+R_timeout:
+
+	//__reg_printk();
+	__i2c_clear_interrupts(ret,I2C_ID);
+	i2c_init_as_master(I2C_ID,device);
+	//dprintk("Read i2c device:0x%2x failed, ret = %d.",device, ret);
+	return -ret;
 }
 
 static int xfer_write(unsigned char device, unsigned char *buf,
 		      int length, struct jz_i2c *i2c)
 {
-	int timeout,w_i = 0;
+	int timeout,ret = 0;
 	int I2C_ID = i2c->id;
+
+	/*add for 0v2655 virtual I2C ID on 2010.6.5 and for hi704 on 2010.8.3*/
+	if (device == 0xaa||device == 0xbb)
+		device =0x30;
+	if(device == 0xcc)
+	  device = 0x21;
 
 	i2c_set_target(device,I2C_ID);
 	cmd_flag[I2C_ID] = 0;
-	REG_I2C_INTM(I2C_ID) = 0x10;
+	REG_I2C_INTM(I2C_ID) = 0x50;
 
-	while (cmd_flag[I2C_ID] != 2){
+	timeout = TIMEOUT;
+	while ((cmd_flag[I2C_ID] != 2) && (--timeout)) {
 		if (cmd_flag[I2C_ID] == -1){
-			w_i = 1;
+			ret = 51; /*device no ack*/
 			goto W_dev_err;
 		}
 		udelay(1);
 	}
+
+       	if (!timeout){
+       		ret = 55; /*wait interrupt timeout.*/
+       		goto W_timeout;
+       	}
 
 	timeout = TIMEOUT;
 	while((!(REG_I2C_STA(I2C_ID) & I2C_STA_TFE)) && --timeout){
 		udelay(10);
 	}
        	if (!timeout){
-       		w_i = 2;
+       		ret = 52; /*wait TF buf empty timeout.*/
        		goto W_timeout;
        	}
 
 	timeout = TIMEOUT;
 	while (__i2c_master_active(I2C_ID) && --timeout);
 	if (!timeout){
-		w_i = 3;
+		ret = 53; /*wait master incative timeout.*/
 		goto W_timeout;
 	}
 
-	if ((length == 1)&&
-	    ((cmd_flag[I2C_ID] == -1) ||
+	if (((cmd_flag[I2C_ID] == -1) || 
 	    (REG_I2C_INTST(I2C_ID) & I2C_INTST_TXABT) ||
 	     REG_I2C_TXABRT(I2C_ID))) {
 		int ret;
-		w_i = 5;
-		__reg_printk();
-		__i2c_clear_interrupts(ret,I2C_ID);
+		ret = 54; /*device nack or Transmite abort.*/
 		goto W_dev_err;
 	}
-
 	return 0;
-
+	
 W_dev_err:
 W_timeout:
-
+	//__reg_printk();
+	__i2c_clear_interrupts(ret,I2C_ID);
 	i2c_init_as_master(I2C_ID,device);
-	if (w_i == 1) {
-		printk("Write i2c device 0x%2x failed in w_i=%d:device no ack.\n",device,w_i);
-	} else if (w_i == 2) {
-		printk("Write i2c device 0x%2x failed in w_i=%d:waite TF buff empty timeout.\n",device,w_i);
-	} else if (w_i == 3) {
-		printk("Write i2c device 0x%2x failed in w_i=%d:waite master inactive timeout.\n",device,w_i);
-	} else if (w_i == 5) {
-		printk("Write i2c device 0x%2x failed in w_i=%d:device no ack or abort.\n",device,w_i);
-	} else  {
-		printk("Write i2c device 0x%2x failed in w_i=%d.\n",device,w_i);
-	}
+	//dprintk("Write i2c device:0x%2x failed, ret = %d.",device, ret);
 
-	return -ETIMEDOUT;
+	return -ret;
 }
 
-static int i2c_jz_xfer(struct i2c_adapter *adap, struct i2c_msg *pmsg, int num)
+static int i2c_jz_xfer(struct i2c_adapter *adap, struct i2c_msg *spmsg, int num)
 {
-	int ret, i;
+	int ret = 0, i = 0;
+	int retry = adap->retries;
+	struct i2c_msg *pmsg = spmsg;
 	struct jz_i2c *i2c = adap->algo_data;
 
-	dev_dbg(&adap->dev, "jz4760_xfer: processing %d messages:\n", num);
-	for (i = 0; i < num; i++) {
-		dev_dbg(&adap->dev, " #%d: %sing %d byte%s %s 0x%02x\n", i,
-			pmsg->flags & I2C_M_RD ? "read" : "writ",
-			pmsg->len, pmsg->len > 1 ? "s" : "",
-			pmsg->flags & I2C_M_RD ? "from" : "to",	pmsg->addr);
-
-		if (num != 1) {
-			if (i == (num -1))
-				i2c_ctrl_rest[i2c->id] = 0;
-			else
-				i2c_ctrl_rest[i2c->id] = I2C_CTRL_REST;
-
-			i2c_init_as_master(i2c->id,pmsg->addr);
-		} else {
-			if (pmsg->addr != current_device) {
-				current_device = pmsg->addr;
-				i2c_init_as_master(i2c->id,pmsg->addr);
-			}
-		}
-
-		if (pmsg->len && pmsg->buf) {	/* sanity check */
-			i2c->msg = pmsg;
-			if (i2c->id == 0) {
-				msg_buf0 = pmsg->buf;
-			} else {
-				msg_buf1 = pmsg->buf;
-			}
-			cmd_cnt[i2c->id] = pmsg->len;
-			r_cnt[i2c->id] = pmsg->len;
-
-			if (pmsg->flags & I2C_M_RD){
-				ret = xfer_read(pmsg->addr, pmsg->buf, pmsg->len,i2c);
-			} else {
-				ret = xfer_write(pmsg->addr, pmsg->buf, pmsg->len,i2c);
-			}
-			if (ret)
-				return ret;
-			/* Wait until transfer is finished */
-		}
-		dev_dbg(&adap->dev, "transfer complete\n");
-		pmsg++;		/* next message */
+	if (spmsg->addr != current_device[i2c->id]) {
+		current_device[i2c->id] = spmsg->addr;
+		if(spmsg->flags & I2C_M_NOSTART)
+			i2c_ctrl_rest[i2c->id] = I2C_CTRL_REST;
+		else
+			i2c_ctrl_rest[i2c->id] = 0x0;
+		i2c_init_as_master(i2c->id,spmsg->addr);
 	}
 
-	return i;
+    if ((num > 2) || (num < 1)) {
+        printk("error massage num,num need is 1 or 2.\n");
+        return -100;
+    }
+
+	if ((spmsg->flags & I2C_M_NOSTART) && (num == 2)) {
+
+		while (retry--) {
+			pmsg = spmsg;
+			pmsg++;	
+			if (pmsg->len && pmsg->buf) {	/* sanity check */
+				i2c->msg = pmsg;
+				if (i2c->id == 0) {
+					msg_buf0 = pmsg->buf;
+				} else {
+					msg_buf1 = pmsg->buf;
+				}
+				cmd_cnt[i2c->id] = pmsg->len;
+				r_cnt[i2c->id] = pmsg->len;
+
+				ret = xfer_read_nostart(spmsg, pmsg, i2c);
+				if (ret) {
+					udelay(100);
+					continue;
+				} else {
+					return num;
+				}
+			}
+		}
+
+		if (ret) {
+			if ((ret == -1) || (ret == -2 ) || (ret == -3)){
+				printk("Nostart read i2c device 0x%2x, nack or abort, ret=%d\n",\
+						current_device[i2c->id],ret);
+			} else if (ret == -4) {
+				printk("Nostart read i2c device 0x%2x, wait device date timeout,ret=%d\n",
+						current_device[i2c->id],ret);
+			} else if (ret == -5){
+				printk("Nostart read i2c device 0x%2x, wait mst inactive timeout,ret=%d\n",
+						current_device[i2c->id],ret);
+			} else if (ret == -6) {
+				printk("Nostart read i2c device 0x%2x, can not get here,check your driver,ret=%d\n",
+						current_device[i2c->id],ret);
+			}
+			return ret;
+		}
+	}
+
+	while (retry--) {
+		pmsg = spmsg;
+		for (i = 0; i < num; i++) {
+			if (pmsg->len && pmsg->buf) {	/* sanity check */
+				i2c->msg = pmsg;
+				if (i2c->id == 0) {
+					msg_buf0 = pmsg->buf;
+				} else {
+					msg_buf1 = pmsg->buf;
+				}
+				cmd_cnt[i2c->id] = pmsg->len;
+				r_cnt[i2c->id] = pmsg->len;
+
+				if (pmsg->flags & I2C_M_RD){
+					ret = xfer_read(pmsg->addr, pmsg->buf, pmsg->len,i2c);
+				} else {
+					ret = xfer_write(pmsg->addr, pmsg->buf, pmsg->len,i2c);
+				}
+				if (ret)
+					break;
+			}
+			pmsg++;		/* next message */
+		}
+
+		if (!ret && (i == num))
+			return i;
+		else
+			udelay(100);
+	}
+
+	if (ret) {
+		if ((ret == -1) || (ret == -2 ) || (ret == -3)){
+			printk("Read i2c device 0x%2x, nack or abort, ret=%d\n",\
+					current_device[i2c->id],ret);
+		} else if((ret == -51) || (ret == -54) || (ret == -55)){
+			printk("Write i2c device 0x%2x, nack or abort, ret=%d\n",\
+					current_device[i2c->id],ret);
+		} else if (ret == -4) {
+			printk("Read i2c device 0x%2x, wait device date timeout,ret=%d\n",
+					current_device[i2c->id],ret);
+		} else if (ret == -5){
+			printk("Read i2c device 0x%2x, wait mst inactive timeout,ret=%d\n",
+					current_device[i2c->id],ret);
+		} else if (ret == -53) {
+			printk("Write i2c device 0x%2x, wait mst inactive timeout,ret=%d\n",
+					current_device[i2c->id],ret);
+		} else if (ret == -6) {
+			printk("Write i2c device 0x%2x, can not get here,check your driver,ret=%d\n",
+					current_device[i2c->id],ret);
+		} else{
+			printk("Write i2c device 0x%2x, wait TF empty timeout,ret=%d\n",
+					current_device[i2c->id],ret);
+		}
+		return ret;
+
+	} else {
+		return i;
+	}
 }
 
 static u32 i2c_jz_functionality(struct i2c_adapter *adap)
@@ -522,20 +669,22 @@ static int i2c_jz_probe(struct platform_device *pdev)
 		goto emalloc;
 	}
 
-	cpm_start_clock(CGM_I2C0);
-	cpm_start_clock(CGM_I2C1);
-
 	i2c->id            = pdev->id;
 	i2c->adap.owner   = THIS_MODULE;
 	i2c->adap.algo    = &i2c_jz_algorithm;
-	i2c->adap.retries = 5;
+	i2c->adap.retries = 6;
 	spin_lock_init(&i2c->lock);
 	init_waitqueue_head(&i2c->wait);
 	sprintf(i2c->adap.name, "jz_i2c-i2c.%u", pdev->id);
 	i2c->adap.algo_data = i2c;
 	i2c->adap.dev.parent = &pdev->dev;
+	if (i2c->id == 0)
+		cpm_start_clock(CGM_I2C0);
+	else
+		cpm_start_clock(CGM_I2C1);
 
 	__gpio_as_i2c(i2c->id);
+
 	i2c_init_as_master(i2c->id,0xff);
 
 	if (plat) {
@@ -550,7 +699,7 @@ static int i2c_jz_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "cannot claim IRQ %d\n", i2c->irq);
 		goto emalloc;
 	}
-
+	
 	/*
 	 * If "dev->id" is negative we consider it as zero.
 	 * The reason to do so is to avoid sysfs names that only make

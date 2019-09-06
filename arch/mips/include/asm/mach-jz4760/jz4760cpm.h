@@ -520,20 +520,29 @@ void cpm_stop_clock(clock_gate_module module_name);
 unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz);
 unsigned int cpm_get_clock(cgu_clock clock_name);
 unsigned int cpm_get_pllout(void);
+unsigned int cpm_get_pllout1(void);
 
 void cpm_uhc_phy(unsigned int en);
 
 /**************remove me if android's kernel support these operations********start*********  */
 #define __cpm_stop_lcd()	(REG_CPM_CLKGR0 |= CLKGR0_LCD)
 #define __cpm_start_lcd()	(REG_CPM_CLKGR0 &= ~CLKGR0_LCD)
+#define __cpm_stop_tve()	(REG_CPM_CLKGR0 |= CLKGR0_TVE)
+#define __cpm_start_tve()	(REG_CPM_CLKGR0 &= ~CLKGR0_TVE)
 #define __cpm_set_pixdiv(v) \
 	(REG_CPM_LPCDR = (REG_CPM_LPCDR & ~LPCDR_PIXDIV_MASK) | ((v) << (LPCDR_PIXDIV_LSB)))
 
 #define __cpm_get_pixdiv() \
 	((REG_CPM_LPCDR & LPCDR_PIXDIV_MASK) >> LPCDR_PIXDIV_LSB)
 
+#define __cpm_select_pixclk_lcd()	(REG_CPM_LPCDR &= ~LPCDR_LTCS)
 #define __cpm_select_pixclk_tve()	(REG_CPM_LPCDR |= LPCDR_LTCS)
+#define __cpm_select_pixclk_lcd()	(REG_CPM_LPCDR &= ~LPCDR_LTCS)
 
+#define __cpm_start_uart0()	(REG_CPM_CLKGR0 &= ~CLKGR0_UART0)
+#define __cpm_start_uart1()	(REG_CPM_CLKGR0 &= ~CLKGR0_UART1)
+#define __cpm_start_uart2()	(REG_CPM_CLKGR0 &= ~CLKGR0_UART2)
+#define __cpm_start_uart3()	(REG_CPM_CLKGR0 &= ~CLKGR0_UART3)
 static __inline__ unsigned int __cpm_get_pllout2(void)
 {
 #if defined(CONFIG_FPGA)
@@ -631,11 +640,31 @@ extern jz_clocks_t jz_clocks;
 	((REG_CPM_MSCCDR(n) & MSCCDR_MSCDIV_MASK) >> MSCCDR_MSCDIV_LSB)
 */
 #define __cpm_get_ssidiv() \
-	((REG_CPM_SSICCDR & SSICDR_SSICDIV_MASK) >> SSICDR_SSIDIV_LSB)
+	((REG_CPM_SSICDR & SSICDR_SSIDIV_MASK) >> SSICDR_SSIDIV_LSB)
 #define __cpm_get_pcmdiv() \
 	((REG_CPM_PCMCDR & PCMCDR_PCMCD_MASK) >> PCMCDR_PCMCD_LSB)
 #define __cpm_get_pll1div() \
-	((REG_CPM_CPPCR1 & CPCCR1_P1SDIV_MASK) >> CPCCR1_P1SDIV_LSB)
+	((REG_CPM_CPPCR1 & CPPCR1_P1SDIV_MASK) >> CPPCR1_P1SDIV_LSB)
+
+
+#define __cpm_set_ssidiv(v) \
+	(REG_CPM_SSICDR = (REG_CPM_SSICDR & ~SSICDR_SSIDIV_MASK) | ((v) << (SSICDR_SSIDIV_LSB)))
+
+#define __cpm_exclk_direct()		(REG_CPM_CPCCR &= ~CPM_CPCCR_ECS)
+#define __cpm_exclk_div2()          (REG_CPM_CPCCR |= CPM_CPCCR_ECS)
+#define __cpm_pllout_direct()		(REG_CPM_CPCCR |= CPM_CPCCR_PCS)
+#define __cpm_pllout_div2()			(REG_CPM_CPCCR &= ~CPM_CPCCR_PCS)
+
+#define __ssi_select_exclk()		(REG_CPM_SSICDR &= ~SSICDR_SCS)
+#define __ssi_select_pllclk()		(REG_CPM_SSICDR |= SSICDR_SCS)
+
+#define cpm_get_scrpad()	INREG32(CPM_CPSPR)
+#define cpm_set_scrpad(data)				\
+do {							\
+	OUTREG32(CPM_CPSPPR, CPSPPR_CPSPR_WRITABLE);	\
+	OUTREG32(CPM_CPSPR, data);			\
+	OUTREG32(CPM_CPSPPR, ~CPSPPR_CPSPR_WRITABLE);	\
+} while (0)
 
 /**************remove me if android's kernel support these operations********end*********  */
 

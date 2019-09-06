@@ -50,7 +50,13 @@ config I2S_DLV_4750
 
 config I2S_DLV_4760
 	bool "Internal On-Chip codec on Jz4760"
-	depends on SOC_JZ4760
+	depends on SOC_JZ4760 || SOC_JZ4760B
+	help
+	  Answer Y if you have an internal I2S codec on Jz4760.
+
+config I2S_DLV_4810
+	bool "Internal On-Chip codec on Jz4810"
+	depends on SOC_JZ4810
 	help
 	  Answer Y if you have an internal I2S codec on Jz4760.
 

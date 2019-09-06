@@ -23,6 +23,7 @@
 #define INTC_IMSR(n)	(INTC_BASE + 0x08 + (n) * 0x20)
 #define INTC_ICMSR(n)   INTC_IMSR(n)
 #define INTC_IMCR(n)	(INTC_BASE + 0x0c + (n) * 0x20)
+#define INTC_ICMCR(n)	INTC_IMCR(n)
 #define INTC_IPR(n)	(INTC_BASE + 0x10 + (n) * 0x20)
 //#define INTC_ISSR	(INTC_BASE + 0x18)  /* Interrupt Controller Source Set Register */
 //#define INTC_ISCR	(INTC_BASE + 0x1c)  /* Interrupt Controller Source Clear Register */

@@ -1,4 +1,4 @@
-/* 
+/*
  * Direct MTD block device access
  *
  * (C) Nancy <yrtan@ingenic.cn>
@@ -60,18 +60,18 @@ struct mtdblk_zone_t {
 	int total_phys_block;
 	int total_virt_block;
 	int bad_block_num;
-		
+
 	int free_phys_block;
 	int free_virt_block;
 	unsigned int used_block;
 	unsigned int bad_block;
 	unsigned int *block_lookup; //index: virt_block value:block_info's index->phy_block
 	struct mtdblk_block_info *block_info;
-};  
+};
 
 static struct mtdblk_dev {
 	struct mtd_info *mtd;
-	int virt_block;	
+	int virt_block;
 	int new_phys_block;
 	int old_phys_block;
 
@@ -136,10 +136,9 @@ static int mtdblock_move_to_another_block(struct mtdblk_dev *mtdblk, int old_phy
 	struct mtd_oob_ops oobops;
 	unsigned char *tmp_block_cache;
 	unsigned long long pos;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift) );	
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift) );
 	int new_phys_block, phys_block, i , ret, readfail=0;
 
-//	tmp_block_cache = kmalloc(mtdblk->mtd->erasesize, GFP_KERNEL);
 	tmp_block_cache = mtdblk->block_cache_data;
 
 	if(!tmp_block_cache)
@@ -149,7 +148,11 @@ static int mtdblock_move_to_another_block(struct mtdblk_dev *mtdblk, int old_phy
 	pos = (unsigned long long)old_phys_block<<this->phys_erase_shift;
 	memset(&oobops, 0, sizeof(oobops));
 	oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 	oobops.len = mtd->writesize;
+#else
+	oobops.len = mtd->validsize;
+#endif
 	oobops.ooboffs = 2;
 	oobops.ooblen = sizeof(fsoobbuf);
 	oobops.oobbuf = (unsigned char *)&fsoobbuf;
@@ -157,7 +160,7 @@ static int mtdblock_move_to_another_block(struct mtdblk_dev *mtdblk, int old_phy
 	for(i=0; i<ppb; i++) {
 		do {
 			oobops.datbuf = &tmp_block_cache[i<<this->page_shift];
-			ret = mtd->read_oob(mtd, pos, &oobops); 
+			ret = mtd->read_oob(mtd, pos, &oobops);
 			if(ret){
 				readfail ++;
 				if (readfail < ECC_FAILD_RETRY)
@@ -185,30 +188,29 @@ static int mtdblock_move_to_another_block(struct mtdblk_dev *mtdblk, int old_phy
 		ret = erase_block(mtd, phys_block);
 		block_info[phys_block].lifetime++;
 
-		/* if erase process error, tagged to be bad block, 
+		/* if erase process error, tagged to be bad block,
 		 * and find a new free phys_block to program
 		 */
 		if( ret < 0 ) {
 			printk("%s: erase failed , mark to bad block: 0x%x \n",__FILE__, phys_block);
 			phys_block = mtdblock_mark_bad_block_to_nand(mtdblk, phys_block);
 		}
-		
+
 	}while(ret < 0);
-	
+
 	//go for write
 	pos = (unsigned long long)phys_block<<this->phys_erase_shift;
 	for(i=0; i<ppb; i++){
 
 		oobops.datbuf = &tmp_block_cache[i<<this->page_shift];
-		ret =mtd->write_oob(mtd, pos, &oobops); 
+		ret =mtd->write_oob(mtd, pos, &oobops);
 		if (ret ){
 			printk("%s: write failed , mark to bad block: 0x%x \n",__FILE__, phys_block);
 			phys_block = mtdblock_mark_bad_block_to_nand(mtdblk, phys_block);
 			goto write_retry;
-		}			
+		}
 		pos += mtd->writesize;
-	}	
-//	kfree(tmp_block_cache);	
+	}
 	new_phys_block = phys_block;
 	return new_phys_block;
 }
@@ -242,7 +244,6 @@ static int mtdblock_find_free_block (struct mtdblk_dev *mtdblk, int *free_phys_b
 	}
 
 	*free_phys_block = phys_block;
-	//dprintk("find free phys block: %d,free blocks: %d\n", phys_block,zone->free_phys_block);
 
 	memset(&oobops, 0, sizeof(oobops));
 	oobops.mode = MTD_OOB_AUTO;
@@ -285,14 +286,14 @@ static int mtdblock_block_info_map_bad_block (struct mtdblk_dev *mtdblk, int phy
 static int mtdblock_block_lookup_map_entry (struct mtdblk_dev *mtdblk, int virt_block, int phys_block)
 {
 	struct mtdblk_zone_t *zone_ptr = mtdblk->zone;
-	
+
 	if(NULL == zone_ptr)
 		printk("%s: zone_ptr is null\n",__FUNCTION__);
 
 	if(virt_block >= zone_ptr->total_virt_block || virt_block < 0){
 		dprintk("virt_block address Abnormal\n");
 		return -EINVAL;
-	} 
+	}
 	if (!(zone_ptr->block_lookup[virt_block] & MTDBLOCK_BIT_VALID_ENTRY)) {
 		dprintk("map %d -> %d  free %d\n", virt_block, phys_block,zone_ptr->free_phys_block);
 		zone_ptr->block_lookup[virt_block] = phys_block;
@@ -303,7 +304,7 @@ static int mtdblock_block_lookup_map_entry (struct mtdblk_dev *mtdblk, int virt_
 		zone_ptr->used_block++;
 		return 0;
 	} else {
-		dprintk("Error: map block address 0x%x -> (new) 0x%x, (old) 0x%x\n", 
+		dprintk("Error: map block address 0x%x -> (new) 0x%x, (old) 0x%x\n",
 			 virt_block, phys_block, zone_ptr->block_lookup[virt_block] & MTDBLOCK_BIT_BLOCK_ADDR);
 		return -EINVAL;
 	}
@@ -313,9 +314,8 @@ static int mtdblock_block_lookup_unmap_entry (struct mtdblk_dev *mtdblk, int vir
 {
 	struct mtdblk_zone_t *zone_ptr = mtdblk->zone;
 	int phys_block;
-        
+
 	if (zone_ptr->block_lookup[virt_block] & MTDBLOCK_BIT_VALID_ENTRY) {
-		//dprintk("unmap %d -> %d\n", virt_block, zone_ptr->block_lookup[virt_block] & MTDBLOCK_BIT_BLOCK_ADDR);
 		zone_ptr->block_lookup[virt_block] &= ~MTDBLOCK_BIT_VALID_ENTRY;
 		phys_block = zone_ptr->block_lookup[virt_block] & MTDBLOCK_BIT_BLOCK_ADDR;
 		zone_ptr->block_info[phys_block].tag |= MTDBLOCK_BIT_FREE_BLOCK;
@@ -333,13 +333,12 @@ static int mtdblock_address_translate (struct mtdblk_dev *mtdblk, int virt_block
 {
 	struct mtdblk_zone_t *zone_ptr = mtdblk->zone;
 	unsigned int entry;
-	
+
 	entry = zone_ptr->block_lookup[virt_block];
 	if (!(entry & MTDBLOCK_BIT_VALID_ENTRY))
 		return -EINVAL;
 
 	*phys_block = entry & MTDBLOCK_BIT_BLOCK_ADDR;
-	//dprintk("found valid block mapping virt_block: %d -> phys_block: %d\n", virt_block, *phys_block);
 	return 0;
 }
 
@@ -347,13 +346,17 @@ static int mtdblock_address_translate (struct mtdblk_dev *mtdblk, int virt_block
 static void mtdblock_init_block_cache(struct mtdblk_dev *mtdblk)
 {
 	struct nand_chip *this = mtdblk->mtd->priv;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));	
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
+#if !defined(CONFIG_SOC_JZ4760B)
 	unsigned short spp = mtdblk->mtd->writesize >> 9 ;  //spp : sectors per page
+#else
+	unsigned short spp = mtdblk->mtd->validsize>> 9 ;  //spp : sectors per page
+#endif
 
 	mtdblk->block_cache_state = STATE_UNUSED;
 	memset(mtdblk->page_state, 0, ppb);
 	memset(mtdblk->page_offset_state, 0, ppb*spp);
-	
+
 	//must clear write buffer before using it.
 	mtdblk->page_num = -1;
 	memset(mtdblk->block_cache_data, 0xFF, mtdblk->mtd->erasesize);
@@ -362,18 +365,21 @@ static void mtdblock_init_block_cache(struct mtdblk_dev *mtdblk)
 static void mtdblock_setup_block_cache ( struct mtdblk_dev *mtdblk, int virt_block, int new_phys_block, int old_phys_block)
 {
 	struct nand_chip *this = mtdblk->mtd->priv;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));	
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
+#if !defined(CONFIG_SOC_JZ4760B)
 	unsigned short spp = mtdblk->mtd->writesize >> 9 ;  //spp : sectors per page
-
+#else
+	unsigned short spp = mtdblk->mtd->validsize>> 9 ;  //spp : sectors per page
+#endif
 	mtdblk->old_phys_block = old_phys_block;
 	mtdblk->new_phys_block = new_phys_block;
 	mtdblk->virt_block = virt_block;
 	mtdblk->page_num = -1;
-	
+
 	mtdblk->block_cache_state = STATE_USED;
 	memset(mtdblk->page_state, 0, ppb);
 	memset(mtdblk->page_offset_state, 0, ppb*spp);
-	
+
 	//must clear write buffer before using it.
 	memset(mtdblk->block_cache_data, 0xFF, mtdblk->mtd->erasesize);
 }
@@ -387,14 +393,17 @@ static int mtdblock_fill_block_cache(struct mtdblk_dev *mtdblk)
 	unsigned short page, sector;
 	unsigned long phys_page;
 	unsigned long long pos;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));	
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
+#if !defined(CONFIG_SOC_JZ4760B)
 	unsigned short sectors_per_page = mtd->writesize >> 9;
+#else
+	unsigned short sectors_per_page = mtd->validsize >> 9;
+#endif
 	unsigned char *page_buf = mtdblk->g_page_buf;
 	static int fill_block1 = 0;
 	static int fill_block2 = 0;
 
 	if (mtdblk->old_phys_block == mtdblk->new_phys_block){
-		//dprintk("Needn't read from new block %d to fill cache.\n",mtdblk->new_phys_block);
 		return 0;
 	}
 
@@ -403,8 +412,11 @@ static int mtdblock_fill_block_cache(struct mtdblk_dev *mtdblk)
 
 	memset(&oobops, 0, sizeof(oobops));
 	oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 	oobops.len = mtd->writesize;
-
+#else
+	oobops.len = mtd->validsize;
+#endif
 	phys_block = mtdblk->old_phys_block;
 	for (page = 0; page < ppb; page++) {
 		if ( ! mtdblk->page_state[page]) {
@@ -434,7 +446,7 @@ page_retry:
 			if(sector != sectors_per_page){
 				phys_page = (phys_block * ppb) + page;
 				pos = (unsigned long long)phys_page<<this->page_shift;
-page_offset_retry:	
+page_offset_retry:
 				oobops.datbuf = page_buf;
 				ret = mtd->read_oob(mtd, pos, &oobops);
 
@@ -464,7 +476,7 @@ static int mtdblock_erase_block(struct mtdblk_dev *mtdblk, int phys_block)
 	struct mtdblk_zone_t *zone_ptr = mtdblk->zone;
         struct mtdblk_block_info *block_info = zone_ptr->block_info;
 	struct mtd_info *mtd = mtdblk->mtd;
-	struct nand_chip *this = mtd->priv; 
+	struct nand_chip *this = mtd->priv;
 	unsigned long long pos;
 	int ret;
 
@@ -494,24 +506,28 @@ static int mtdblock_erase_block(struct mtdblk_dev *mtdblk, int phys_block)
 static int mtdblock_program_block(struct mtdblk_dev *mtdblk, int phys_block)
 {
 	struct mtd_info *mtd = mtdblk->mtd;
-	struct nand_chip *this = mtd->priv; 
+	struct nand_chip *this = mtd->priv;
 	struct mtdblk_block_info *block_info = mtdblk->zone->block_info;
 	struct mtd_oob_ops oobops;
 	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
 	unsigned long long pos;
 	int ret,i;
-	
+
 	dprintk("W %d-%d\n", mtdblk->virt_block,phys_block);
 	memset(&oobops, 0, sizeof(oobops));
 	oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 	oobops.len = mtd->writesize;
+#else
+	oobops.len = mtd->validsize;
+#endif
 	oobops.ooblen = sizeof(fsoobbuf);
 	oobops.ooboffs = 2;
 	oobops.oobbuf = (unsigned char *)&fsoobbuf;
 
 	/* spare area mark  need to be changed Nancy mark */
 	memset((unsigned char *)&fsoobbuf, 0xff, sizeof(fsoobbuf));
-	fsoobbuf.block_addr_field1 = mtdblk->virt_block;	
+	fsoobbuf.block_addr_field1 = mtdblk->virt_block;
 	fsoobbuf.block_addr_field2 = mtdblk->virt_block;
 	fsoobbuf.lifetime = block_info[phys_block].lifetime;
 	for(i=0; i<ppb; i++){
@@ -520,7 +536,7 @@ static int mtdblock_program_block(struct mtdblk_dev *mtdblk, int phys_block)
 		/* clear page cache if it is out of time! */
 		if (mtdblk->page_num == (phys_block * ppb) + i)
 			mtdblk->page_num = ~0;
-	
+
 		ret = mtd->write_oob(mtd, pos, &oobops);
 		if (ret)
 			return -1;
@@ -531,12 +547,12 @@ static int mtdblock_program_block(struct mtdblk_dev *mtdblk, int phys_block)
 int mtdblock_flush_cache (struct mtdblk_dev *mtdblk)
 {
 	struct mtd_info *mtd = mtdblk->mtd;
-	struct nand_chip *this = mtd->priv; 
+	struct nand_chip *this = mtd->priv;
 	struct mtd_oob_ops oobops;
 	struct mtdblk_block_info *block_info = mtdblk->zone->block_info;
 	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
 	unsigned long phys_page;
-	unsigned long long pos; 
+	unsigned long long pos;
 	unsigned char *buf = mtdblk->g_page_buf;
 	int phys_block, page;
 	int ret = 0;
@@ -546,24 +562,27 @@ int mtdblock_flush_cache (struct mtdblk_dev *mtdblk)
 
 	memset(&oobops, 0, sizeof(oobops));
 	oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 	oobops.len = mtd->writesize;
+#else
+	oobops.len = mtd->validsize;
+#endif
 	oobops.ooblen = sizeof(fsoobbuf);
 	oobops.ooboffs = 2 ;
 	oobops.oobbuf = (unsigned char *)&fsoobbuf;
-			
+
 	/* un-dirty data read from old block */
 	mtdblock_fill_block_cache(mtdblk);
 
 	/* erase a free block */
-	phys_block = mtdblk->new_phys_block;	
-	
+	phys_block = mtdblk->new_phys_block;
+
 restart:
 	do {
-		if (!(block_info[phys_block].tag & MTDBLOCK_BIT_EMPTY_BLOCK)) {
 			ret = erase_block(mtd, phys_block);
 			block_info[phys_block].lifetime++;
 
-			/* if erase process error, tagged to be bad block, 
+			/* if erase process error, tagged to be bad block,
 			 * and find a new free phys_block to program
 			 */
 			if( ret < 0 ) {
@@ -572,13 +591,10 @@ restart:
 				       __FILE__, phys_block, mtdblk->new_phys_block);
 				phys_block = mtdblk->new_phys_block;
 			}
-		}
-		else
-			ret = 1;
 	} while(ret < 0);
 
 	ret = mtdblock_program_block(mtdblk, phys_block);
-	/* if write process error, tagged to be bad block, 
+	/* if write process error, tagged to be bad block,
 	 * and find a new free phys_block to program
 	 */
 	if(ret < 0){
@@ -590,35 +606,35 @@ restart:
 	}
 	/* Now, program new block done correctly */
 
-	/* if write_verify_enable, read the block back with ECC check, 
+	/* if write_verify_enable, read the block back with ECC check,
 	 * if Ecc check fail, do Re-programming( back to restart )
 	 */
 	if( get_mtdblock_write_verify_enable() ){
 		for (page = 0; page < ppb; page++) {
 			phys_page = (phys_block * ppb) + page;
 			pos = (unsigned long long)phys_page<<this->page_shift;
-			
-			oobops.datbuf = buf;	
+
+			oobops.datbuf = buf;
 			ret = mtd->read_oob(mtd, pos, &oobops);
 			if (ret ){
 				phys_block = mtdblock_mark_bad_block_to_nand(mtdblk, phys_block);
-				mtdblk->new_phys_block = phys_block;				
-				goto restart;				
+				mtdblk->new_phys_block = phys_block;
+				goto restart;
 			}
-		}	
+		}
 	}
 	if (mtdblk->old_phys_block != mtdblk->new_phys_block) {
-			phys_block = mtdblk->old_phys_block;	
+			phys_block = mtdblk->old_phys_block;
 			ret = mtdblock_erase_block(mtdblk, phys_block);
 			if (ret)
 			{
-				mtdblock_block_info_map_bad_block(mtdblk, phys_block);		
+				mtdblock_block_info_map_bad_block(mtdblk, phys_block);
 				pos = (unsigned long long)phys_block << this->phys_erase_shift;
-			
+
 				mtd->block_markbad(mtd, pos);
-				printk("%s:erase old_phys_block %d faild,mark it bad\n",__FUNCTION__,phys_block);	
+				printk("%s:erase old_phys_block %d faild,mark it bad\n",__FUNCTION__,phys_block);
 			}
-	} 
+	}
 	mtdblock_init_block_cache(mtdblk);
 	return 0;
 }
@@ -630,15 +646,15 @@ static int mtdblock_mark_bad_block_to_nand(struct mtdblk_dev *mtdblk, int phys_b
 	unsigned long long pos;
 	int ret;
 
-    /* TODO: when reading error, there is no need to unmap mtdblk->virt_block which 
+    /* TODO: when reading error, there is no need to unmap mtdblk->virt_block which
      will be written, unmapping is just needed when programming occurs error. */
 	mtdblock_block_lookup_unmap_entry(mtdblk, mtdblk->virt_block);
 	mtdblock_block_info_map_bad_block(mtdblk, phys_block);
 
-	ret = erase_block(mtd, phys_block);	
+	ret = erase_block(mtd, phys_block);
 	if(ret)
 		printk("%s erase block %d for marking bad failed\n", __FILE__, phys_block);
-	
+
 	pos = (unsigned long long)phys_block << this->phys_erase_shift;
 
 	mtd->block_markbad(mtd, pos);
@@ -647,13 +663,13 @@ static int mtdblock_mark_bad_block_to_nand(struct mtdblk_dev *mtdblk, int phys_b
 		printk("%s ERROR: can't find_free_block!!\n", __FILE__);
 
 	mtdblock_block_lookup_map_entry(mtdblk, mtdblk->virt_block, phys_block);
-	
+
 	return phys_block;
 }
 
 /*
  * Cache stuff...
- * 
+ *
  * Since typical flash erasable sectors are much larger than what Linux's
  * buffer cache can handle, we must implement read-modify-write on flash
  * sectors for each block write requests.  To avoid over-erasing flash sectors
@@ -669,7 +685,7 @@ static void erase_callback(struct erase_info *done)
 
 static int erase_block (struct mtd_info *mtd, int phys_block )
 {
-	struct nand_chip *this = mtd->priv; 
+	struct nand_chip *this = mtd->priv;
 	struct erase_info erase;
 	DECLARE_WAITQUEUE(wait, current);
 	wait_queue_head_t wait_q;
@@ -701,29 +717,31 @@ static int erase_block (struct mtd_info *mtd, int phys_block )
 	return 0;
 }
 
-static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long sector, 
+static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long sector,
 			    int len, const char *buf)
 {
 	struct mtd_info *mtd = mtdblk->mtd;
 	struct nand_chip *this = mtd->priv;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));	
-	unsigned long virt_page; 
-	int virt_block, old_phys_block, new_phys_block, page_offset; 
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
+	unsigned long virt_page;
+	int virt_block, old_phys_block, new_phys_block, page_offset;
 	int page_num_in_block;
+#if !defined(CONFIG_SOC_JZ4760B)
 	unsigned short sectors_per_page = mtd->writesize >> 9;
-
+#else
+	unsigned short sectors_per_page = mtd->validsize>> 9;
+#endif
 	virt_page = sector / sectors_per_page;
 	page_offset = sector % sectors_per_page;
-	virt_block = virt_page / ppb; 
+	virt_block = virt_page / ppb;
 	page_num_in_block = virt_page % ppb;
 
 	if (mtdblock_address_translate(mtdblk, virt_block, &old_phys_block) < 0) {
-		//dprintk("virtual block 0x%x not mapped\n",virt_block);
-			
+
 		mutex_lock(&mtdblk->cache_mutex);
 		mtdblock_flush_cache(mtdblk);
 		mutex_unlock(&mtdblk->cache_mutex);
-		
+
 		if (mtdblock_find_free_block(mtdblk, &new_phys_block)) {
 			printk("%s ERROR: can't find_free_block!!", __FILE__);
 			return -1;
@@ -733,7 +751,7 @@ static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long sector,
 	} else {
 		if ( STATE_USED == mtdblk->block_cache_state ) {
 			if ( mtdblk->virt_block!= virt_block) {
-				// Commit before we start a new cache.  
+				// Commit before we start a new cache.
 				mutex_lock(&mtdblk->cache_mutex);
 				mtdblock_flush_cache(mtdblk);
 				mutex_unlock(&mtdblk->cache_mutex);
@@ -744,25 +762,23 @@ static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long sector,
 				}
 				mtdblock_block_lookup_unmap_entry(mtdblk, virt_block);
 				mtdblock_setup_block_cache(mtdblk, virt_block, new_phys_block,
-						  old_phys_block);					
-				mtdblock_block_lookup_map_entry(mtdblk, virt_block, new_phys_block); 
+						  old_phys_block);
+				mtdblock_block_lookup_map_entry(mtdblk, virt_block, new_phys_block);
 			} else {
-				//dprintk("cache hit: 0x%x\n", virt_page);
 			}
 		} else {
-			//dprintk("in else:with existing mapping: 0x%x -> 0x%x\n", virt_block, old_phys_block);
-		
+
 			if (mtdblock_find_free_block(mtdblk, &new_phys_block)) {
 				printk("%s ERROR: can't find_free_block!!", __FILE__);
 				return -1;
 			}
 			mtdblock_block_lookup_unmap_entry(mtdblk, virt_block);
 			mtdblock_setup_block_cache(mtdblk, virt_block, new_phys_block,
-					  old_phys_block);				
+					  old_phys_block);
 			mtdblock_block_lookup_map_entry(mtdblk, virt_block,
 						     new_phys_block);
-		}                        
-	}		
+		}
+	}
 	mtdblk->page_state[page_num_in_block] = 1;
 	mtdblk->page_offset_state[(page_num_in_block*sectors_per_page) + page_offset] = 1;
 	memcpy(&mtdblk->block_cache_data[(page_num_in_block<<this->page_shift) +(page_offset<<9)],
@@ -772,31 +788,39 @@ static int do_cached_write (struct mtdblk_dev *mtdblk, unsigned long sector,
 
 
 
-static int do_cached_read (struct mtdblk_dev *mtdblk, unsigned long sector, 
+static int do_cached_read (struct mtdblk_dev *mtdblk, unsigned long sector,
 			   int len, char *buf)
 {
 	struct mtd_info *mtd = mtdblk->mtd;
 	struct nand_chip *this = mtd->priv;
 	struct mtd_oob_ops oobops;
-	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));	
-	int ret, virt_block, phys_block, page_offset; 
+	unsigned short ppb = (1 << (this->phys_erase_shift - this->page_shift));
+	int ret, virt_block, phys_block, page_offset;
 	unsigned long virt_page, phys_page, page_num_in_block;
 	unsigned long long pos;
+#if !defined(CONFIG_SOC_JZ4760B)
 	unsigned short sectors_per_page = mtd->writesize >> 9;
+#else
+	unsigned short sectors_per_page = mtd->validsize >> 9;
+#endif
 	int readfail=0;
 
 	virt_page = sector / sectors_per_page;
 	page_offset = sector % sectors_per_page;
-	virt_block = virt_page / ppb; 
+	virt_block = virt_page / ppb;
 
-	if (virt_block == mtdblk->virt_block) {  /* if block already in cache */
+	if ((STATE_USED == mtdblk->block_cache_state) && (virt_block == mtdblk->virt_block)) {  /* if block already in cache */
 		page_num_in_block = virt_page % ppb;
 		if (mtdblk->page_offset_state[(page_num_in_block*sectors_per_page) + page_offset])
 			memcpy(buf, &mtdblk->block_cache_data[(page_num_in_block<<this->page_shift) + (page_offset<<SECTOR_SHIFT)], len);
 		else {
 			memset(&oobops, 0, sizeof(oobops));
 			oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 			oobops.len = mtd->writesize;
+#else
+			oobops.len = mtd->validsize;
+#endif
 			oobops.datbuf = mtdblk->page_cache_data;
 
 			phys_page = (mtdblk->old_phys_block * ppb) + (virt_page % ppb);
@@ -816,7 +840,7 @@ read_retry:
 						mutex_unlock(&mtdblk->cache_mutex);
 					}
 				}
-				
+
 				if (readfail != 0){
 					printk("%s: page %d uncorretable ecc ---> correctable ecc due to %d times read retry,but still move this block\n",
 					__FILE__,(int)phys_page,readfail);
@@ -825,7 +849,7 @@ read_retry:
 					mutex_unlock(&mtdblk->cache_mutex);
 					readfail = 0;
 				}
-				
+
 				mtdblk->page_num = phys_page;
 			}
 			memcpy(buf, &mtdblk->page_cache_data[page_offset<<SECTOR_SHIFT],len);
@@ -835,14 +859,18 @@ read_retry:
 			if ( mtdblock_address_translate( mtdblk, virt_block, &phys_block) < 0) {
 				// In a Flash Memory device, there might be a logical block that is
 				// not allcated to a physical block due to the block not being used.
-				// All data returned should be set to 0xFF when accessing this logical 
+				// All data returned should be set to 0xFF when accessing this logical
 				// block.
 				memset(buf, 0xFF, SECTOR_SIZE);
 				break;
 			} else {
 				memset(&oobops, 0, sizeof(oobops));
 				oobops.mode = MTD_OOB_AUTO;
+#if !defined(CONFIG_SOC_JZ4760B)
 				oobops.len = mtd->writesize;
+#else
+				oobops.len = mtd->validsize;
+#endif
 				oobops.datbuf = mtdblk->page_cache_data;
 
 				phys_page = (phys_block * ppb) + (virt_page % ppb);
@@ -859,14 +887,14 @@ read_retry:
 							mutex_lock(&mtdblk->cache_mutex);
 							mtdblock_flush_cache(mtdblk);
 							mutex_unlock(&mtdblk->cache_mutex);
-	
-							printk("--%s %s: move to another block\n", 
+
+							printk("--%s %s: move to another block\n",
 							__FILE__, __FUNCTION__);
 							mtdblock_move_to_another_block(mtdblk, phys_block);
-						
+
 						}
 					}
-					
+
 					if (readfail != 0){
 						printk("%s: page %d uncorretable ecc ---> correctable ecc due to %d times read retry,but still move this block\n",
 						__FILE__,(int)phys_page, readfail);
@@ -877,13 +905,13 @@ read_retry:
 						mtdblock_move_to_another_block(mtdblk, phys_block);
 						readfail = 0;
 					}
-					
+
 					mtdblk->page_num = phys_page;
 				}
 				memcpy(buf, &mtdblk->page_cache_data[page_offset<<SECTOR_SHIFT],len);
 				break;
 			}
-		} while(1); 
+		} while(1);
 	}
 
 	return 0;
@@ -907,11 +935,11 @@ static int mtdblock_writesect(struct mtd_blktrans_dev *dev,
 	if (unlikely(dev->mtd->flags & MTD_MTDBLOCK_JZ_INVALID)) {
 		return 0;
 	}
-	
+
 	return do_cached_write(mtdblk, block, SECTOR_SIZE, buf);
 }
 
-#if defined(CONFIG_UDC_USE_LB_CACHE)
+#if 1//defined(CONFIG_UDC_USE_LB_CACHE)
 int udc_mtdblock_readsect(struct mtdblk_dev *mtdblk,
 			  unsigned long block, char *buf, int size)
 {
@@ -968,8 +996,12 @@ static int mtdblock_init_mtdblk(int dev, struct mtd_info *mtd)
 	mtdblk->count = 1;
 	mtdblk->mtd = mtd;
 	mutex_init(&mtdblk->cache_mutex);
-	ppb = (1 << (this->phys_erase_shift - this->page_shift));	
+	ppb = (1 << (this->phys_erase_shift - this->page_shift));
+#if !defined(CONFIG_SOC_JZ4760B)
 	spp = mtdblk->mtd->writesize >> 9 ;  //spp : sectors per page
+#else
+	spp = mtdblk->mtd->validsize>> 9 ;  //spp : sectors per page
+#endif
 
 	if (!jz_mtdblock_cache || !jz_mtdblock_cache[dev]) {
 		if ((mtd->flags) & MTD_NAND_CPU_MODE) {
@@ -989,8 +1021,13 @@ static int mtdblock_init_mtdblk(int dev, struct mtd_info *mtd)
 
 	mtdblk->page_state = kmalloc(ppb, GFP_KERNEL);
 	mtdblk->page_offset_state = kmalloc(ppb*spp, GFP_KERNEL);
+#if !defined(CONFIG_SOC_JZ4760B)
 	mtdblk->page_cache_data = kmalloc(mtdblk->mtd->writesize, GFP_KERNEL);
-	mtdblk->g_page_buf = kmalloc(mtdblk->mtd->writesize, GFP_KERNEL); 
+	mtdblk->g_page_buf = kmalloc(mtdblk->mtd->writesize, GFP_KERNEL);
+#else
+	mtdblk->page_cache_data = kmalloc(mtdblk->mtd->validsize, GFP_KERNEL);
+	mtdblk->g_page_buf = kmalloc(mtdblk->mtd->validsize, GFP_KERNEL);
+#endif
 
 	if(!mtdblk->page_state ||
 	   !mtdblk->page_offset_state ||
@@ -1032,7 +1069,7 @@ static int mtdblock_zone_init(struct mtdblk_dev *mtdblk, int dev)
 	if(!zone_ptr)
 		return -ENOMEM;
 	memset(zone_ptr, 0, sizeof(*zone_ptr));
-	
+
 	badblock_table = get_jz_badblock_table();
 	zone_ptr->total_phys_block = mtd->size >> this->phys_erase_shift;
 	zone_ptr->bad_block_num = badblock_table[dev];
@@ -1044,8 +1081,8 @@ static int mtdblock_zone_init(struct mtdblk_dev *mtdblk, int dev)
 		printk("NOTICE: If you are using Yaffs2 or Jffs2, you can ignore ERROR 1 \n\n");
 		zone_ptr->total_virt_block = zone_ptr->total_phys_block - 1;
 	}
-	zone_ptr->free_phys_block = zone_ptr->total_phys_block;  
-	zone_ptr->free_virt_block = zone_ptr->total_virt_block;  
+	zone_ptr->free_phys_block = zone_ptr->total_phys_block;
+	zone_ptr->free_virt_block = zone_ptr->total_virt_block;
 
 	zone_ptr->block_lookup = kzalloc(sizeof(unsigned int) * zone_ptr->total_virt_block, GFP_KERNEL);
 	zone_ptr->block_info = kmalloc(sizeof(struct mtdblk_block_info) * zone_ptr->total_phys_block, GFP_KERNEL);
@@ -1053,7 +1090,7 @@ static int mtdblock_zone_init(struct mtdblk_dev *mtdblk, int dev)
 	if(!zone_ptr->block_lookup ||
 		!zone_ptr->block_info)
 		return -ENOMEM;
- 
+
 	mtdblk->zone = zone_ptr;
 
 	for (phys_block = 0; phys_block < zone_ptr->total_phys_block; phys_block++) {
@@ -1063,7 +1100,7 @@ static int mtdblock_zone_init(struct mtdblk_dev *mtdblk, int dev)
 			mtd->read_oob(mtd, pos, &oobops);
 			pos += (1<<this->page_shift);
 			i++;
-		} while(fsoobbuf.block_addr_field1 != fsoobbuf.block_addr_field2 
+		} while(fsoobbuf.block_addr_field1 != fsoobbuf.block_addr_field2
 		       && i < get_mtdblock_oob_copies());
 
 		zone_ptr->block_info[phys_block].tag = MTDBLOCK_BIT_FREE_BLOCK;
@@ -1071,20 +1108,20 @@ static int mtdblock_zone_init(struct mtdblk_dev *mtdblk, int dev)
 			zone_ptr->block_info[phys_block].lifetime = 0;
 		else
 			zone_ptr->block_info[phys_block].lifetime = fsoobbuf.lifetime;
-		
+
 		virt_block = fsoobbuf.block_addr_field1;
 
 		/*bad block scan. notice: badblock mark is in the last page of eraseblock*/
 		pos = (unsigned long long)phys_block<<this->phys_erase_shift;
 		if(mtd->block_isbad(mtd, pos) ){
 			mtdblock_block_info_map_bad_block(mtdblk, phys_block);
-			dprintk("found bad block 0x%x -> 0x%x\n", 
+			dprintk("found bad block 0x%x -> 0x%x\n",
 				virt_block, phys_block);
 			continue;
 		}
 		mtdblock_block_lookup_map_entry(mtdblk, virt_block, phys_block);
 	}
-	
+
 	return 0;
 }
 
@@ -1109,13 +1146,6 @@ static int mtdblock_open(struct mtd_blktrans_dev *mbd)
 		if (!mtd_blk[i])
 			return 0;
 	}
-
-	if (mtd->flags & MTD_MTDBLOCK_JZ_INVALID) {
-		dprintk(" mtdblock%d doesn't work over mtdblock-jz.\n",dev);
-		return 0;
-	}
-
-	//dprintk(" mtdblock%d works over mtdblock-jz.\n",dev);
 
 	if (mtdblks[dev]) {
 		mtdblks[dev]->count++;
@@ -1195,7 +1225,7 @@ static int mtdblock_release(struct mtd_blktrans_dev *mbd)
 	} else if (mtdblklog) {
 			printk("%s: decrease use count\n", __FUNCTION__);
 	}
-	
+
 	return 0;
 }
 
@@ -1226,8 +1256,8 @@ static void mtdblock_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	dev->mtd = mtd;
 	dev->devnum = mtd->index;
 
-	badblock_table = get_jz_badblock_table(); 
-	reserved_sectors = badblock_table[dev->devnum ] << (this->phys_erase_shift - 9) ;	
+	badblock_table = get_jz_badblock_table();
+	reserved_sectors = badblock_table[dev->devnum ] << (this->phys_erase_shift - 9) ;
 	dev->size = (mtd->size >> 9) - reserved_sectors;
 	dev->tr = tr;
 
@@ -1242,7 +1272,7 @@ static int mtdblock_getgeo(struct mtd_blktrans_dev *dev, struct hd_geometry *geo
 	memset(geo, 0, sizeof(*geo));
 	geo->heads     = 4;
 	geo->sectors   = 16;
-	geo->cylinders = dev->size/(4*16); 
+	geo->cylinders = dev->size/(4*16);
 	return 0;
 }
 

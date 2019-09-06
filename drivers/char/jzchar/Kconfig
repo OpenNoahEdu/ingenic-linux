@@ -3,11 +3,11 @@
 #
 
 menu "JZSOC char device support"
-	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B || SOC_JZ4810
 
 config JZCHAR
 	tristate 'JzSOC char device support'
-	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760
+	depends on SOC_JZ4740 || SOC_JZ4730 || SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B || SOC_JZ4810 
 
 config JZ_SIMPLE_I2C
 	tristate 'Ingenic Simple I2C Userspace Driver'
@@ -54,11 +54,11 @@ config JZ_OW
 
 config JZ_TCSM
 	tristate 'JZ TCSM support' 
-	depends on JZCHAR && (SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760)
+	depends on JZCHAR && (SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B || SOC_JZ4810)
 
 config JZ_TSSI
 	tristate 'JZ MPEG2-TS interface support' 
-	depends on JZCHAR && (SOC_JZ4750 || SOC_JZ4750D)
+	depends on JZCHAR && (SOC_JZ4750 || SOC_JZ4750D || SOC_JZ4760 || SOC_JZ4760B || SOC_JZ4810)
 
 endmenu
 

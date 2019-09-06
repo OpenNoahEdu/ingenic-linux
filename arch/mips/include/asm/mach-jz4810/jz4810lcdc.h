@@ -125,6 +125,7 @@
 #define LCD_PW1		(LCD_BASE + 0x74) /* DMA Page Width Register 1 */
 #define LCD_CNUM1	(LCD_BASE + 0x78) /* DMA Command Counter Register 1 */
 #define LCD_DESSIZE1	(LCD_BASE + 0x7C) /* Foreground Size in Descriptor 1 Register*/
+#define LCD_PCFG        (LCD_BASE + 0xB0)
 
 #define REG_LCD_CFG	REG32(LCD_CFG)
 #define REG_LCD_CTRL	REG32(LCD_CTRL)
@@ -186,6 +187,7 @@
 #define REG_LCD_PW1	REG32(LCD_PW1)
 #define REG_LCD_CNUM1	REG32(LCD_CNUM1)
 #define REG_LCD_DESSIZE1	REG32(LCD_DESSIZE1)
+#define REG_LCD_PCFG            REG32(LCD_PCFG)
 
 /* LCD Configure Register */
 #define LCD_CFG_LCDPIN_BIT	31  /* LCD pins selection */
@@ -193,7 +195,7 @@
   #define LCD_CFG_LCDPIN_LCD	(0x0 << LCD_CFG_LCDPIN_BIT)
   #define LCD_CFG_LCDPIN_SLCD	(0x1 << LCD_CFG_LCDPIN_BIT)
 #define LCD_CFG_TVEPEH		(1 << 30) /* TVE PAL enable extra halfline signal */
-#define LCD_CFG_FUHOLD		(1 << 29) /* hold pixel clock when outFIFO underrun */
+//#define LCD_CFG_FUHOLD	(1 << 29) /* hold pixel clock when outFIFO underrun *//*keep this bit to 0*/
 #define LCD_CFG_NEWDES		(1 << 28) /* use new descripter. old: 4words, new:8words */
 #define LCD_CFG_PALBP		(1 << 27) /* bypass data format and alpha blending */
 #define LCD_CFG_TVEN		(1 << 26) /* indicate the terminal is lcd or tv */
@@ -245,11 +247,13 @@
 					    0: 16-bit data correspond with LCD_D[15:0]
 					    1: 16-bit data correspond with LCD_D[17:10], LCD_D[8:1] */
 #define LCD_CTRL_BST_BIT	28  /* Burst Length Selection */
-#define LCD_CTRL_BST_MASK	(0x03 << LCD_CTRL_BST_BIT)
+#define LCD_CTRL_BST_MASK	(0x07 << LCD_CTRL_BST_BIT)
   #define LCD_CTRL_BST_4	(0 << LCD_CTRL_BST_BIT) /* 4-word */
   #define LCD_CTRL_BST_8	(1 << LCD_CTRL_BST_BIT) /* 8-word */
   #define LCD_CTRL_BST_16	(2 << LCD_CTRL_BST_BIT) /* 16-word */
   #define LCD_CTRL_BST_32	(3 << LCD_CTRL_BST_BIT) /* 32-word */
+#define LCD_CTRL_BST_16_CTN     (5 << LCD_CTRL_BST_BIT)
+#define LCD_CTRL_BST_64         (4 << LCD_CTRL_BST_BIT)
 #define LCD_CTRL_RGB565		(0 << 27) /* RGB565 mode(foreground 0 in OSD mode) */
 #define LCD_CTRL_RGB555		(1 << 27) /* RGB555 mode(foreground 0 in OSD mode) */
 #define LCD_CTRL_OFUP		(1 << 26) /* Output FIFO underrun protection enable */
@@ -260,8 +264,8 @@
   #define LCD_CTRL_FRC_2	(2 << LCD_CTRL_FRC_BIT) /* 2 grayscale */
 #define LCD_CTRL_PDD_BIT	16  /* Load Palette Delay Counter */
 #define LCD_CTRL_PDD_MASK	(0xff << LCD_CTRL_PDD_BIT)
-///#define LCD_CTRL_VGA		(1 << 15) /* VGA interface enable */
-//#define LCD_CTRL_DACTE		(1 << 14) /* DAC loop back test */
+//#define LCD_CTRL_VGA		(1 << 15) /* VGA interface enable *//*keep this bit to 0*/
+#define LCD_CTRL_DACTE		(1 << 14) /* DAC loop back test */
 #define LCD_CTRL_EOFM		(1 << 13) /* EOF interrupt mask */
 #define LCD_CTRL_SOFM		(1 << 12) /* SOF interrupt mask */
 #define LCD_CTRL_OFUM		(1 << 11) /* Output FIFO underrun interrupt mask */
@@ -300,6 +304,7 @@
 #define LCD_OSDC_EOFM0		(1 << 10) /* End of frame interrupt mask for foreground 0 */
 
 ////////////////////////////////////////////////////////////
+#if 0//These bits always read 0, and written are ignored.
 #define LCD_OSDC_ENDM		(1 << 9) /* End of frame interrupt mask for panel. */
 #define LCD_OSDC_F0DIVMD	(1 << 8) /* Divide Foreground 0 into 2 parts.
 					  * 0: Foreground 0 only has one part. */
@@ -309,6 +314,7 @@
 					  * 0: PART 1&2 have no same line */
 #define LCD_OSDC_F0P2EN		(1 << 5) /* 1: Foreground 0 PART2 is enabled.
 					  * 0: Foreground 0 PART2 is disabled.*/
+#endif
 ////////////////////////////////////////////////////////////
 
 #define LCD_OSDC_F1EN		(1 << 4) /* enable foreground 1 */
@@ -444,6 +450,8 @@
 #define LCD_CMD_EOFINT		(1 << 30)
 #define LCD_CMD_CMD		(1 << 29) /* indicate command in slcd mode */
 #define LCD_CMD_PAL		(1 << 28)
+#define LCD_CMD_UNCOMPRESS_EN   (1 << 27)
+#define LCD_CMD_UNCOMPRESS_WITHOUT_ALPHA      (1 << 26)
 #define LCD_CMD_LEN_BIT		0
 #define LCD_CMD_LEN_MASK	(0xffffff << LCD_CMD_LEN_BIT)
 

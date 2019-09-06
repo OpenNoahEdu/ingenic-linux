@@ -10,7 +10,7 @@
 #define __JZ4810MDMA_H__
 
 
-#define	MDMAC_BASE	0xB3030000 /* Memory Copy DMAC */
+#define	MDMAC_BASE	0xB3420000 //0xB3030000 /* Memory Copy DMAC */
 
 /*************************************************************************
  * MDMAC (MEM Copy DMA Controller)

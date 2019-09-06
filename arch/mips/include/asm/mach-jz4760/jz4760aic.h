@@ -1,36 +1,289 @@
 /*
- * linux/include/asm-mips/mach-jz4760/jz4760aic.h
- *
- * JZ4760 AIC register definition.
- *
+ * chip-aic.h
+ * JZ4760 AIC register definition
  * Copyright (C) 2010 Ingenic Semiconductor Co., Ltd.
+ *
+ * Author: whxu@ingenic.cn
  */
 
-#ifndef __JZ4760AIC_H__
-#define __JZ4760AIC_H__
+#ifndef __CHIP_AIC_H__
+#define __CHIP_AIC_H__
 
 
-#define	AIC_BASE	0xB0020000
-#define	ICDC_BASE	0xB0020000
+/*
+ * AC97 and I2S controller module(AIC) address definition
+ */
+#define	AIC_BASE	0xb0020000
 
 
-/*************************************************************************
- * AIC (AC97/I2S Controller)
- *************************************************************************/
-#define	AIC_FR			(AIC_BASE + 0x000)
-#define	AIC_CR			(AIC_BASE + 0x004)
-#define	AIC_ACCR1		(AIC_BASE + 0x008)
-#define	AIC_ACCR2		(AIC_BASE + 0x00C)
-#define	AIC_I2SCR		(AIC_BASE + 0x010)
-#define	AIC_SR			(AIC_BASE + 0x014)
-#define	AIC_ACSR		(AIC_BASE + 0x018)
-#define	AIC_I2SSR		(AIC_BASE + 0x01C)
-#define	AIC_ACCAR		(AIC_BASE + 0x020)
-#define	AIC_ACCDR		(AIC_BASE + 0x024)
-#define	AIC_ACSAR		(AIC_BASE + 0x028)
-#define	AIC_ACSDR		(AIC_BASE + 0x02C)
-#define	AIC_I2SDIV		(AIC_BASE + 0x030)
-#define	AIC_DR			(AIC_BASE + 0x034)
+/*
+ * AIC registers offset address definition
+ */
+#define AIC_FR_OFFSET		(0x00)
+#define AIC_CR_OFFSET		(0x04)
+#define AIC_ACCR1_OFFSET	(0x08)
+#define AIC_ACCR2_OFFSET	(0x0c)
+#define AIC_I2SCR_OFFSET	(0x10)
+#define AIC_SR_OFFSET		(0x14)
+#define AIC_ACSR_OFFSET		(0x18)
+#define AIC_I2SSR_OFFSET	(0x1c)
+#define AIC_ACCAR_OFFSET	(0x20)
+#define AIC_ACCDR_OFFSET	(0x24)
+#define AIC_ACSAR_OFFSET	(0x28)
+#define AIC_ACSDR_OFFSET	(0x2c)
+#define AIC_I2SDIV_OFFSET	(0x30)
+#define AIC_DR_OFFSET		(0x34)
+
+#define SPDIF_ENA_OFFSET	(0x80)
+#define SPDIF_CTRL_OFFSET	(0x84)
+#define SPDIF_STATE_OFFSET	(0x88)
+#define SPDIF_CFG1_OFFSET	(0x8c)
+#define SPDIF_CFG2_OFFSET	(0x90)
+#define SPDIF_FIFO_OFFSET	(0x94)
+
+#define ICDC_RGADW_OFFSET	(0xa4)
+#define ICDC_RGDATA_OFFSET	(0xa8)
+
+
+/*
+ * AIC registers address definition
+ */
+#define AIC_FR		(AIC_BASE + AIC_FR_OFFSET)
+#define AIC_CR		(AIC_BASE + AIC_CR_OFFSET)
+#define AIC_ACCR1	(AIC_BASE + AIC_ACCR1_OFFSET)
+#define AIC_ACCR2	(AIC_BASE + AIC_ACCR2_OFFSET)
+#define AIC_I2SCR	(AIC_BASE + AIC_I2SCR_OFFSET)
+#define AIC_SR		(AIC_BASE + AIC_SR_OFFSET)
+#define AIC_ACSR	(AIC_BASE + AIC_ACSR_OFFSET)
+#define AIC_I2SSR	(AIC_BASE + AIC_I2SSR_OFFSET)
+#define AIC_ACCAR	(AIC_BASE + AIC_ACCAR_OFFSET)
+#define AIC_ACCDR	(AIC_BASE + AIC_ACCDR_OFFSET)
+#define AIC_ACSAR	(AIC_BASE + AIC_ACSAR_OFFSET)
+#define AIC_ACSDR	(AIC_BASE + AIC_ACSDR_OFFSET)
+#define AIC_I2SDIV	(AIC_BASE + AIC_I2SDIV_OFFSET)
+#define AIC_DR		(AIC_BASE + AIC_DR_OFFSET)
+
+#define SPDIF_ENA	(AIC_BASE + SPDIF_ENA_OFFSET)
+#define SPDIF_CTRL	(AIC_BASE + SPDIF_CTRL_OFFSET)
+#define SPDIF_STATE	(AIC_BASE + SPDIF_STATE_OFFSET)
+#define SPDIF_CFG1	(AIC_BASE + SPDIF_CFG1_OFFSET)
+#define SPDIF_CFG2	(AIC_BASE + SPDIF_CFG2_OFFSET)
+#define SPDIF_FIFO	(AIC_BASE + SPDIF_FIFO_OFFSET)
+
+#define ICDC_RGADW	(AIC_BASE + ICDC_RGADW_OFFSET)
+#define ICDC_RGDATA	(AIC_BASE + ICDC_RGDATA_OFFSET)
+
+
+/*
+ * AIC registers common define
+ */
+
+/* AIC controller configuration register(AICFR) */
+#define	AIC_FR_LSMP		BIT6
+#define	AIC_FR_ICDC		BIT5
+#define	AIC_FR_AUSEL		BIT4
+#define	AIC_FR_RST		BIT3
+#define	AIC_FR_BCKD		BIT2
+#define	AIC_FR_SYNCD		BIT1
+#define	AIC_FR_ENB		BIT0
+
+#define	AIC_FR_RFTH_LSB		24
+#define	AIC_FR_RFTH_MASK	BITS_H2L(27, AIC_FR_RFTH_LSB)
+
+#define	AIC_FR_TFTH_LSB		16
+#define	AIC_FR_TFTH_MASK	BITS_H2L(20, AIC_FR_TFTH_LSB)
+
+/* AIC controller common control register(AICCR) */
+#define AIC_CR_PACK16		BIT28
+#define	AIC_CR_RDMS		BIT15
+#define	AIC_CR_TDMS		BIT14
+#define	AIC_CR_M2S		BIT11
+#define	AIC_CR_ENDSW		BIT10
+#define	AIC_CR_AVSTSU		BIT9
+#define	AIC_CR_TFLUSH		BIT8
+#define	AIC_CR_RFLUSH		BIT7
+#define	AIC_CR_EROR		BIT6
+#define	AIC_CR_ETUR		BIT5
+#define	AIC_CR_ERFS		BIT4
+#define	AIC_CR_ETFS		BIT3
+#define	AIC_CR_ENLBF		BIT2
+#define	AIC_CR_ERPL		BIT1
+#define	AIC_CR_EREC		BIT0
+
+#define AIC_CR_CHANNEL_LSB	24
+#define AIC_CR_CHANNEL_MASK	BITS_H2L(26, AIC_CR_CHANNEL_LSB)
+
+#define	AIC_CR_OSS_LSB		19
+#define	AIC_CR_OSS_MASK		BITS_H2L(21, AIC_CR_OSS_LSB)
+ #define AIC_CR_OSS(n)		(((n) > 18 ? (n)/6 : (n)/9) << AIC_CR_OSS_LSB)	/* n = 8, 16, 18, 20, 24 */
+
+#define	AIC_CR_ISS_LSB		16
+#define	AIC_CR_ISS_MASK		BITS_H2L(18, AIC_CR_ISS_LSB)
+ #define AIC_CR_ISS(n)		(((n) > 18 ? (n)/6 : (n)/9) << AIC_CR_ISS_LSB)	/* n = 8, 16, 18, 20, 24 */
+
+/* AIC controller AC-link control register 1(ACCR1) */
+#define AIC_ACCR1_RS_LSB	16
+#define	AIC_ACCR1_RS_MASK	BITS_H2L(25, AIC_ACCR1_RS_LSB)
+ #define AIC_ACCR1_RS_SLOT(n)	((1 << ((n) - 3)) << AIC_ACCR1_RS_LSB)	/* n = 3 .. 12 */
+
+#define AIC_ACCR1_XS_LSB	0
+#define	AIC_ACCR1_XS_MASK	BITS_H2L(9, AIC_ACCR1_XS_LSB)
+ #define AIC_ACCR1_XS_SLOT(n)	((1 << ((n) - 3)) << AIC_ACCR1_XS_LSB)	/* n = 3 .. 12 */
+
+/* AIC controller AC-link control register 2 (ACCR2) */
+#define	AIC_ACCR2_ERSTO		BIT18
+#define	AIC_ACCR2_ESADR		BIT17
+#define	AIC_ACCR2_ECADT		BIT16
+#define	AIC_ACCR2_SO		BIT3
+#define	AIC_ACCR2_SR		BIT2
+#define	AIC_ACCR2_SS		BIT1
+#define	AIC_ACCR2_SA		BIT0
+
+/* AIC controller i2s/msb-justified control register (I2SCR) */
+#define	AIC_I2SCR_RFIRST	BIT17
+#define	AIC_I2SCR_SWLH   	BIT16
+#define	AIC_I2SCR_STPBK		BIT12
+#define AIC_I2SCR_ESCLK		BIT4
+#define	AIC_I2SCR_AMSL		BIT0
+
+/* AIC controller FIFO status register (AICSR) */
+#define	AIC_SR_ROR		BIT6
+#define	AIC_SR_TUR		BIT5
+#define	AIC_SR_RFS		BIT4
+#define	AIC_SR_TFS		BIT3
+
+#define	AIC_SR_RFL_LSB		24
+#define	AIC_SR_RFL_MASK		BITS_H2L(29, AIC_SR_RFL_LSB)
+
+#define	AIC_SR_TFL_LSB		8
+#define	AIC_SR_TFL_MASK		BITS_H2L(13, AIC_SR_TFL_LSB)
+
+/* AIC controller AC-link status register (ACSR) */
+#define	AIC_ACSR_SLTERR		BIT21
+#define	AIC_ACSR_CRDY		BIT20
+#define	AIC_ACSR_CLPM		BIT19
+#define	AIC_ACSR_RSTO		BIT18
+#define	AIC_ACSR_SADR		BIT17
+#define	AIC_ACSR_CADT		BIT16
+
+/* AIC controller I2S/MSB-justified status register (I2SSR) */
+#define	AIC_I2SSR_CHBSY		BIT5
+#define	AIC_I2SSR_TBSY		BIT4
+#define	AIC_I2SSR_RBSY		BIT3
+#define	AIC_I2SSR_BSY		BIT2
+
+/* AIC controller AC97 codec command address register (ACCAR) */
+#define	AIC_ACCAR_CAR_LSB	0
+#define	AIC_ACCAR_CAR_MASK	BITS_H2L(19, AIC_ACCAR_CAR_LSB)
+
+
+/* AIC controller AC97 codec command data register (ACCDR) */
+#define	AIC_ACCDR_CDR_LSB	0
+#define	AIC_ACCDR_CDR_MASK	BITS_H2L(19, AIC_ACCDR_CDR_LSB)
+
+/* AC97 read and write macro based on ACCAR and ACCDR */
+#define AC97_READ_CMD		BIT19
+#define AC97_WRITE_CMD		(BIT19 & ~BIT19)
+
+#define AC97_INDEX_LSB		12
+#define AC97_INDEX_MASK		BITS_H2L(18, AC97_INDEX_LSB)
+
+#define AC97_DATA_LSB		4
+#define AC97_DATA_MASK		BITS_H2L(19, AC97_DATA_LSB)
+
+/* AIC controller AC97 codec status address register (ACSAR) */
+#define	AIC_ACSAR_SAR_LSB	0
+#define	AIC_ACSAR_SAR_MASK	BITS_H2L(19, AIC_ACSAR_SAR_LSB)
+
+/* AIC controller AC97 codec status data register (ACSDR) */
+#define	AIC_ACSDR_SDR_LSB	0
+#define	AIC_ACSDR_SDR_MASK	BITS_H2L(19, AIC_ACSDR_SDR_LSB)
+
+/* AIC controller I2S/MSB-justified clock divider register (I2SDIV) */
+#define	AIC_I2SDIV_DIV_LSB	0
+#define	AIC_I2SDIV_DIV_MASK	BITS_H2L(3, AIC_I2SDIV_DIV_LSB)
+
+/* SPDIF enable register (SPDIF_ENA) */
+#define SPDIF_ENA_SPEN		BIT0
+
+/* SPDIF control register (SPDIF_CTRL) */
+#define SPDIF_CTRL_DMAEN        BIT15
+#define SPDIF_CTRL_DTYPE        BIT14
+#define SPDIF_CTRL_SIGN         BIT13
+#define SPDIF_CTRL_INVALID      BIT12
+#define SPDIF_CTRL_RST          BIT11
+#define SPDIF_CTRL_SPDIFI2S     BIT10
+#define SPDIF_CTRL_MTRIG        BIT1
+#define SPDIF_CTRL_MFFUR        BIT0
+
+/* SPDIF state register (SPDIF_STAT) */
+#define SPDIF_STAT_BUSY		BIT7
+#define SPDIF_STAT_FTRIG	BIT1
+#define SPDIF_STAT_FUR		BIT0
+
+#define SPDIF_STAT_FLVL_LSB	8
+#define SPDIF_STAT_FLVL_MASK	BITS_H2L(14, SPDIF_STAT_FLVL_LSB)
+
+/* SPDIF configure 1 register (SPDIF_CFG1) */
+#define SPDIF_CFG1_INITLVL	BIT17
+#define SPDIF_CFG1_ZROVLD	BIT16
+
+#define SPDIF_CFG1_TRIG_LSB	12
+#define SPDIF_CFG1_TRIG_MASK	BITS_H2L(13, SPDIF_CFG1_TRIG_LSB)
+#define SPDIF_CFG1_TRIG(n)	(((n) > 16 ? 3 : (n)/8) << SPDIF_CFG1_TRIG_LSB)	/* n = 4, 8, 16, 32 */
+
+#define SPDIF_CFG1_SRCNUM_LSB	8
+#define SPDIF_CFG1_SRCNUM_MASK	BITS_H2L(11, SPDIF_CFG1_SRCNUM_LSB)
+
+#define SPDIF_CFG1_CH1NUM_LSB	4
+#define SPDIF_CFG1_CH1NUM_MASK	BITS_H2L(7, SPDIF_CFG1_CH1NUM_LSB)
+
+#define SPDIF_CFG1_CH2NUM_LSB	0
+#define SPDIF_CFG1_CH2NUM_MASK	BITS_H2L(3, SPDIF_CFG1_CH2NUM_LSB)
+
+/* SPDIF configure 2 register (SPDIF_CFG2) */
+#define SPDIF_CFG2_MAXWL	BIT18
+#define SPDIF_CFG2_PRE		BIT3
+#define SPDIF_CFG2_COPYN	BIT2
+#define SPDIF_CFG2_AUDION	BIT1
+#define SPDIF_CFG2_CONPRO	BIT0
+
+#define SPDIF_CFG2_FS_LSB	26
+#define SPDIF_CFG2_FS_MASK	BITS_H2L(29, SPDIF_CFG2_FS_LSB)
+
+#define SPDIF_CFG2_ORGFRQ_LSB	22
+#define SPDIF_CFG2_ORGFRQ_MASK	BITS_H2L(25, SPDIF_CFG2_ORGFRQ_LSB)
+
+#define SPDIF_CFG2_SAMWL_LSB	19
+#define SPDIF_CFG2_SAMWL_MASK	BITS_H2L(21, SPDIF_CFG2_SAMWL_LSB)
+
+#define SPDIF_CFG2_CLKACU_LSB	16
+#define SPDIF_CFG2_CLKACU_MASK	BITS_H2L(17, SPDIF_CFG2_CLKACU_LSB)
+
+#define SPDIF_CFG2_CATCODE_LSB	8
+#define SPDIF_CFG2_CATCODE_MASK	BITS_H2L(15, SPDIF_CFG2_CATCODE_LSB)
+
+#define SPDIF_CFG2_CHMD_LSB	6
+#define SPDIF_CFG2_CHMD_MASK	BITS_H2L(7, SPDIF_CFG2_CHMD_LSB)
+
+/* ICDC internal register access control register(RGADW) */
+#define ICDC_RGADW_RGWR		BIT16
+
+#define ICDC_RGADW_RGADDR_LSB	8
+#define	ICDC_RGADW_RGADDR_MASK	BITS_H2L(14, ICDC_RGADW_RGADDR_LSB)
+
+#define ICDC_RGADW_RGDIN_LSB	0
+#define	ICDC_RGADW_RGDIN_MASK	BITS_H2L(7, ICDC_RGADW_RGDIN_LSB)
+
+/* ICDC internal register data output register (RGDATA)*/
+#define ICDC_RGDATA_IRQ		BIT8
+
+#define ICDC_RGDATA_RGDOUT_LSB	0
+#define ICDC_RGDATA_RGDOUT_MASK	BITS_H2L(7, ICDC_RGDATA_RGDOUT_LSB)
+
+
+#ifndef __MIPS_ASSEMBLER
+
 
 #define	REG_AIC_FR		REG32(AIC_FR)
 #define	REG_AIC_CR		REG32(AIC_CR)
@@ -47,314 +300,16 @@
 #define	REG_AIC_I2SDIV		REG32(AIC_I2SDIV)
 #define	REG_AIC_DR		REG32(AIC_DR)
 
-/* AIC Controller Configuration Register (AIC_FR) */
+#define REG_SPDIF_ENA		REG32(SPDIF_ENA)
+#define REG_SPDIF_CTRL		REG32(SPDIF_CTRL)
+#define REG_SPDIF_STATE		REG32(SPDIF_STATE)
+#define REG_SPDIF_CFG1		REG32(SPDIF_CFG1)
+#define REG_SPDIF_CFG2		REG32(SPDIF_CFG2)
+#define REG_SPDIF_FIFO		REG32(SPDIF_FIFO)
 
-#define	AIC_FR_RFTH_BIT		24        /* Receive FIFO Threshold */
-#define	AIC_FR_RFTH_MASK	(0xf << AIC_FR_RFTH_BIT)
-#define	AIC_FR_TFTH_BIT		16         /* Transmit FIFO Threshold */
-#define	AIC_FR_TFTH_MASK	(0x1f << AIC_FR_TFTH_BIT)
-#define	AIC_FR_LSMP		(1 << 6)  /* Play Zero sample or last sample */
-#define	AIC_FR_ICDC		(1 << 5)  /* External(0) or Internal CODEC(1) */
-#define	AIC_FR_AUSEL		(1 << 4)  /* AC97(0) or I2S/MSB-justified(1) */
-#define	AIC_FR_RST		(1 << 3)  /* AIC registers reset */
-#define	AIC_FR_BCKD		(1 << 2)  /* I2S BIT_CLK direction, 0:input,1:output */
-#define	AIC_FR_SYNCD		(1 << 1)  /* I2S SYNC direction, 0:input,1:output */
-#define	AIC_FR_ENB		(1 << 0)  /* AIC enable bit */
-
-/* AIC Controller Common Control Register (AIC_CR) */
-
-#define AIC_CR_EN2OLD           (1 << 29)  /* Enable old style */
-#define AIC_CR_PACK16           (1 << 28)  /* Output Sample data 16bit packed mode select */
-#define AIC_CR_CHANNEL_BIT      24  /* Output Channel Number Select */
-#define AIC_CR_CHANNEL_MASK     (0x7 << AIC_CR_CHANNEL_BIT)
-  #define AIC_CR_CHANNEL_MONO   (0x0 << AIC_CR_CHANNEL_BIT)
-  #define AIC_CR_CHANNEL_STEREO (0x1 << AIC_CR_CHANNEL_BIT)
-  #define AIC_CR_CHANNEL_4CHNL  (0x3 << AIC_CR_CHANNEL_BIT)
-  #define AIC_CR_CHANNEL_6CHNL  (0x5 << AIC_CR_CHANNEL_BIT)
-  #define AIC_CR_CHANNEL_8CHNL  (0x7 << AIC_CR_CHANNEL_BIT)
-
-#define	AIC_CR_OSS_BIT		19  /* Output Sample Size from memory (AIC V2 only) */
-#define	AIC_CR_OSS_MASK		(0x7 << AIC_CR_OSS_BIT)
-  #define AIC_CR_OSS_8BIT	(0x0 << AIC_CR_OSS_BIT)
-  #define AIC_CR_OSS_16BIT	(0x1 << AIC_CR_OSS_BIT)
-  #define AIC_CR_OSS_18BIT	(0x2 << AIC_CR_OSS_BIT)
-  #define AIC_CR_OSS_20BIT	(0x3 << AIC_CR_OSS_BIT)
-  #define AIC_CR_OSS_24BIT	(0x4 << AIC_CR_OSS_BIT)
-#define	AIC_CR_ISS_BIT		16  /* Input Sample Size from memory (AIC V2 only) */
-#define	AIC_CR_ISS_MASK		(0x7 << AIC_CR_ISS_BIT)
-  #define AIC_CR_ISS_8BIT	(0x0 << AIC_CR_ISS_BIT)
-  #define AIC_CR_ISS_16BIT	(0x1 << AIC_CR_ISS_BIT)
-  #define AIC_CR_ISS_18BIT	(0x2 << AIC_CR_ISS_BIT)
-  #define AIC_CR_ISS_20BIT	(0x3 << AIC_CR_ISS_BIT)
-  #define AIC_CR_ISS_24BIT	(0x4 << AIC_CR_ISS_BIT)
-#define	AIC_CR_RDMS		(1 << 15)  /* Receive DMA enable */
-#define	AIC_CR_TDMS		(1 << 14)  /* Transmit DMA enable */
-#define	AIC_CR_M2S		(1 << 11)  /* Mono to Stereo enable */
-#define	AIC_CR_ENDSW		(1 << 10)  /* Endian switch enable */
-#define	AIC_CR_AVSTSU		(1 << 9)   /* Signed <-> Unsigned toggle enable */
-#define	AIC_CR_TFLUSH		(1 << 8)   /* Flush TFIFO */
-#define	AIC_CR_RFLUSH		(1 << 7)   /* Flush RFIFO */
-#define	AIC_CR_EROR		(1 << 6)   /* Enable ROR interrupt */
-#define	AIC_CR_ETUR		(1 << 5)   /* Enable TUR interrupt */
-#define	AIC_CR_ERFS		(1 << 4)   /* Enable RFS interrupt */
-#define	AIC_CR_ETFS		(1 << 3)   /* Enable TFS interrupt */
-#define	AIC_CR_ENLBF		(1 << 2)   /* Enable Loopback Function */
-#define	AIC_CR_ERPL		(1 << 1)   /* Enable Playback Function */
-#define	AIC_CR_EREC		(1 << 0)   /* Enable Record Function */
-
-/* AIC Controller AC-link Control Register 1 (AIC_ACCR1) */
-
-#define	AIC_ACCR1_RS_BIT	16          /* Receive Valid Slots */
-#define	AIC_ACCR1_RS_MASK	(0x3ff << AIC_ACCR1_RS_BIT)
-  #define AIC_ACCR1_RS_SLOT12	  (1 << 25) /* Slot 12 valid bit */
-  #define AIC_ACCR1_RS_SLOT11	  (1 << 24) /* Slot 11 valid bit */
-  #define AIC_ACCR1_RS_SLOT10	  (1 << 23) /* Slot 10 valid bit */
-  #define AIC_ACCR1_RS_SLOT9	  (1 << 22) /* Slot 9 valid bit, LFE */
-  #define AIC_ACCR1_RS_SLOT8	  (1 << 21) /* Slot 8 valid bit, Surround Right */
-  #define AIC_ACCR1_RS_SLOT7	  (1 << 20) /* Slot 7 valid bit, Surround Left */
-  #define AIC_ACCR1_RS_SLOT6	  (1 << 19) /* Slot 6 valid bit, PCM Center */
-  #define AIC_ACCR1_RS_SLOT5	  (1 << 18) /* Slot 5 valid bit */
-  #define AIC_ACCR1_RS_SLOT4	  (1 << 17) /* Slot 4 valid bit, PCM Right */
-  #define AIC_ACCR1_RS_SLOT3	  (1 << 16) /* Slot 3 valid bit, PCM Left */
-#define	AIC_ACCR1_XS_BIT	0          /* Transmit Valid Slots */
-#define	AIC_ACCR1_XS_MASK	(0x3ff << AIC_ACCR1_XS_BIT)
-  #define AIC_ACCR1_XS_SLOT12	  (1 << 9) /* Slot 12 valid bit */
-  #define AIC_ACCR1_XS_SLOT11	  (1 << 8) /* Slot 11 valid bit */
-  #define AIC_ACCR1_XS_SLOT10	  (1 << 7) /* Slot 10 valid bit */
-  #define AIC_ACCR1_XS_SLOT9	  (1 << 6) /* Slot 9 valid bit, LFE */
-  #define AIC_ACCR1_XS_SLOT8	  (1 << 5) /* Slot 8 valid bit, Surround Right */
-  #define AIC_ACCR1_XS_SLOT7	  (1 << 4) /* Slot 7 valid bit, Surround Left */
-  #define AIC_ACCR1_XS_SLOT6	  (1 << 3) /* Slot 6 valid bit, PCM Center */
-  #define AIC_ACCR1_XS_SLOT5	  (1 << 2) /* Slot 5 valid bit */
-  #define AIC_ACCR1_XS_SLOT4	  (1 << 1) /* Slot 4 valid bit, PCM Right */
-  #define AIC_ACCR1_XS_SLOT3	  (1 << 0) /* Slot 3 valid bit, PCM Left */
-
-/* AIC Controller AC-link Control Register 2 (AIC_ACCR2) */
-
-#define	AIC_ACCR2_ERSTO		(1 << 18) /* Enable RSTO interrupt */
-#define	AIC_ACCR2_ESADR		(1 << 17) /* Enable SADR interrupt */
-#define	AIC_ACCR2_ECADT		(1 << 16) /* Enable CADT interrupt */
-#define	AIC_ACCR2_OASS_BIT	8  /* Output Sample Size for AC-link */
-#define	AIC_ACCR2_OASS_MASK	(0x3 << AIC_ACCR2_OASS_BIT)
-  #define AIC_ACCR2_OASS_20BIT	  (0 << AIC_ACCR2_OASS_BIT) /* Output Audio Sample Size is 20-bit */
-  #define AIC_ACCR2_OASS_18BIT	  (1 << AIC_ACCR2_OASS_BIT) /* Output Audio Sample Size is 18-bit */
-  #define AIC_ACCR2_OASS_16BIT	  (2 << AIC_ACCR2_OASS_BIT) /* Output Audio Sample Size is 16-bit */
-  #define AIC_ACCR2_OASS_8BIT	  (3 << AIC_ACCR2_OASS_BIT) /* Output Audio Sample Size is 8-bit */
-#define	AIC_ACCR2_IASS_BIT	6  /* Output Sample Size for AC-link */
-#define	AIC_ACCR2_IASS_MASK	(0x3 << AIC_ACCR2_IASS_BIT)
-  #define AIC_ACCR2_IASS_20BIT	  (0 << AIC_ACCR2_IASS_BIT) /* Input Audio Sample Size is 20-bit */
-  #define AIC_ACCR2_IASS_18BIT	  (1 << AIC_ACCR2_IASS_BIT) /* Input Audio Sample Size is 18-bit */
-  #define AIC_ACCR2_IASS_16BIT	  (2 << AIC_ACCR2_IASS_BIT) /* Input Audio Sample Size is 16-bit */
-  #define AIC_ACCR2_IASS_8BIT	  (3 << AIC_ACCR2_IASS_BIT) /* Input Audio Sample Size is 8-bit */
-#define	AIC_ACCR2_SO		(1 << 3)  /* SDATA_OUT output value */
-#define	AIC_ACCR2_SR		(1 << 2)  /* RESET# pin level */
-#define	AIC_ACCR2_SS		(1 << 1)  /* SYNC pin level */
-#define	AIC_ACCR2_SA		(1 << 0)  /* SYNC and SDATA_OUT alternation */
-
-/* AIC Controller I2S/MSB-justified Control Register (AIC_I2SCR) */
-
-#define	AIC_I2SCR_RFIRST	(1 << 17) /* Send R channel first in stereo mode */
-#define	AIC_I2SCR_SWLH   	(1 << 16) /* Switch LR channel in 16bit-packed stereo mode */ 
-#define	AIC_I2SCR_STPBK		(1 << 12) /* Stop BIT_CLK for I2S/MSB-justified */
-#define	AIC_I2SCR_WL_BIT	1  /* Input/Output Sample Size for I2S/MSB-justified */
-#define	AIC_I2SCR_WL_MASK	(0x7 << AIC_I2SCR_WL_BIT)
-  #define AIC_I2SCR_WL_24BIT	  (0 << AIC_I2SCR_WL_BIT) /* Word Length is 24 bit */
-  #define AIC_I2SCR_WL_20BIT	  (1 << AIC_I2SCR_WL_BIT) /* Word Length is 20 bit */
-  #define AIC_I2SCR_WL_18BIT	  (2 << AIC_I2SCR_WL_BIT) /* Word Length is 18 bit */
-  #define AIC_I2SCR_WL_16BIT	  (3 << AIC_I2SCR_WL_BIT) /* Word Length is 16 bit */
-  #define AIC_I2SCR_WL_8BIT	  (4 << AIC_I2SCR_WL_BIT) /* Word Length is 8 bit */
-
-#define AIC_I2SCR_ESCLK		(1 << 4)
-
-#define	AIC_I2SCR_AMSL		(1 << 0) /* 0:I2S, 1:MSB-justified */
-
-/* AIC Controller FIFO Status Register (AIC_SR) */
-
-#define	AIC_SR_RFL_BIT		24  /* Receive FIFO Level */
-#define	AIC_SR_RFL_MASK		(0x3f << AIC_SR_RFL_BIT)
-#define	AIC_SR_TFL_BIT		8   /* Transmit FIFO level */
-#define	AIC_SR_TFL_MASK		(0x3f << AIC_SR_TFL_BIT)
-#define	AIC_SR_ROR		(1 << 6) /* Receive FIFO Overrun */
-#define	AIC_SR_TUR		(1 << 5) /* Transmit FIFO Underrun */
-#define	AIC_SR_RFS		(1 << 4) /* Receive FIFO Service Request */
-#define	AIC_SR_TFS		(1 << 3) /* Transmit FIFO Service Request */
-
-/* AIC Controller AC-link Status Register (AIC_ACSR) */
-
-#define	AIC_ACSR_SLTERR		(1 << 21) /* Slot Error Flag */
-#define	AIC_ACSR_CRDY		(1 << 20) /* External CODEC Ready Flag */
-#define	AIC_ACSR_CLPM		(1 << 19) /* External CODEC low power mode flag */
-#define	AIC_ACSR_RSTO		(1 << 18) /* External CODEC regs read status timeout */
-#define	AIC_ACSR_SADR		(1 << 17) /* External CODEC regs status addr and data received */
-#define	AIC_ACSR_CADT		(1 << 16) /* Command Address and Data Transmitted */
-
-/* AIC Controller I2S/MSB-justified Status Register (AIC_I2SSR) */
-
-#define	AIC_I2SSR_BSY		(1 << 2)  /* AIC Busy in I2S/MSB-justified format */
-
-/* AIC Controller AC97 codec Command Address Register (AIC_ACCAR) */
-
-#define	AIC_ACCAR_CAR_BIT	0
-#define	AIC_ACCAR_CAR_MASK	(0xfffff << AIC_ACCAR_CAR_BIT)
-
-/* AIC Controller AC97 codec Command Data Register (AIC_ACCDR) */
-
-#define	AIC_ACCDR_CDR_BIT	0
-#define	AIC_ACCDR_CDR_MASK	(0xfffff << AIC_ACCDR_CDR_BIT)
-
-/* AIC Controller AC97 codec Status Address Register (AIC_ACSAR) */
-
-#define	AIC_ACSAR_SAR_BIT	0
-#define	AIC_ACSAR_SAR_MASK	(0xfffff << AIC_ACSAR_SAR_BIT)
-
-/* AIC Controller AC97 codec Status Data Register (AIC_ACSDR) */
-
-#define	AIC_ACSDR_SDR_BIT	0
-#define	AIC_ACSDR_SDR_MASK	(0xfffff << AIC_ACSDR_SDR_BIT)
-
-/* AIC Controller I2S/MSB-justified Clock Divider Register (AIC_I2SDIV) */
-
-#define	AIC_I2SDIV_DIV_BIT	0
-#define	AIC_I2SDIV_DIV_MASK	(0x7f << AIC_I2SDIV_DIV_BIT)
-  #define AIC_I2SDIV_BITCLK_3072KHZ	(0x0C << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 3.072MHz */
-  #define AIC_I2SDIV_BITCLK_2836KHZ	(0x0D << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 2.836MHz */
-  #define AIC_I2SDIV_BITCLK_1418KHZ	(0x1A << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 1.418MHz */
-  #define AIC_I2SDIV_BITCLK_1024KHZ	(0x24 << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 1.024MHz */
-  #define AIC_I2SDIV_BITCLK_7089KHZ	(0x34 << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 708.92KHz */
-  #define AIC_I2SDIV_BITCLK_512KHZ	(0x48 << AIC_I2SDIV_DIV_BIT) /* BIT_CLK of 512.00KHz */
-
-
-
-/*************************************************************************
- * ICDC (Internal CODEC)
- *************************************************************************/
-
-#define	ICDC_CKCFG	  (ICDC_BASE + 0x00a0)  /* Clock Configure Register */
-#define	ICDC_RGADW	  (ICDC_BASE + 0x00a4)  /* internal register access control */
-#define	ICDC_RGDATA	  (ICDC_BASE + 0x00a8)  /* internal register data output */
-
-#define	REG_ICDC_CKCFG		REG32(ICDC_CKCFG)
 #define	REG_ICDC_RGADW		REG32(ICDC_RGADW)
 #define	REG_ICDC_RGDATA		REG32(ICDC_RGDATA)
 
-/* ICDC Clock Configure Register */
-#define	ICDC_CKCFG_CKRDY	(1 << 1) 
-#define	ICDC_CKCFG_SELAD	(1 << 0)
-
-/* ICDC internal register access control Register */
-#define ICDC_RGADW_RGWR         (1 << 16)
-#define ICDC_RGADW_RGADDR_BIT   8
-#define	ICDC_RGADW_RGADDR_MASK	(0x7f << ICDC_RGADW_RGADDR_BIT)
-#define ICDC_RGADW_RGDIN_BIT    0
-#define	ICDC_RGADW_RGDIN_MASK	(0xff << ICDC_RGADW_RGDIN_BIT)
-
-/* ICDC internal register data output Register */
-#define ICDC_RGDATA_IRQ         (1 << 8)
-#define ICDC_RGDATA_RGDOUT_BIT  0
-#define ICDC_RGDATA_RGDOUT_MASK (0xff << ICDC_RGDATA_RGDOUT_BIT)
-
-/*************************************************************************
- * SPDIF INTERFACE in AIC Controller
- *************************************************************************/
-
-#define SPDIF_ENA               (AIC_BASE + 0x080) 
-#define SPDIF_CTRL              (AIC_BASE + 0x084)
-#define SPDIF_STATE             (AIC_BASE + 0x088)
-#define SPDIF_CFG1              (AIC_BASE + 0x08c)
-#define SPDIF_CFG2              (AIC_BASE + 0x090)
-#define SPDIF_FIFO              (AIC_BASE + 0x094)
-
-#define REG_SPDIF_ENA           REG32(SPDIF_ENA) 
-#define REG_SPDIF_CTRL          REG32(SPDIF_CTRL)
-#define REG_SPDIF_STATE         REG32(SPDIF_STATE)
-#define REG_SPDIF_CFG1          REG32(SPDIF_CFG1)
-#define REG_SPDIF_CFG2          REG32(SPDIF_CFG2)
-#define REG_SPDIF_FIFO          REG32(SPDIF_FIFO)
-
-/* SPDIF Enable Register (SPDIF_ENA) */
-
-#define SPDIF_ENA_SPEN		(1 << 0)  /* Enable or disable the SPDIF transmitter */
-
-/* SPDIF Control Register (SPDIF_CTRL) */
-
-#define SPDIF_CTRL_DMAEN        (1 << 15)
-#define SPDIF_CTRL_DTYPE        (1 << 14)
-#define SPDIF_CTRL_SIGN         (1 << 13)
-#define SPDIF_CTRL_INVALID      (1 << 12)
-#define SPDIF_CTRL_RST          (1 << 11)
-#define SPDIF_CTRL_SPDIFI2S     (1 << 10)
-#define SPDIF_CTRL_MTRIG        (1 << 1)
-#define SPDIF_CTRL_MFFUR        (1 << 0)
-
-/* SPDIF Configure 1 Register (SPDIF_CFG1) */
-
-#define SPDIF_CFG1_INITLVL      (1 << 17)
-#define SPDIF_CFG1_ZROVLD       (1 << 16)
-
-#define SPDIF_CFG1_TRIG_BIT     12
-#define SPDIF_CFG1_TRIG_MASK    (0x3 << SPDIF_CFG1_TRIG_BIT)
-  #define SPDIF_CFG1_TRIG_4     (0x0 << SPDIF_CFG1_TRIG_BIT)
-  #define SPDIF_CFG1_TRIG_8     (0x1 << SPDIF_CFG1_TRIG_BIT)
-  #define SPDIF_CFG1_TRIG_16    (0x2 << SPDIF_CFG1_TRIG_BIT)
-  #define SPDIF_CFG1_TRIG_32    (0x3 << SPDIF_CFG1_TRIG_BIT)
-
-#define SPDIF_CFG1_SRCNUM_BIT     8
-#define SPDIF_CFG1_SRCNUM_MASK    (0xf << SPDIF_CFG1_SRCNUM_BIT)
-
-#define SPDIF_CFG1_CH1NUM_BIT     4
-#define SPDIF_CFG1_CH1NUM_MASK    (0xf << SPDIF_CFG1_CH1NUM_BIT)
-
-#define SPDIF_CFG1_CH2NUM_BIT     0
-#define SPDIF_CFG1_CH2NUM_MASK    (0xf << SPDIF_CFG1_CH2NUM_BIT)
-
-/* SPDIF Configure 2 Register (SPDIF_CFG2) */
-
-#define SPDIF_CFG2_FS_BIT       26
-#define SPDIF_CFG2_FS_MASK      (0xf << SPDIF_CFG2_FS_BIT)
-  #define SPDIF_CFG2_FS_44K     (0x0 << SPDIF_CFG2_FS_BIT) /* 44.1kHz */
-  #define SPDIF_CFG2_FS_48K     (0x2 << SPDIF_CFG2_FS_BIT)
-  #define SPDIF_CFG2_FS_32K     (0x3 << SPDIF_CFG2_FS_BIT)
-  #define SPDIF_CFG2_FS_96K     (0xa << SPDIF_CFG2_FS_BIT)
-  #define SPDIF_CFG2_FS_192K    (0xe << SPDIF_CFG2_FS_BIT)
-
-#define SPDIF_CFG2_ORGFRQ_BIT   22
-#define SPDIF_CFG2_ORGFRQ_MASK  (0xf << SPDIF_CFG2_ORGFRQ_BIT)
-  #define SPDIF_CFG2_ORGFRQ_44K     (0xf << SPDIF_CFG2_ORGFRQ_BIT) /* 44.1kHz */
-  #define SPDIF_CFG2_ORGFRQ_48K     (0xd << SPDIF_CFG2_ORGFRQ_BIT)
-  #define SPDIF_CFG2_ORGFRQ_32K     (0xc << SPDIF_CFG2_ORGFRQ_BIT)
-  #define SPDIF_CFG2_ORGFRQ_96K     (0x5 << SPDIF_CFG2_ORGFRQ_BIT)
-  #define SPDIF_CFG2_ORGFRQ_192K    (0x1 << SPDIF_CFG2_ORGFRQ_BIT)
-
-#define SPDIF_CFG2_SAMWL_BIT    19
-#define SPDIF_CFG2_SAMWL_MASK  (0x7 << SPDIF_CFG2_SAMWL_BIT)
-
-#define SPDIF_CFG2_MAXWL        (1 << 18)
-
-#define SPDIF_CFG2_CLKACU_BIT   16
-#define SPDIF_CFG2_CLKACU_MASK  (0x3 << SPDIF_CFG2_CLKACU_BIT)
-  #define SPDIF_CFG2_CLKACU_LVL2     (0x0 << SPDIF_CFG2_CLKACU_BIT)
-  #define SPDIF_CFG2_CLKACU_LVL1     (0x1 << SPDIF_CFG2_CLKACU_BIT)
-  #define SPDIF_CFG2_CLKACU_LVL3     (0x2 << SPDIF_CFG2_CLKACU_BIT)
-  #define SPDIF_CFG2_CLKACU_NOTMAT   (0x3 << SPDIF_CFG2_CLKACU_BIT)
-
-#define SPDIF_CFG2_CATCODE_BIT   8
-#define SPDIF_CFG2_CATCODE_MASK  (0xff << SPDIF_CFG2_CATCODE_BIT)
-
-#define SPDIF_CFG2_CHMD_BIT   6
-#define SPDIF_CFG2_CHMD_MASK  (0x3 << SPDIF_CFG2_CHMD_BIT)
-  #define SPDIF_CFG2_CHMD_MOD0     (0x0 << SPDIF_CFG2_CHMD_BIT)
-
-#define SPDIF_CFG2_PRE        (1 << 3)
-#define SPDIF_CFG2_COPYN      (1 << 2)
-#define SPDIF_CFG2_AUDION     (1 << 1)
-#define SPDIF_CFG2_CONPRO     (1 << 0)
-
-
-#ifndef __MIPS_ASSEMBLER
-
-/***************************************************************************
- * AIC (AC'97 & I2S Controller)
- ***************************************************************************/
 
 #define __aic_enable()		( REG_AIC_FR |= AIC_FR_ENB )
 #define __aic_disable()		( REG_AIC_FR &= ~AIC_FR_ENB )
@@ -378,25 +333,25 @@ do {                                                    \
 #define __aic_set_transmit_trigger(n) 			\
 do {							\
 	REG_AIC_FR &= ~AIC_FR_TFTH_MASK;		\
-	REG_AIC_FR |= ((n) << AIC_FR_TFTH_BIT);		\
+	REG_AIC_FR |= ((n) << AIC_FR_TFTH_LSB);		\
 } while(0)
 
 #define __aic_set_receive_trigger(n) 			\
 do {							\
 	REG_AIC_FR &= ~AIC_FR_RFTH_MASK;		\
-	REG_AIC_FR |= ((n) << AIC_FR_RFTH_BIT);		\
+	REG_AIC_FR |= ((n) << AIC_FR_RFTH_LSB);		\
 } while(0)
 
-#define __aic_enable_oldstyle() ( REG_AIC_CR |= AIC_CR_EN2OLD )
-#define __aic_enable_newstyle() ( REG_AIC_CR &= ~AIC_CR_EN2OLD )
+#define __aic_enable_oldstyle()
+#define __aic_enable_newstyle()
 #define __aic_enable_pack16()   ( REG_AIC_CR |= AIC_CR_PACK16 )
-#define __aic_enable_unpack16() ( REG_AIC_CR &= ~AIC_CR_PACK16) 
+#define __aic_enable_unpack16() ( REG_AIC_CR &= ~AIC_CR_PACK16)
 
 /* n = AIC_CR_CHANNEL_MONO,AIC_CR_CHANNEL_STEREO ... */
 #define __aic_out_channel_select(n)                    \
 do {                                                   \
 	REG_AIC_CR &= ~AIC_CR_CHANNEL_MASK;            \
-        REG_AIC_CR |= ((n) << AIC_CR_CHANNEL_BIT );			       \
+        REG_AIC_CR |= ((n) << AIC_CR_CHANNEL_LSB );			       \
 } while(0)
 
 #define __aic_enable_record()	( REG_AIC_CR |= AIC_CR_EREC )
@@ -432,19 +387,19 @@ do {                                                   \
 #define __aic_enable_unsignadj()     ( REG_AIC_CR |= AIC_CR_AVSTSU )
 #define __aic_disable_unsignadj()    ( REG_AIC_CR &= ~AIC_CR_AVSTSU )
 
-#define AC97_PCM_XS_L_FRONT   	AIC_ACCR1_XS_SLOT3
-#define AC97_PCM_XS_R_FRONT   	AIC_ACCR1_XS_SLOT4
-#define AC97_PCM_XS_CENTER    	AIC_ACCR1_XS_SLOT6
-#define AC97_PCM_XS_L_SURR    	AIC_ACCR1_XS_SLOT7
-#define AC97_PCM_XS_R_SURR    	AIC_ACCR1_XS_SLOT8
-#define AC97_PCM_XS_LFE       	AIC_ACCR1_XS_SLOT9
+#define AC97_PCM_XS_L_FRONT   	AIC_ACCR1_XS_SLOT(3)
+#define AC97_PCM_XS_R_FRONT   	AIC_ACCR1_XS_SLOT(4)
+#define AC97_PCM_XS_CENTER    	AIC_ACCR1_XS_SLOT(6)
+#define AC97_PCM_XS_L_SURR    	AIC_ACCR1_XS_SLOT(7)
+#define AC97_PCM_XS_R_SURR    	AIC_ACCR1_XS_SLOT(8)
+#define AC97_PCM_XS_LFE       	AIC_ACCR1_XS_SLOT(9)
 
-#define AC97_PCM_RS_L_FRONT   	AIC_ACCR1_RS_SLOT3
-#define AC97_PCM_RS_R_FRONT   	AIC_ACCR1_RS_SLOT4
-#define AC97_PCM_RS_CENTER    	AIC_ACCR1_RS_SLOT6
-#define AC97_PCM_RS_L_SURR    	AIC_ACCR1_RS_SLOT7
-#define AC97_PCM_RS_R_SURR    	AIC_ACCR1_RS_SLOT8
-#define AC97_PCM_RS_LFE       	AIC_ACCR1_RS_SLOT9
+#define AC97_PCM_RS_L_FRONT   	AIC_ACCR1_RS_SLOT(3)
+#define AC97_PCM_RS_R_FRONT   	AIC_ACCR1_RS_SLOT(4)
+#define AC97_PCM_RS_CENTER    	AIC_ACCR1_RS_SLOT(6)
+#define AC97_PCM_RS_L_SURR    	AIC_ACCR1_RS_SLOT(7)
+#define AC97_PCM_RS_R_SURR    	AIC_ACCR1_RS_SLOT(8)
+#define AC97_PCM_RS_LFE       	AIC_ACCR1_RS_SLOT(9)
 
 #define __ac97_set_xs_none()	( REG_AIC_ACCR1 &= ~AIC_ACCR1_XS_MASK )
 #define __ac97_set_xs_mono() 						\
@@ -458,7 +413,7 @@ do {									\
 	REG_AIC_ACCR1 |= AC97_PCM_XS_L_FRONT | AC97_PCM_XS_R_FRONT;	\
 } while(0)
 
-/* In fact, only stereo is support now. */ 
+/* In fact, only stereo is support now. */
 #define __ac97_set_rs_none()	( REG_AIC_ACCR1 &= ~AIC_ACCR1_RS_MASK )
 #define __ac97_set_rs_mono() 						\
 do {									\
@@ -511,9 +466,9 @@ do {									\
 #define __i2s_out_channel_select(n) __aic_out_channel_select(n)
 
 #define __i2s_set_oss_sample_size(n) \
- ( REG_AIC_CR = (REG_AIC_CR & ~AIC_CR_OSS_MASK) | AIC_CR_OSS_##n##BIT )
+ ( REG_AIC_CR = (REG_AIC_CR & ~AIC_CR_OSS_MASK) | AIC_CR_OSS(n))
 #define __i2s_set_iss_sample_size(n) \
- ( REG_AIC_CR = (REG_AIC_CR & ~AIC_CR_ISS_MASK) | AIC_CR_ISS_##n##BIT )
+ ( REG_AIC_CR = (REG_AIC_CR & ~AIC_CR_ISS_MASK) | AIC_CR_ISS(n))
 
 #define __i2s_stop_bitclk()   ( REG_AIC_I2SCR |= AIC_I2SCR_STPBK )
 #define __i2s_start_bitclk()  ( REG_AIC_I2SCR &= ~AIC_I2SCR_STPBK )
@@ -526,9 +481,9 @@ do {									\
 #define __aic_clear_errors()      ( REG_AIC_SR &= ~(AIC_SR_TUR | AIC_SR_ROR) )
 
 #define __aic_get_transmit_resident() \
-  ( (REG_AIC_SR & AIC_SR_TFL_MASK) >> AIC_SR_TFL_BIT )
+  ( (REG_AIC_SR & AIC_SR_TFL_MASK) >> AIC_SR_TFL_LSB )
 #define __aic_get_receive_count() \
-  ( (REG_AIC_SR & AIC_SR_RFL_MASK) >> AIC_SR_RFL_BIT )
+  ( (REG_AIC_SR & AIC_SR_RFL_MASK) >> AIC_SR_RFL_LSB )
 
 #define __ac97_command_transmitted()     ( REG_AIC_ACSR & AIC_ACSR_CADT )
 #define __ac97_status_received()         ( REG_AIC_ACSR & AIC_ACSR_SADR )
@@ -540,33 +495,26 @@ do {									\
 
 #define __i2s_is_busy()         ( REG_AIC_I2SSR & AIC_I2SSR_BSY )
 
-#define CODEC_READ_CMD	        (1 << 19)
-#define CODEC_WRITE_CMD	        (0 << 19)
-#define CODEC_REG_INDEX_BIT     12
-#define CODEC_REG_INDEX_MASK	(0x7f << CODEC_REG_INDEX_BIT)	/* 18:12 */
-#define CODEC_REG_DATA_BIT      4
-#define CODEC_REG_DATA_MASK	(0x0ffff << 4)	/* 19:4 */
-
 #define __ac97_out_rcmd_addr(reg) 					\
 do { 									\
-    REG_AIC_ACCAR = CODEC_READ_CMD | ((reg) << CODEC_REG_INDEX_BIT); 	\
+    REG_AIC_ACCAR = AC97_READ_CMD | ((reg) << AC97_INDEX_LSB); 	\
 } while (0)
 
 #define __ac97_out_wcmd_addr(reg) 					\
 do { 									\
-    REG_AIC_ACCAR = CODEC_WRITE_CMD | ((reg) << CODEC_REG_INDEX_BIT); 	\
+    REG_AIC_ACCAR = AC97_WRITE_CMD | ((reg) << AC97_INDEX_LSB); 	\
 } while (0)
 
 #define __ac97_out_data(value) 						\
 do { 									\
-    REG_AIC_ACCDR = ((value) << CODEC_REG_DATA_BIT); 			\
+    REG_AIC_ACCDR = ((value) << AC97_DATA_LSB); 			\
 } while (0)
 
 #define __ac97_in_data() \
- ( (REG_AIC_ACSDR & CODEC_REG_DATA_MASK) >> CODEC_REG_DATA_BIT )
+ ( (REG_AIC_ACSDR & CODEC_REG_DATA_MASK) >> AC97_DATA_LSB )
 
 #define __ac97_in_status_addr() \
- ( (REG_AIC_ACSAR & CODEC_REG_INDEX_MASK) >> CODEC_REG_INDEX_BIT )
+ ( (REG_AIC_ACSAR & AC97_INDEX_MASK) >> AC97_INDEX_LSB )
 
 #define __i2s_set_sample_rate(i2sclk, sync) \
   ( REG_AIC_I2SDIV = ((i2sclk) / (4*64)) / (sync) )
@@ -574,7 +522,7 @@ do { 									\
 #define __aic_write_tfifo(v)  ( REG_AIC_DR = (v) )
 #define __aic_read_rfifo()    ( REG_AIC_DR )
 
-#define __aic_internal_codec()  ( REG_AIC_FR |= AIC_FR_ICDC ) 
+#define __aic_internal_codec()  ( REG_AIC_FR |= AIC_FR_ICDC )
 #define __aic_external_codec()  ( REG_AIC_FR &= ~AIC_FR_ICDC )
 
 //
@@ -700,49 +648,49 @@ do { 									\
 #define __spdif_set_transmit_trigger(n)			\
 do {							\
 	REG_SPDIF_CFG1 &= ~SPDIF_CFG1_TRIG_MASK;	\
-	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_TRIG_BIT );	\
+	REG_SPDIF_CFG1 |= SPDIF_CFG1_TRIG(n);	\
 } while(0)
 
 /* 1 ~ 15 */
 #define __spdif_set_srcnum(n)    			\
 do {							\
 	REG_SPDIF_CFG1 &= ~SPDIF_CFG1_SRCNUM_MASK;	\
-	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_SRCNUM_BIT);	\
+	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_SRCNUM_LSB);	\
 } while(0)
 
 /* 1 ~ 15 */
 #define __spdif_set_ch1num(n)    			\
 do {							\
 	REG_SPDIF_CFG1 &= ~SPDIF_CFG1_CH1NUM_MASK;	\
-	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_CH1NUM_BIT);	\
+	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_CH1NUM_LSB);	\
 } while(0)
 
 /* 1 ~ 15 */
 #define __spdif_set_ch2num(n)    			\
 do {							\
 	REG_SPDIF_CFG1 &= ~SPDIF_CFG1_CH2NUM_MASK;	\
-	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_CH2NUM_BIT);	\
+	REG_SPDIF_CFG1 |= ((n) << SPDIF_CFG1_CH2NUM_LSB);	\
 } while(0)
 
 /* 0x0, 0x2, 0x3, 0xa, 0xe */
 #define __spdif_set_fs(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_FS_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_FS_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_FS_LSB);	\
 } while(0)
 
 /* 0xd, 0xc, 0x5, 0x1 */
 #define __spdif_set_orgfrq(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_ORGFRQ_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_ORGFRQ_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_ORGFRQ_LSB);	\
 } while(0)
 
 /* 0x1, 0x6, 0x2, 0x4, 0x5 */
 #define __spdif_set_samwl(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_SAMWL_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_SAMWL_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_SAMWL_LSB);	\
 } while(0)
 
 #define __spdif_enable_samwl_24()    ( REG_SPDIF_CFG2 |= SPDIF_CFG2_MAXWL )
@@ -752,21 +700,21 @@ do {							\
 #define __spdif_set_clkacu(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_CLKACU_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CLKACU_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CLKACU_LSB);	\
 } while(0)
 
 /* see IEC60958-3 */
 #define __spdif_set_catcode(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_CATCODE_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CATCODE_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CATCODE_LSB);	\
 } while(0)
 
 /* n = 0x0, */
 #define __spdif_set_chmode(n)				\
 do {							\
 	REG_SPDIF_CFG2 &= ~SPDIF_CFG2_CHMD_MASK;   	\
-	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CHMD_BIT);	\
+	REG_SPDIF_CFG2 |= ((n) << SPDIF_CFG2_CHMD_LSB);	\
 } while(0)
 
 #define __spdif_enable_pre()       ( REG_SPDIF_CFG2 |= SPDIF_CFG2_PRE )
@@ -797,13 +745,13 @@ do {							\
 #define __icdc_set_addr(n)				\
 do {          						\
 	REG_ICDC_RGADW &= ~ICDC_RGADW_RGADDR_MASK;	\
-	REG_ICDC_RGADW |= (n) << ICDC_RGADW_RGADDR_BIT;	\
+	REG_ICDC_RGADW |= (n) << ICDC_RGADW_RGADDR_LSB;	\
 } while(0)
 
 #define __icdc_set_cmd(n)				\
 do {          						\
 	REG_ICDC_RGADW &= ~ICDC_RGADW_RGDIN_MASK;	\
-	REG_ICDC_RGADW |= (n) << ICDC_RGADW_RGDIN_BIT;	\
+	REG_ICDC_RGADW |= (n) << ICDC_RGADW_RGDIN_LSB;	\
 } while(0)
 
 #define __icdc_irq_pending()            ( REG_ICDC_RGDATA & ICDC_RGDATA_IRQ )
@@ -813,5 +761,4 @@ do {          						\
 
 #endif /* __MIPS_ASSEMBLER */
 
-#endif /* __JZ4760AIC_H__ */
-
+#endif /* __CHIP_AIC_H__ */

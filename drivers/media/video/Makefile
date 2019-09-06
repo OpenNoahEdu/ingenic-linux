@@ -82,7 +82,6 @@ obj-$(CONFIG_SOC_CAMERA_TW9910)		+= tw9910.o
 
 obj-$(CONFIG_VIDEO_JZ4730_CIM) += jz4730_cim.o
 obj-$(CONFIG_VIDEO_JZ4740_CIM) += jz4740_cim.o
-obj-$(CONFIG_VIDEO_JZ4750_CIM) += jz4750_cim.o
 obj-$(CONFIG_VIDEO_JZ_SENSOR) += jz_sensor.o
 
 obj-$(CONFIG_VIDEO_BT848) += bt8xx/

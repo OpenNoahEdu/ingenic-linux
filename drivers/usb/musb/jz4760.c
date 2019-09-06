@@ -1,3 +1,5 @@
+#ifndef __JZ4760_C__
+#define __JZ4760_C__
 /*
  * Author: River <zwang@ingenic.cn>
  */
@@ -160,12 +162,17 @@ static void jz_musb_set_vbus(struct musb *musb, int is_on)
 
 #define __GPIO(p, n) (32 * (p - 'A') + n)
 
-#ifdef CONFIG_JZ4760_CYGNUS
+#if defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760B_CYGNUS)
 #define GPIO_OTG_ID_PIN		__GPIO('F', 3)
-#elif CONFIG_JZ4760_LEPUS
+#elif defined (CONFIG_JZ4760_LEPUS) || defined (CONFIG_JZ4760B_LEPUS)
 #define GPIO_OTG_ID_PIN		__GPIO('E', 2)
 #endif
 
+#ifndef CONFIG_JZ4760_HTB80
+#define OTG_HOTPLUG_PIN         __GPIO('E', 19)
+#else
+#define OTG_HOTPLUG_PIN         __GPIO('E', 0)
+#endif
 #define GPIO_OTG_ID_IRQ		(IRQ_GPIO_0 + GPIO_OTG_ID_PIN)
 #define GPIO_OTG_STABLE_JIFFIES 10
 
@@ -194,7 +201,11 @@ static unsigned int read_gpio_pin(unsigned int pin, unsigned int loop)
 static void do_otg_id_pin_state(struct musb *musb)
 {
 	unsigned int default_a;
+#ifndef CONFIG_JZ4760_HTB80
 	unsigned int pin = read_gpio_pin(GPIO_OTG_ID_PIN, 5000);
+#else
+	unsigned int pin = 1; /* always B */
+#endif
 
 	default_a = !pin;
 
@@ -204,12 +215,22 @@ static void do_otg_id_pin_state(struct musb *musb)
 
 	if (pin) {
 		/* B */
-		__gpio_as_irq_fall_edge(GPIO_OTG_ID_PIN);
+#ifdef CONFIG_USB_MUSB_PERIPHERAL_HOTPLUG
+			__gpio_unmask_irq(OTG_HOTPLUG_PIN);
+#endif
+#ifndef CONFIG_JZ4760_HTB80
+			__gpio_as_irq_fall_edge(GPIO_OTG_ID_PIN);
+#endif
 	} else {
-
 		/* A */
-		if (is_otg_enabled(musb))
+		if (is_otg_enabled(musb)) {
+#ifdef CONFIG_USB_MUSB_PERIPHERAL_HOTPLUG
+			__gpio_mask_irq(OTG_HOTPLUG_PIN); // otg's host mode not support hotplug
+#endif
+#ifndef CONFIG_JZ4760_HTB80
 			__gpio_as_irq_rise_edge(GPIO_OTG_ID_PIN);
+#endif
+		}
 	}
 
 	return;
@@ -237,7 +258,7 @@ static int otg_id_pin_setup(struct musb *musb)
 
 	/* Update OTG ID PIN state. */
 	do_otg_id_pin_state(musb);
-
+#ifndef CONFIG_JZ4760_HTB80
 	setup_timer(&otg_id_pin_stable_timer, otg_id_pin_stable_func, (unsigned long)musb);
 
 	rv = request_irq(GPIO_OTG_ID_IRQ, jz_musb_otg_id_irq,
@@ -246,14 +267,17 @@ static int otg_id_pin_setup(struct musb *musb)
 		pr_err("Failed to request OTG_ID_IRQ.\n");
 		return rv;
 	}
+#endif
 
 	return rv;
 }
 
 static void otg_id_pin_cleanup(struct musb *musb)
 {
+#ifndef CONFIG_JZ4760_HTB80
 	free_irq(GPIO_OTG_ID_IRQ, "otg-id-irq");
 	del_timer(&otg_id_pin_stable_timer);
+#endif
 
 	return;
 }
@@ -291,3 +315,5 @@ int musb_platform_exit(struct musb *musb)
 
 	return 0;
 }
+
+#endif

@@ -14,6 +14,7 @@
 #include "yaffs_packedtags2.h"
 #include "yportenv.h"
 #include "yaffs_tagsvalidity.h"
+#include "mtd/mtd_bch4bit_n8.h"
 
 /* This code packs a set of extended tags into a binary structure for
  * NAND storage
@@ -100,6 +101,19 @@ void yaffs_PackTags2(yaffs_PackedTags2 * pt, const yaffs_ExtendedTags * t)
 					sizeof(yaffs_PackedTags2TagsPart),
 					&pt->ecc);
 	}
+#else
+        {
+          unsigned char buf[6], *p;
+          p = (unsigned int *)&pt->t;
+
+          buf[4] = 0xff;
+          buf[5] = 0xff;
+
+          do_bch_encode ((unsigned char *)p, buf, 16);
+          pt->ecc.colParity = buf[0];
+          pt->ecc.lineParity = (buf[4] << 24) | (buf[3] << 16) | (buf[2] << 8) | buf[1];
+          pt->ecc.lineParityPrime = buf[5];
+        }
 #endif
 }
 

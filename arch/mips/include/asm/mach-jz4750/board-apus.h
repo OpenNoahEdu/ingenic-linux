@@ -15,13 +15,13 @@
 #ifndef __ASM_JZ4750_APUS_H__
 #define __ASM_JZ4750_APUS_H__
 
-/*====================================================================== 
+/*======================================================================
  * Frequencies of on-board oscillators
  */
 #define JZ_EXTAL		24000000  /* Main extal freq: 24 MHz */
 #define JZ_EXTAL2		32768     /* RTC extal freq: 32.768 KHz */
 
-/*====================================================================== 
+/*======================================================================
  * GPIO
  */
 #define GPIO_DISP_OFF_N         (32*4+25) /* GPE25 */
@@ -38,7 +38,7 @@
 #define GPIO_UDC_HOTPLUG	GPIO_USB_DETE
 
 
-/*====================================================================== 
+/*======================================================================
  * LCD backlight
  */
 #define LCD_PWM_CHN 4    /* pwm channel */
@@ -54,7 +54,7 @@
 static inline void __lcd_pwm_set_backlight_level(int n)
 {
 	__tcu_stop_counter(LCD_PWM_CHN);
-	
+
 	__tcu_set_pwm_output_shutdown_abrupt(LCD_PWM_CHN);
 	__tcu_disable_pwm_output(LCD_PWM_CHN);
 
@@ -73,7 +73,7 @@ static inline void __lcd_pwm_start(void)
 	__gpio_as_pwm(4);
 
 	__tcu_stop_counter(LCD_PWM_CHN);
-	
+
 	__tcu_select_extalclk(LCD_PWM_CHN);
 	__tcu_select_clk_div4(LCD_PWM_CHN);
 	__tcu_init_pwm_output_high(LCD_PWM_CHN);
@@ -146,7 +146,7 @@ do {					\
 #define ACTIVE_WAKE_UP 		1
 
 
-/*====================================================================== 
+/*======================================================================
  * MMC/SD
  */
 
@@ -205,5 +205,7 @@ do {						\
 		detected = 1;			\
 	detected;				\
 })
+
+#define JZ_EARLY_UART_BASE UART3_BASE
 
 #endif /* __ASM_JZ4750_APUS_H__ */

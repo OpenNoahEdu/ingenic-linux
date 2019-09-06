@@ -40,7 +40,7 @@
 #define IRQ_UART2	3
 #define IRQ_UART1	4
 #define IRQ_UART0	5
-#define IRQ_SSI2   	6
+#define IRQ_GPU		6
 #define IRQ_SSI1   	7
 #define IRQ_SSI0   	8
 #define IRQ_TSSI	9
@@ -56,7 +56,8 @@
 #define IRQ_ETH		19
 #define IRQ_UHC		20
 #define IRQ_OTG		21
-#define IRQ_MDMA	22
+//#define IRQ_MDMA	22
+#define IRQ_I2C2	22
 #define IRQ_DMAC1	23
 #define IRQ_DMAC0	24
 #define IRQ_TCU2	25
@@ -75,21 +76,24 @@
 #define IRQ_MSC0	37
 #define IRQ_SCC		38
 #define IRQ_BCH		39
-#define IRQ_PCM		40
-
+#define IRQ_PCM0	40
+#define IRQ_PCM1	41
+#define IRQ_UART4	42
+#define IRQ_AOSD        43
+#define IRQ_HARB2	44
+#define IRQ_I2S2	45
+#define IRQ_CPM		47
 
 // 2nd-level interrupts
 
-#define IRQ_DMA_0	46  /* 64 ~ 75 for DMAC0 channel 0 ~ 5 & DMAC1 channel 0 ~ 5 */
-//#define IRQ_DMA_0	32  /* 64 ~ 75 for DMAC0 channel 0 ~ 5 & DMAC1 channel 0 ~ 5 */
-#define IRQ_DMA_1	(IRQ_DMA_0 + HALF_DMA_NUM)  /* 64 ~ 75 for DMAC0 channel 0 ~ 5 & DMAC1 channel 0 ~ 5 */
-#define IRQ_MDMA_0	(IRQ_DMA_0 + MAX_DMA_NUM)   /* 64 ~ 66 for MDMAC channel 0 ~ 2 */
-#define IRQ_BDMA_0  (IRQ_DMA_0 + MAX_DMA_NUM + MAX_MDMA_NUM) /* 61 ~ 63 for BDMA channel 0 ~ 2 */
+#define IRQ_DMA_0	64    /* 64,65,66,67,68,69 */
+#define IRQ_DMA_1	(IRQ_DMA_0 + HALF_DMA_NUM) /* 70,71,72,73,74,75 */
+#define IRQ_MDMA_0	(IRQ_DMA_0 + MAX_DMA_NUM)   /* 76,77,78 */
+#define IRQ_BDMA_0  	(IRQ_MDMA_0 + MAX_MDMA_NUM) /* 79,80,81 */
 
-//#define IRQ_GPIO_0	96  /* 96 to 287 for GPIO pin 0 to 127 */
-#define IRQ_GPIO_0	64  /* 96 to 287 for GPIO pin 0 to 127 */
+#define IRQ_GPIO_0	(IRQ_BDMA_0 + MAX_BDMA_NUM)
 
-#define NUM_INTC	41
+#define NUM_INTC	48
 #define NUM_DMA         MAX_DMA_NUM	/* 12 */
 #define NUM_MDMA        MAX_MDMA_NUM	/* 3 */
 #define NUM_GPIO        MAX_GPIO_NUM	/* GPIO NUM: 192, Jz4810 real num GPIO 178 */

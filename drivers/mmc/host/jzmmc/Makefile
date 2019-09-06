@@ -2,5 +2,9 @@
 # Makefile for MMC/SD host controller drivers
 #
 
-obj-$(CONFIG_JZ_MSC0)	+= controller/ jz_mmc_main.o
-obj-$(CONFIG_JZ_MSC1)	+= controller/ jz_mmc_main.o
+obj-$(CONFIG_MMC_JZSOC) += jz_mmc_main.o \
+			jz_mmc_controller.o \
+			jz_mmc_msc.o \
+			jz_mmc_dma.o \
+			jz_mmc_pio.o \
+			jz_mmc_gpio.o

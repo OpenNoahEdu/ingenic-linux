@@ -43,7 +43,7 @@ config TOUCHSCREEN_JZ
 
 config JZ_ADKEY
 	bool "JZ ADKEY"
-	depends on TOUCHSCREEN_JZ || TOUCHSCREEN_JZ4760
+	depends on TOUCHSCREEN_JZ || TOUCHSCREEN_JZ4760 || TOUCHSCREEN_JZ4760B
 	help
           The AD value of the key is get by JZ SAR A/D controller when any ad key
           is pressed down.
@@ -53,6 +53,12 @@ config TOUCHSCREEN_JZ4760
 	depends on SOC_JZ4760
 	help
 	choose the jz4760 touchscreen
+
+config TOUCHSCREEN_JZ4760B
+	tristate "JZ4760B TOUCHSREEN"
+	depends on SOC_JZ4760B
+	help
+	choose the jz4760B touchscreen
 
 config TOUCHSCREEN_AD7877
 	tristate "AD7877 based touchscreens"

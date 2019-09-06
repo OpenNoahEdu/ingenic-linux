@@ -29,7 +29,21 @@ extern int usb_disabled(void);
 
 /*-------------------------------------------------------------------------*/
 /* FIXME: when port 2.6.29's cpm to jz4750, remove me!!! */
-#ifdef CONFIG_SOC_JZ4760
+#ifdef CONFIG_SOC_JZ4810
+static void jz_start_ohc(struct platform_device *dev)
+{
+	/* the clock is support by the EXTRAL */
+
+	__cpm_enable_uhc_phy();
+}
+	
+static void jz_stop_ohc(struct platform_device *dev)
+{
+	__cpm_suspend_uhc_phy();
+}
+#else
+
+#if defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
 static void jz_start_ohc(struct platform_device *dev)
 {
 	printk(KERN_DEBUG __FILE__
@@ -87,6 +101,8 @@ static void jz_stop_ohc(struct platform_device *dev)
 	__cpm_stop_uhc();
 }
 #endif	/* CONFIG_SOC_JZ4760 */
+
+#endif
 
 /*-------------------------------------------------------------------------*/
 

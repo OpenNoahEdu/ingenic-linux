@@ -9,6 +9,7 @@
  */
 
 #include <asm/jzsoc.h>
+#include <linux/module.h>
 
 
 #ifndef JZ_EXTAL
@@ -70,6 +71,7 @@ unsigned int cpm_get_pllout(void)
 
         return pllout;
 }
+EXPORT_SYMBOL(cpm_get_pllout);
 
 /*
  * Get the PLL2 clock
@@ -80,6 +82,11 @@ unsigned int cpm_get_pllout1(void)
         unsigned int m, n, od, no, val, div;
 
         pll_ctrl = INREG32(CPM_CPPCR1);
+
+        if ( !(pll_ctrl & CPPCR1_PLL1ON)) {					/* pll1 off */
+            return 0;
+        }
+
         if (pll_ctrl & CPPCR1_P1SCS) {
                 val = get_bf_value(pll_ctrl, CPPCR1_P1SDIV_LSB, CPPCR1_P1SDIV_MASK);
                 div = val + 1;
@@ -100,6 +107,7 @@ unsigned int cpm_get_pllout1(void)
 
         return pll_out;
 }
+EXPORT_SYMBOL(cpm_get_pllout1);
 
 /*
  * Start the module clock
@@ -129,6 +137,7 @@ void cpm_start_clock(clock_gate_module module_name)
                         break;
        }
 }
+EXPORT_SYMBOL(cpm_start_clock);
 
 /*
  * Stop the module clock
@@ -160,6 +169,7 @@ void cpm_stop_clock(clock_gate_module module_name)
                         break;
         }
 }
+EXPORT_SYMBOL(cpm_stop_clock);
 
 /*
  * Get the clock, assigned by the clock_name, and the return value unit is Hz
@@ -388,6 +398,7 @@ unsigned int cpm_get_clock(cgu_clock clock_name)
 
         return clock_hz;
 }
+EXPORT_SYMBOL(cpm_get_clock);
 
 /*
  * Check div value whether valid, if invalid, return the max valid value
@@ -405,6 +416,8 @@ static unsigned int __check_div(unsigned int div, unsigned int lsb, unsigned int
  * Set the clock, assigned by the clock_name, and the return value unit is Hz,
  * which means the actual clock
  */
+#define ceil(v,div) ({ unsigned int val = 0; if(v % div ) val = v /div + 1; else val = v /div; val;})
+#define nearbyint(v,div) ({unsigned int val = 0; if((v % div) * 2 >= div)  val = v / div + 1;else val = v / div; val;})
 unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 {
         unsigned int actual_clock = 0;
@@ -420,11 +433,11 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
         case CGU_MSCCLK:
                 if (clock_hz == exclk) {
 			/* Select external clock as input*/
-                        SETREG32(CPM_MSCCDR, MSCCDR_MCS);
+                        CLRREG32(CPM_MSCCDR, MSCCDR_MCS);
                 } else {
-                        div = pllclk / clock_hz - 1;
+			div = ceil(pllclk , clock_hz) - 1;
 			div = __check_div(div, MSCCDR_MSCDIV_LSB, MSCCDR_MSCDIV_MASK);
-                        OUTREG32(CPM_MSCCDR, div);
+                        OUTREG32(CPM_MSCCDR, MSCCDR_MCS | div);
                 }
 
 		break;
@@ -434,7 +447,7 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 			/* Select external clock as input */
 			SETREG32(CPM_LPCDR, LPCDR_LSCS | LPCDR_LTCS);
 		} else {
-			div = pllclk1 / clock_hz - 1;
+			div = nearbyint(pllclk1 , clock_hz) - 1;
 			div = __check_div(div, LPCDR_PIXDIV_LSB, LPCDR_PIXDIV_MASK);
 			/* Select pll1 clock as input */
 			OUTREG32(CPM_LPCDR, LPCDR_LTCS | LPCDR_LPCS | div);
@@ -442,7 +455,7 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 		break;
 
 	case CGU_LPCLK:
-		div = pllclk / clock_hz - 1;
+		div = nearbyint(pllclk , clock_hz) - 1;
 		div = __check_div(div, LPCDR_PIXDIV_LSB, LPCDR_PIXDIV_MASK);
 		/* Select pll0 clock as input */
 		OUTREG32(CPM_LPCDR, div);
@@ -456,7 +469,7 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 			SETREG32(CPM_CPCCR, CPCCR_ECS);
 			OUTREG32(CPM_I2SCDR, 0);
 		} else {
-			div = pllclk / clock_hz - 1;
+			div = nearbyint(pllclk , clock_hz) - 1;
 			div = __check_div(div, I2SCDR_I2SDIV_LSB, I2SCDR_I2SDIV_MASK);
 			OUTREG32(CPM_I2SCDR, I2SCDR_I2CS | div);
 		}
@@ -470,7 +483,7 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 			SETREG32(CPM_CPCCR, CPCCR_ECS);
 			OUTREG32(CPM_USBCDR, 0);
 		} else {
-			div = pllclk / clock_hz - 1;
+			div = nearbyint(pllclk , clock_hz) - 1;
 			div = __check_div(div, USBCDR_OTGDIV_LSB, USBCDR_OTGDIV_MASK);
 			OUTREG32(CPM_USBCDR, USBCDR_UCS | div);
 		}
@@ -481,15 +494,15 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 		break;
 
 	case CGU_CIMCLK:
-		div = pllclk / clock_hz - 1;
-		div = __check_div(div, CIMCDR_CIMDIV_LSB, CIMCDR_CIMDIV_MASK);		
+		div = ceil(pllclk , clock_hz) - 1;
+		div = __check_div(div, CIMCDR_CIMDIV_LSB, CIMCDR_CIMDIV_MASK);
 		OUTREG32(CPM_CIMCDR, div);
 		break;
 
 	case CGU_UHCCLK:
-		div = pllclk / clock_hz - 1;
+		div = nearbyint(pllclk1 , clock_hz) - 1;
 		div = __check_div(div, UHCCDR_UHCDIV_LSB, UHCCDR_UHCDIV_MASK);
-		OUTREG32(CPM_UHCCDR, div);
+		OUTREG32(CPM_UHCCDR, div | UHCCDR_UHPCS);
 		break;
 
         default:
@@ -503,6 +516,7 @@ unsigned int cpm_set_clock(cgu_clock clock_name, unsigned int clock_hz)
 
         return actual_clock;
 }
+EXPORT_SYMBOL(cpm_set_clock);
 
  /*
   * Control UHC phy, if en is NON-ZERO, enable the UHC phy, otherwise disable

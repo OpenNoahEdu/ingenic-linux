@@ -35,24 +35,52 @@ config MTD_NAND_JZ4760
         help
         Support NAND Flash device on Jz4760 board
 
+config MTD_NAND_JZ4760B
+        tristate "Support NAND Flash device on Jz4760B board"
+        depends on SOC_JZ4760B
+        help
+        Support NAND Flash device on Jz4760B board
+
+config MTD_NAND_JZ4770
+        tristate "Support NAND Flash device on Jz4770 board"
+        depends on SOC_JZ4770
+        help
+        Support NAND Flash device on Jz4770 board
+
+config MTD_NAND_JZ4810
+        tristate "Support NAND Flash device on Jz4810 board"
+        depends on SOC_JZ4810
+        help
+        Support NAND Flash device on Jz4810 board
+
 
 config MTD_NAND_CS2
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 	bool 'Use NAND on CS2_N of JZSOC'
 	default n
 
 config MTD_NAND_CS3
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 	bool 'Use NAND on CS3_N of JZSOC'
 	default n
 
 config MTD_NAND_CS4
-	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
+	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 	bool 'Use NAND on CS4_N of JZSOC'
 	default n
 
+config MTD_NAND_CS5
+	depends on MTD_NAND_JZ4760B
+	bool 'Use NAND on CS5_N of JZSOC'
+	default n
+
+config MTD_NAND_CS6
+	depends on MTD_NAND_JZ4760B
+	bool 'Use NAND on CS6_N of JZSOC'
+	default n
+
 config MTD_NAND_MULTI_PLANE
-	depends on MTD_NAND_JZ4730 || MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
+	depends on MTD_NAND_JZ4730 || MTD_NAND_JZ4740 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 	bool 'Use multiple planes if the NAND supports'
 	default y
 	help
@@ -74,15 +102,15 @@ config  MTD_NAND_BUS_WIDTH_16
 endchoice
 
 
-if     MTD_NAND_JZ4740 || MTD_NAND_JZ4730 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760
+if     MTD_NAND_JZ4740 || MTD_NAND_JZ4730 || MTD_NAND_JZ4750 || MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 choice
 	prompt "ECC type"
 	default CONFIG_MTD_SW_HM_ECC
-	
+
 config 	MTD_HW_HM_ECC
 	depends on MTD_NAND_JZ4740 || MTD_NAND_JZ4730
 	bool 'Select hardware HM ECC'
-	 
+
 config  MTD_SW_HM_ECC
 	bool 'Select software HM ECC'
 
@@ -95,8 +123,17 @@ config  MTD_HW_BCH_ECC
 	bool 'Select hardware BCH ECC'
 
 config  MTD_HW_BCH_ECC
-	depends on MTD_NAND_JZ4760
+	depends on MTD_NAND_JZ4760 || MTD_NAND_JZ4760B
 	bool 'Select hardware BCH ECC'
+
+config  MTD_HW_BCH_ECC
+	depends on MTD_NAND_JZ4770
+	bool 'Select hardware BCH ECC'
+
+config  MTD_HW_BCH_ECC
+	depends on MTD_NAND_JZ4810
+	bool 'Select hardware BCH ECC'
+
 endchoice
 
 choice
@@ -110,7 +147,7 @@ config  MTD_HW_BCH_4BIT
 config  MTD_HW_BCH_8BIT
         bool '8 bit'
 
-if     MTD_NAND_JZ4760
+if     MTD_NAND_JZ4760 || MTD_NAND_JZ4760B || MTD_NAND_JZ4770 || MTD_NAND_JZ4810
 config  MTD_HW_BCH_12BIT
         bool '12 bit'
 
@@ -130,16 +167,16 @@ config 	MTD_NAND_DMA
 	depends on MTD_HW_BCH_ECC || MTD_HW_RS_ECC
 	bool 'Use DMA mode'
 	help
-	  This enables using DMA for reading and writing NAND flash, if not selected, 
+	  This enables using DMA for reading and writing NAND flash, if not selected,
           then CPU mode is used. DMA is only used for two planes for jz4740.
 
 config  MTD_NAND_DMABUF
 	depends on MTD_NAND_DMA && MTD_HW_BCH_ECC
 	bool 'use DMA buffer in NAND driver'
 	help
-          It's better to say NO. If saying yes, DMA buffers will be allocated for 
-          NAND reading and writing in NAND driver instead of upper layer. It's 
-          slower. Just usable on CS1_N now. By saying NO, upper buffers will be 
+          It's better to say NO. If saying yes, DMA buffers will be allocated for
+          NAND reading and writing in NAND driver instead of upper layer. It's
+          slower. Just usable on CS1_N now. By saying NO, upper buffers will be
           used as DMA buffer. It's faster, but kmalloc instead of vmalloc is required.
 endif
 

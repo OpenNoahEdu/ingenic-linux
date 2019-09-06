@@ -23,6 +23,7 @@
 #include <linux/usb/musb.h>
 
 extern void __init board_msc_init(void);
+extern void __init board_i2c_init(void);
 
 
 /* OHCI (USB full speed host controller) */
@@ -133,6 +134,7 @@ static struct platform_device jz_usb_otg_device = {
 	.resource	= jz_usb_otg_resources,
 };
 
+#if 0
 /** MMC/SD controller MSC0**/
 static struct resource jz_msc0_resources[] = {
 	{
@@ -202,6 +204,7 @@ static struct platform_device *jz_msc_devices[] __initdata = {
 	&jz_msc0_device,
 	&jz_msc1_device,
 };
+#endif
 
 /*
 int __init jz_add_msc_devices(unsigned int controller, struct jz_mmc_platform_data *plat)
@@ -237,15 +240,13 @@ static struct msm_snd_endpoints jz_snd_endpoints = {
 };
 */
 
-/*
 static struct platform_device jz_snd_device = {
 	.name = "mixer",
 	.id = -1,
 	.dev = {
-		.platform_data = &jz_snd_endpoints,
+		.platform_data = &jz_snd_device,
 	},
 };
-*/
 /* - Sound device */
 
 static struct resource jz_i2c0_resources[] = {
@@ -254,6 +255,11 @@ static struct resource jz_i2c0_resources[] = {
 		.end            = CPHYSADDR(I2C0_BASE) + 0x1000 - 1,
 		.flags          = IORESOURCE_MEM,
 	},
+	[1] = {
+                .start          = IRQ_I2C0,
+                .end            = IRQ_I2C0,
+                .flags          = IORESOURCE_IRQ,
+        },
 };
 
 static struct resource jz_i2c1_resources[] = {
@@ -262,6 +268,24 @@ static struct resource jz_i2c1_resources[] = {
 		.end            = CPHYSADDR(I2C1_BASE) + 0x1000 - 1,
 		.flags          = IORESOURCE_MEM,
 	},
+  	[1] = {
+                .start          = IRQ_I2C1,
+                .end            = IRQ_I2C1,
+                .flags          = IORESOURCE_IRQ,
+        },
+};
+
+static struct resource jz_i2c2_resources[] = {
+	[0] = {
+		.start          = CPHYSADDR(I2C2_BASE),
+		.end            = CPHYSADDR(I2C2_BASE) + 0x1000 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+  	[1] = {
+                .start          = IRQ_I2C2,
+                .end            = IRQ_I2C2,
+                .flags          = IORESOURCE_IRQ,
+        },
 };
 
 static u64 jz_i2c_dmamask =  ~(u32)0;
@@ -287,6 +311,43 @@ static struct platform_device jz_i2c1_device = {
 	.num_resources  = ARRAY_SIZE(jz_i2c1_resources),
 	.resource       = jz_i2c1_resources,
 };
+static struct platform_device jz_i2c2_device = {
+	.name = "jz_i2c2",
+	.id = 5,
+	.dev = {
+		.dma_mask               = &jz_i2c_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(jz_i2c2_resources),
+	.resource       = jz_i2c2_resources,
+};
+
+/*AOSD*/
+static struct resource jz_aosd_resources[] = {
+	[0] = {
+		.start          = CPHYSADDR(AOSD_BASE),
+		.end            = CPHYSADDR(AOSD_BASE) + 0x1000 - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start          = IRQ_AOSD,
+		.end            = IRQ_AOSD,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
+static u64 jz_aosd_dmamask =  ~(u32)0;
+
+static struct platform_device jz_aosd_device = {
+	.name = "jz-aosd",
+	.id = 0,
+	.dev = {
+		.dma_mask               = &jz_aosd_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(jz_aosd_resources),
+	.resource       = jz_aosd_resources,
+};
 
 /* All */
 static struct platform_device *jz_platform_devices[] __initdata = {
@@ -294,9 +355,11 @@ static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz_usb_otg_xceiv_device,
 	&jz_usb_otg_device,
 	&jz_lcd_device,
-//	&jz_snd_device,
+	&jz_aosd_device,
+	&jz_snd_device,
 	&jz_i2c0_device,
 	&jz_i2c1_device,
+	&jz_i2c2_device,
 };
 
 #ifdef CONFIG_ANDROID_PMEM
@@ -351,7 +414,10 @@ static void platform_pmem_device_setup(void)
 
 static int __init jz_platform_init(void)
 {
-	int ret = platform_add_devices(jz_platform_devices, ARRAY_SIZE(jz_platform_devices));
+	int ret = 0;
+
+	board_i2c_init();
+	ret = platform_add_devices(jz_platform_devices, ARRAY_SIZE(jz_platform_devices));
 #ifdef CONFIG_ANDROID_PMEM
 	platform_pmem_device_setup();
 #endif

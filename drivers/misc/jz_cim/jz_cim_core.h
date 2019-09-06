@@ -40,8 +40,8 @@ extern void cim_power_off(void);
 #define IOCTL_CIM_GET_SUPPORT_SIZE		0xf0c
 
 #define IOCTL_CIM_SET_PARAM			0xf0d
-#define IOCTL_CIM_SET_PREVIEW_MEM		0xf0e 	// alloc mem for buffers by app
-#define IOCTL_CIM_SET_CAPTURE_MEM		0xf0f	// alloc mem for buffers by app
+//#define IOCTL_CIM_SET_PREVIEW_MEM		0xf0e 	// alloc mem for buffers by app
+//#define IOCTL_CIM_SET_CAPTURE_MEM		0xf0f	// alloc mem for buffers by app
 
 
 #define IOCTL_CIM_TAKE_SNAPSHOT			0xf10
@@ -49,6 +49,9 @@ extern void cim_power_off(void);
 #define IOCTL_CIM_DO_FOCUS			0xf12
 #define IOCTL_CIM_AF_INIT			0xf13
 #define IOCTL_CIM_STOP_FOCUS			0xf14
+
+#define IOCTL_CIM_CHANGE_PACK_MODE		0xf15
+#define IOCTL_CIM_CHANGE_FMT		0xf16
 
 //-----------------------------------------------------------------------------------------------------------------------
 //camera param cmd
@@ -187,6 +190,8 @@ struct camera_param
 	int			mode_arg;
 };
 
+#define CIM_FB_PACKED	1
+#define CIM_FB_PLANAR	0
 
 struct global_info
 {
@@ -195,6 +200,10 @@ struct global_info
 	unsigned int max_preview_size;
 	unsigned int preview_buf_nr;
 	unsigned int max_capture_size;
+	unsigned int packed:1,  /* framebuffer type: 1 -- packed, 0 -- planar */
+		fmt_422:1,
+		window_support:1,
+		reserved:29;
 };
 
 struct sensor_info
@@ -249,6 +258,9 @@ typedef struct{
 	unsigned int ctrl;
 	unsigned int size;
 	unsigned int offs;
+	unsigned int packed:1,
+		fmt_422:1,
+		reserved:30;
 } cim_config_t;
 
 typedef enum{CAMERA_MODE_CAPTURE,CAMERA_MODE_PREVIEW} camera_mode_t;

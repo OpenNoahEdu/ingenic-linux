@@ -52,10 +52,74 @@
 /* Timer interval */
 #define SCAN_INTERVAL	5
 #define KEY_NUM		ARRAY_SIZE(board_buttons)
+
+//#define KEY_FOR_MPLAYER
+//#define KEY_FOR_CUR_TEST
+#define KEY_FOR_RECOVERY
 /*
  * GPIO Buttons,
  * .code conforms with android/build/target/board/<boardname>/<boardname>-keypad.kl
  */
+#ifdef KEY_FOR_RECOVERY
+ static struct gpio_keys_button board_buttons[] = {
+#ifdef GPIO_CALL
+	{
+		.gpio		= GPIO_CALL,
+		.code   	= KEY_SEND,
+		.desc		= "call key",
+		.active_low	= ACTIVE_LOW_CALL,
+	},
+#endif
+#ifdef GPIO_HOME
+	{
+		.gpio		= GPIO_HOME,
+		.code   	= KEY_HOME,
+		.desc		= "home key",
+		.active_low	= ACTIVE_LOW_HOME,
+	},
+#endif
+#ifdef GPIO_BACK
+	{
+		.gpio		= GPIO_BACK,
+		.code   	= KEY_BACK,
+		.desc		= "back key",
+		.active_low	= ACTIVE_LOW_BACK,
+	},
+#endif
+#ifdef GPIO_MENU
+	{
+		.gpio		= GPIO_MENU,
+		.code   	= KEY_MENU,
+		.desc		= "menu key",
+		.active_low	= ACTIVE_LOW_MENU,
+	},
+#endif
+#ifdef GPIO_ENDCALL
+	{
+		.gpio		= GPIO_ENDCALL,
+		.code   	= KEY_END,
+		.desc		= "end call key",
+		.active_low	= ACTIVE_LOW_ENDCALL,
+	},
+#endif
+#ifdef GPIO_VOLUMEDOWN
+	{
+		.gpio		= GPIO_VOLUMEDOWN,
+		.code   	= KEY_VOLUMEDOWN,
+		.desc		= "volum down key",
+		.active_low	= ACTIVE_LOW_VOLUMEDOWN,
+	},
+	{
+		.gpio		= GPIO_VOLUMEUP,
+		.code   	= KEY_VOLUMEUP,
+		.desc		= "volum up key",
+		.active_low	= ACTIVE_LOW_VOLUMEUP,
+	},
+#endif
+};
+#endif
+
+#ifdef KEY_FOR_MPLAYER
 static struct gpio_keys_button board_buttons[] = {
 	{
 		.gpio		= GPIO_MP_VOLUMEUP,
@@ -100,6 +164,42 @@ static struct gpio_keys_button board_buttons[] = {
 		.active_low	= ACTIVE_LOW_FORWARD,
 	},
 };
+#endif	/* KEY_FOR_MPLAYER */
+
+#ifdef KEY_FOR_CUR_TEST
+static struct gpio_keys_button board_buttons[] = {
+	{
+		.gpio		= GPIO_SW3,
+		.code   	= KEY_F1,
+		.desc		= "mp4 test",
+		.active_low	= ACTIVE_LOW_SW3,
+	},
+	{
+		.gpio		= GPIO_SW1,
+		.code   	= KEY_F2,
+		.desc		= "gcc test",
+		.active_low	= ACTIVE_LOW_SW1,
+	},
+	{
+		.gpio		= GPIO_SW7,
+		.code   	= KEY_F3,
+		.desc		= "suspend",
+		.active_low	= ACTIVE_LOW_SW7,
+	},
+	{
+		.gpio		= GPIO_SW8,
+		.code   	= KEY_F4,
+		.desc		= "hibernation",
+		.active_low	= ACTIVE_LOW_SW8,
+	},
+	{
+		.gpio		= GPIO_SW6,
+		.code   	= KEY_F5,
+		.desc		= "idle",
+		.active_low	= ACTIVE_LOW_SW6,
+	},
+};
+#endif	/* KEY_FOR_CUR_TEST */
 
 static struct timer_list kbd_timer[KEY_NUM];
 static int current_key[KEY_NUM];
@@ -154,7 +254,6 @@ static void button_timer_callback(unsigned long data)
 			state = __gpio_get_pin(gpio);
 
 			if (active_low ^ state) {
-				printk("===>%d pressed!\n", gpio);
 				/* button pressed */
 				button_pressed[i] = 1;
 				input_report_key(input, code, 1);
@@ -164,7 +263,6 @@ static void button_timer_callback(unsigned long data)
 				dprintk("gpio %d down, code:%d \n",
 							gpio, code);
 			} else {
-				printk("===>%d pressed!\n", gpio);
 				/* button released */
 				if (1 == button_pressed[i]) {
 					input_report_key(input, code, 0);

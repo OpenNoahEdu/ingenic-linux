@@ -1052,7 +1052,7 @@ static int jz_init_hw(struct net_device *dev)
 	struct ethtool_cmd ecmd;
 	int i;
 
-#ifdef CONFIG_SOC_JZ4810
+#if defined(CONFIG_SOC_JZ4770) || defined(CONFIG_SOC_JZ4810)
 	__gpio_as_eth();
 #endif
 

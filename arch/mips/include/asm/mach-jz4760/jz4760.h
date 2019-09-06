@@ -53,6 +53,7 @@
 
 #include <asm/mach-jz4760/dma.h>
 #include <asm/mach-jz4760/misc.h>
+#include <asm/mach-jz4760/platform.h>
 
 /*------------------------------------------------------------------
  * Platform definitions
@@ -80,6 +81,11 @@
 #include <asm/mach-jz4760/board-altair.h>
 #endif
 
+#ifdef CONFIG_JZ4760_HTB80
+#include <asm/mach-jz4760/jz4760epdc.h>
+#include <asm/mach-jz4760/board-htb80.h>
+#endif
+
 /* Add other platform definition here ... */
 
 
@@ -89,5 +95,6 @@
 
 //#include <asm/mach-jz4760/clock.h>
 #include <asm/mach-jz4760/serial.h>
+#include <asm/mach-jz4760/spi.h>
 
 #endif /* __ASM_JZ4760_H__ */

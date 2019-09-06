@@ -747,7 +747,7 @@
 #define DMAC_DCCSR_CT		(1 << 1)  /* count terminated */
 #define DMAC_DCCSR_EN		(1 << 0)  /* channel enable bit */
 
-// DMA channel command register 
+// DMA channel command register
 #define DMAC_DCMD_EACKS_LOW  	(1 << 31) /* External DACK Output Level Select, active low */
 #define DMAC_DCMD_EACKS_HIGH  	(0 << 31) /* External DACK Output Level Select, active high */
 #define DMAC_DCMD_EACKM_WRITE 	(1 << 30) /* External DACK Output Mode Select, output in write cycle */
@@ -1306,7 +1306,7 @@
 #define	REG_ICDC_RGDATA		REG32(ICDC_RGDATA)
 
 /* ICDC Clock Configure Register */
-#define	ICDC_CKCFG_CKRDY	(1 << 1) 
+#define	ICDC_CKCFG_CKRDY	(1 << 1)
 #define	ICDC_CKCFG_SELAD	(1 << 0)
 
 /* ICDC internal register access control Register */
@@ -1507,7 +1507,7 @@
   #define SSI_CR1_FMAT_MW1	  (2 << SSI_CR1_FMAT_BIT) /* National Microwire 1 format */
   #define SSI_CR1_FMAT_MW2	  (3 << SSI_CR1_FMAT_BIT) /* National Microwire 2 format */
 #define SSI_CR1_TTRG_BIT	16 /* SSI1 TX trigger */
-#define SSI_CR1_TTRG_MASK	(0xf << SSI_CR1_TTRG_BIT) 
+#define SSI_CR1_TTRG_MASK	(0xf << SSI_CR1_TTRG_BIT)
 #define SSI_CR1_MCOM_BIT	12
 #define SSI_CR1_MCOM_MASK	(0xf << SSI_CR1_MCOM_BIT)
   #define SSI_CR1_MCOM_1BIT	  (0x0 << SSI_CR1_MCOM_BIT) /* 1-bit command selected */
@@ -1574,6 +1574,9 @@
 /*************************************************************************
  * MSC
  ************************************************************************/
+#define JZ_MAX_MSC_NUM 2
+
+#define JZ_MSC_ID_INVALID(msc_id) ( ((msc_id) < 0) || ( (msc_id) > JZ_MAX_MSC_NUM ) )
 /* n = 0, 1 (MSC0, MSC1) */
 #define	MSC_STRPCL(n)		(MSC_BASE + (n)*0x1000 + 0x000)
 #define	MSC_STAT(n)		(MSC_BASE + (n)*0x1000 + 0x004)
@@ -2595,8 +2598,8 @@
 #define TVE_CTRL_EYCBCR         (1 << 25)    /* YCbCr_enable */
 #define TVE_CTRL_ECVBS          (1 << 24)    /* cvbs_enable */
 #define TVE_CTRL_DAPD3	        (1 << 23)    /* DAC 3 power down */
-#define TVE_CTRL_DAPD2	        (1 << 22)    /* DAC 2 power down */	
-#define TVE_CTRL_DAPD1	        (1 << 21)    /* DAC 1 power down */	
+#define TVE_CTRL_DAPD2	        (1 << 22)    /* DAC 2 power down */
+#define TVE_CTRL_DAPD1	        (1 << 21)    /* DAC 1 power down */
 #define TVE_CTRL_DAPD           (1 << 20)    /* power down all DACs */
 #define TVE_CTRL_YCDLY_BIT      16
 #define TVE_CTRL_YCDLY_MASK     (0x7 << TVE_CTRL_YCDLY_BIT)
@@ -3175,7 +3178,7 @@
 #define TSSI_PID6      ( TSSI_BASE + 0x38 )
 #define TSSI_PID7      ( TSSI_BASE + 0x3c )
 #define TSSI_PID_MAX   8	/* max PID: 7 */
- 
+
 #define REG_TSSI_ENA       REG8( TSSI_ENA )
 #define REG_TSSI_CFG       REG16( TSSI_CFG )
 #define REG_TSSI_CTRL      REG8( TSSI_CTRL )
@@ -3229,21 +3232,21 @@
 
 /* TSSI PID enable register */
 #define TSSI_PEN_EN00 	( 1 << 0 )      /* enable PID n */
-#define TSSI_PEN_EN10 	( 1 << 1 )      
-#define TSSI_PEN_EN20 	( 1 << 2 )      
-#define TSSI_PEN_EN30 	( 1 << 3 )      
-#define TSSI_PEN_EN40 	( 1 << 4 )      
-#define TSSI_PEN_EN50 	( 1 << 5 )      
-#define TSSI_PEN_EN60 	( 1 << 6 )      
-#define TSSI_PEN_EN70 	( 1 << 7 )      
-#define TSSI_PEN_EN01 	( 1 << 16 )      
-#define TSSI_PEN_EN11 	( 1 << 17 )      
-#define TSSI_PEN_EN21 	( 1 << 18 )     
-#define TSSI_PEN_EN31 	( 1 << 19 )      
-#define TSSI_PEN_EN41 	( 1 << 20 )     
-#define TSSI_PEN_EN51 	( 1 << 21 )      
-#define TSSI_PEN_EN61 	( 1 << 22 )     
-#define TSSI_PEN_EN71 	( 1 << 23 )      
+#define TSSI_PEN_EN10 	( 1 << 1 )
+#define TSSI_PEN_EN20 	( 1 << 2 )
+#define TSSI_PEN_EN30 	( 1 << 3 )
+#define TSSI_PEN_EN40 	( 1 << 4 )
+#define TSSI_PEN_EN50 	( 1 << 5 )
+#define TSSI_PEN_EN60 	( 1 << 6 )
+#define TSSI_PEN_EN70 	( 1 << 7 )
+#define TSSI_PEN_EN01 	( 1 << 16 )
+#define TSSI_PEN_EN11 	( 1 << 17 )
+#define TSSI_PEN_EN21 	( 1 << 18 )
+#define TSSI_PEN_EN31 	( 1 << 19 )
+#define TSSI_PEN_EN41 	( 1 << 20 )
+#define TSSI_PEN_EN51 	( 1 << 21 )
+#define TSSI_PEN_EN61 	( 1 << 22 )
+#define TSSI_PEN_EN71 	( 1 << 23 )
 #define TSSI_PEN_PID0 	( 1 << 31 ) /* PID filter enable PID0 */
 
 /* TSSI PID Filter Registers */
@@ -3258,79 +3261,79 @@
  *************************************************************************/
 
 /* IPU Control Register */
-#define REG_IPU_CTRL			(IPU_BASE + 0x0) 
+#define REG_IPU_CTRL			(IPU_BASE + 0x0)
 
 /* IPU Status Register */
-#define REG_IPU_STATUS			(IPU_BASE + 0x4) 
+#define REG_IPU_STATUS			(IPU_BASE + 0x4)
 
 /* Data Format Register */
-#define REG_IPU_D_FMT			(IPU_BASE + 0x8) 
+#define REG_IPU_D_FMT			(IPU_BASE + 0x8)
 
 /* Input Y or YUV422 Packaged Data Address Register */
-#define REG_IPU_Y_ADDR			(IPU_BASE + 0xc) 
+#define REG_IPU_Y_ADDR			(IPU_BASE + 0xc)
 
 /* Input U Data Address Register */
-#define REG_IPU_U_ADDR			(IPU_BASE + 0x10) 
+#define REG_IPU_U_ADDR			(IPU_BASE + 0x10)
 
 /* Input V Data Address Register */
-#define REG_IPU_V_ADDR			(IPU_BASE + 0x14) 
+#define REG_IPU_V_ADDR			(IPU_BASE + 0x14)
 
 /* Input Geometric Size Register */
-#define REG_IPU_IN_FM_GS		(IPU_BASE + 0x18) 
+#define REG_IPU_IN_FM_GS		(IPU_BASE + 0x18)
 
 /* Input Y Data Line Stride Register */
-#define REG_IPU_Y_STRIDE		(IPU_BASE + 0x1c) 
+#define REG_IPU_Y_STRIDE		(IPU_BASE + 0x1c)
 
 /* Input UV Data Line Stride Register */
-#define REG_IPU_UV_STRIDE		(IPU_BASE + 0x20) 
+#define REG_IPU_UV_STRIDE		(IPU_BASE + 0x20)
 
 /* Output Frame Start Address Register */
-#define REG_IPU_OUT_ADDR		(IPU_BASE + 0x24) 
+#define REG_IPU_OUT_ADDR		(IPU_BASE + 0x24)
 
 /* Output Geometric Size Register */
-#define REG_IPU_OUT_GS			(IPU_BASE + 0x28) 
+#define REG_IPU_OUT_GS			(IPU_BASE + 0x28)
 
 /* Output Data Line Stride Register */
-#define REG_IPU_OUT_STRIDE		(IPU_BASE + 0x2c) 
+#define REG_IPU_OUT_STRIDE		(IPU_BASE + 0x2c)
 
 /* Resize Coefficients Table Index Register */
-#define REG_IPU_RSZ_COEF_INDEX		(IPU_BASE + 0x30) 
+#define REG_IPU_RSZ_COEF_INDEX		(IPU_BASE + 0x30)
 
 /* CSC C0 Coefficient Register */
-#define REG_IPU_CSC_CO_COEF		(IPU_BASE + 0x34) 
+#define REG_IPU_CSC_CO_COEF		(IPU_BASE + 0x34)
 
 /* CSC C1 Coefficient Register */
-#define REG_IPU_CSC_C1_COEF		(IPU_BASE + 0x38) 
+#define REG_IPU_CSC_C1_COEF		(IPU_BASE + 0x38)
 
 /* CSC C2 Coefficient Register */
-#define REG_IPU_CSC_C2_COEF		(IPU_BASE + 0x3c) 
+#define REG_IPU_CSC_C2_COEF		(IPU_BASE + 0x3c)
 
 /* CSC C3 Coefficient Register */
-#define REG_IPU_CSC_C3_COEF		(IPU_BASE + 0x40) 
+#define REG_IPU_CSC_C3_COEF		(IPU_BASE + 0x40)
 
 /* CSC C4 Coefficient Register */
-#define REG_IPU_CSC_C4_COEF		(IPU_BASE + 0x44) 
+#define REG_IPU_CSC_C4_COEF		(IPU_BASE + 0x44)
 
 /* Horizontal Resize Coefficients Look Up Table Register group */
-#define REG_IPU_HRSZ_LUT_BASE 		(IPU_BASE + 0x48) 
+#define REG_IPU_HRSZ_LUT_BASE 		(IPU_BASE + 0x48)
 
 /* Virtical Resize Coefficients Look Up Table Register group */
-#define REG_IPU_VRSZ_LUT_BASE 		(IPU_BASE + 0x4c) 
+#define REG_IPU_VRSZ_LUT_BASE 		(IPU_BASE + 0x4c)
 
 /* CSC Offset Parameter Register */
 #define REG_IPU_CSC_OFSET_PARA		(IPU_BASE + 0x50)
 
 /* Input Y Physical Table Address Register */
-#define REG_IPU_Y_PHY_T_ADDR		(IPU_BASE + 0x54) 
+#define REG_IPU_Y_PHY_T_ADDR		(IPU_BASE + 0x54)
 
 /* Input U Physical Table Address Register */
-#define REG_IPU_U_PHY_T_ADDR		(IPU_BASE + 0x58) 
+#define REG_IPU_U_PHY_T_ADDR		(IPU_BASE + 0x58)
 
 /* Input V Physical Table Address Register */
-#define REG_IPU_V_PHY_T_ADDR		(IPU_BASE + 0x5c) 
+#define REG_IPU_V_PHY_T_ADDR		(IPU_BASE + 0x5c)
 
 /* Output Physical Table Address Register */
-#define REG_IPU_OUT_PHY_T_ADDR		(IPU_BASE + 0x60) 
+#define REG_IPU_OUT_PHY_T_ADDR		(IPU_BASE + 0x60)
 
 /* IPU Control */
 #define IPU_CTRL_DFIX_SEL			(1 << 17)

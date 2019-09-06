@@ -1,8 +1,8 @@
 /*
  * linux/arch/mips/jz4760/time.c
- * 
+ *
  * Setting up the clock on the JZ4760 boards.
- * 
+ *
  * Copyright (C) 2008 Ingenic Semiconductor Inc.
  * Author: <jlwei@ingenic.cn>
  *
@@ -68,7 +68,7 @@ union clycle_type
 	unsigned int cycle32[2];
 };
 
-cycle_t jz_get_cycles(void)
+cycle_t jz_get_cycles(struct clocksource *unused)
 {
 	/* convert jiffes to jz timer cycles */
 	unsigned int ostcount;
@@ -76,13 +76,13 @@ cycle_t jz_get_cycles(void)
 	unsigned int current_cycle;
 	unsigned int flag;
 	union clycle_type old_cycle;
-	
+
 	local_irq_save(cpuflags);
 	current_cycle = current_cycle_high;
 	ostcount = REG_OST_OSTCNT;
 	flag = (REG_TCU_TFR & TFCR_OSTFLAG) ? 1: 0;
 	if(flag)
-		ostcount = REG_OST_OSTCNT;	  
+		ostcount = REG_OST_OSTCNT;
 	local_irq_restore(cpuflags);
 
 	old_cycle.cycle32[0] = ostcount;
@@ -195,8 +195,8 @@ static void __init jz_timer_setup(void)
 	__tcu_stop_counter(JZ_TIMER_TCU_CH);
 //	__cpm_start_tcu();
 	latch = (JZ_TIMER_CLOCK + (HZ>>1)) / HZ;
-	
-	REG_TCU_TMSR = ((1 << JZ_TIMER_TCU_CH) | (1 << (JZ_TIMER_TCU_CH + 16))); 
+
+	REG_TCU_TMSR = ((1 << JZ_TIMER_TCU_CH) | (1 << (JZ_TIMER_TCU_CH + 16)));
 
 	REG_TCU_TCSR(JZ_TIMER_TCU_CH) = TCSR_PRESCALE16 | TCSR_EXT_EN;
 	REG_TCU_TDFR(JZ_TIMER_TCU_CH) = latch - 1;

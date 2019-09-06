@@ -76,6 +76,8 @@ enum {
 	DMA_ID_SSI1_RX,		/* SSI1 receive-fifo-empty request */
 	DMA_ID_PCM_TX,		/* PM transmit-fifo-full request */
 	DMA_ID_PCM_RX,		/* PM receive-fifo-empty request */
+	DMA_ID_AX88796C_TX,
+	DMA_ID_AX88796C_RX,
 	DMA_ID_RAW_SET,
 	DMA_ID_MAX
 };

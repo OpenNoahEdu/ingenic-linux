@@ -18,6 +18,9 @@ config JZ_I2C_SIMULATE
 
 config JZ_CIM
 	bool "JZ CIM for Camera driver"
+config JZ_OPT
+	bool "JZ OPT driver for JZ4760B"
+	depends on  SOC_JZ4760B
 
 config OV3640
 	bool "OmniVision OV3640 sensor support (3.1 MegaPixel)"

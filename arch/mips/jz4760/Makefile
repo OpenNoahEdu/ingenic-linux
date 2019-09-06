@@ -13,6 +13,7 @@ obj-$(CONFIG_PROC_FS)		+= proc.o
 obj-$(CONFIG_JZ4760_ALTAIR)	+= board-altair.o
 obj-$(CONFIG_JZ4760_CYGNUS)	+= board-cygnus.o
 obj-$(CONFIG_JZ4760_LEPUS)	+= board-lepus.o
+obj-$(CONFIG_JZ4760_HTB80)	+= board-htb80.o
 
 obj-$(CONFIG_JZ4760_F4760)	+= board-f4760.o
 obj-$(CONFIG_SOC_JZ4760)        += fpu.o

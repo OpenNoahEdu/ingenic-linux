@@ -11,16 +11,18 @@
  * option) any later version.
  */
 
+#include <asm/jzsoc.h>
 #include <linux/i2c.h>
 #include "jz_sensor.h"
 
 
 static inline int sensor_i2c_master_recv(struct i2c_client *client, char *buf ,int count);
 static inline int sensor_i2c_master_send(struct i2c_client *client,const char *buf ,int count);
+extern void i2c_jz_setclk(struct i2c_client *client,unsigned long i2cclk);
 
 void sensor_set_i2c_speed(struct i2c_client *client,unsigned long speed)
 {
-#if defined(CONFIG_SOC_JZ4760)
+#if defined(CONFIG_SOC_JZ4760) || defined(CONFIG_JZ4760_F4760) || defined(CONFIG_JZ4810_F4810)
 	i2c_jz_setclk(client,speed);
 #endif
 	//printk("set sensor i2c write read speed = %d hz\n",speed);

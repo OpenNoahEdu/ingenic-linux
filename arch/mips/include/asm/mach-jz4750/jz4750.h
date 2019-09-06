@@ -19,6 +19,7 @@
 #include <asm/mach-jz4750/ops.h>
 #include <asm/mach-jz4750/dma.h>
 #include <asm/mach-jz4750/misc.h>
+#include <asm/mach-jz4750/platform.h>
 
 /*------------------------------------------------------------------
  * Platform definitions
@@ -43,5 +44,6 @@
 #include <asm/mach-jz4750/clock.h>
 #include <asm/mach-jz4750/serial.h>
 #include <asm/mach-jz4750/i2c.h>
+#include <asm/mach-jz4750/spi.h>
 
 #endif /* __ASM_JZ4750_H__ */

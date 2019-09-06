@@ -84,7 +84,11 @@ int nandmtd_WriteChunkToNAND(yaffs_Device * dev, int chunkInNAND,
 	size_mtd_t dummy;
 	int retval = 0;
 
+#if !defined(CONFIG_SOC_JZ4760B)
 	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * dev->nDataBytesPerChunk;
+#else
+	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * mtd->writesize;
+#endif
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 	__u8 spareAsBytes[8]; /* OOB */
@@ -94,8 +98,10 @@ int nandmtd_WriteChunkToNAND(yaffs_Device * dev, int chunkInNAND,
 				&dummy, data);
 	else if (spare) {
 		if (dev->useNANDECC) {
+	//		printk("YAFFS2:%s %s %d\n",__FILE__,__func__,__LINE__);
 			translate_spare2oob(spare, spareAsBytes);
 			ops.mode = MTD_OOB_AUTO;
+	//		ops.mode = MTD_OOB_PLACE;
 			ops.ooblen = 8; /* temp hack */
 			ops.oobbuf = spareAsBytes;
 		} else {
@@ -150,7 +156,11 @@ int nandmtd_ReadChunkFromNAND(yaffs_Device * dev, int chunkInNAND, __u8 * data,
 	size_mtd_t dummy;
 	int retval = 0;
 
+#if !defined(CONFIG_SOC_JZ4760B)
 	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * dev->nDataBytesPerChunk;
+#else
+	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * mtd->writesize;
+#endif
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 	__u8 spareAsBytes[8]; /* OOB */
@@ -160,7 +170,9 @@ int nandmtd_ReadChunkFromNAND(yaffs_Device * dev, int chunkInNAND, __u8 * data,
 				&dummy, data);
 	else if (spare) {
 		if (dev->useNANDECC) {
+//			printk("YAFFS2:%s %s %d\n",__FILE__,__func__,__LINE__);
 			ops.mode = MTD_OOB_AUTO;
+//			ops.mode = MTD_OOB_PLACE;
 			ops.ooblen = 8; /* temp hack */
 			ops.oobbuf = spareAsBytes;
 		} else {
@@ -215,15 +227,27 @@ int nandmtd_ReadChunkFromNAND(yaffs_Device * dev, int chunkInNAND, __u8 * data,
 int nandmtd_EraseBlockInNAND(yaffs_Device * dev, int blockNumber)
 {
 	struct mtd_info *mtd = (struct mtd_info *)(dev->genericDevice);
+
+#if !defined(CONFIG_SOC_JZ4760B)
 	__u64 addr =
 	    ((loff_mtd_t) blockNumber) * dev->nDataBytesPerChunk
 		* dev->nChunksPerBlock;
+#else
+	__u64 addr =
+	    ((loff_mtd_t) blockNumber) * mtd->writesize 
+		* dev->nChunksPerBlock;
+#endif
+
 	struct erase_info ei;
 	int retval = 0;
 
 	ei.mtd = mtd;
 	ei.addr = addr;
+#if !defined(CONFIG_SOC_JZ4760B)
 	ei.len = dev->nDataBytesPerChunk * dev->nChunksPerBlock;
+#else
+	ei.len = mtd->writesize * dev->nChunksPerBlock;
+#endif
 	ei.time = 1000;
 	ei.retries = 2;
 	ei.callback = NULL;

@@ -251,7 +251,11 @@ int main(int argc, char **argv)
 	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
 			!(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
 			!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
-			!(meminfo.oobsize == 128 && meminfo.writesize == 4096)) {
+			!(meminfo.oobsize == 128 && meminfo.writesize == 4096) &&
+			!(meminfo.oobsize == 218 && meminfo.writesize == 4096) &&
+			!(meminfo.oobsize == 256 && meminfo.writesize == 8192) &&
+			!(meminfo.oobsize == 436 && meminfo.writesize == 8192) &&
+			!(meminfo.oobsize == 640 && meminfo.writesize == 8192)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);

@@ -199,6 +199,105 @@ static struct nand_ecclayout nand_oob_128 = {
 #endif
 };
 
+static struct nand_ecclayout nand_oob_218 = {
+#if defined(CONFIG_MTD_HW_RS_ECC)
+/* Reed-Solomon ECC */
+	.eccbytes = 72,
+	.eccpos = {
+		28, 29, 30, 31,	32, 33, 34, 35,
+		36, 37, 38, 39, 40, 41, 42, 43,
+		44, 45, 46, 47, 48, 49, 50, 51,
+		52, 53, 54, 55, 56, 57, 58, 59,
+		60, 61, 62, 63, 64, 65, 66, 67,
+		68, 69, 70, 71, 72, 73, 74, 75,
+		76, 77, 78, 79, 80, 81, 82, 83,
+		84, 85, 86, 87, 88, 89, 90, 91,
+		92, 93, 94, 95,	96, 97, 98, 99},
+	.oobfree = {
+		{.offset = 2,
+		 .length = 26},
+		{.offset = 100,
+		 .length = 28}}
+#elif defined(CONFIG_MTD_HW_BCH_ECC)
+#if !defined(CONFIG_MTD_HW_BCH_8BIT)
+/* 4-bit BCH ECC */
+	.eccbytes = 56,
+	.eccpos = {
+		24, 25, 26, 27,	28, 29, 30, 31,
+		32, 33, 34, 35,	36, 37, 38, 39,
+		40, 41, 42, 43,	44, 45, 46, 47,
+		48, 49, 50, 51,	52, 53, 54, 55,
+		56, 57, 58, 59,	60, 61, 62, 63,
+		64, 65, 66, 67, 68, 69, 70, 71,
+		72, 73, 74, 75, 76, 77, 78, 79},
+	.oobfree = {
+		{.offset = 2,
+		 .length = 22},
+		{.offset = 80,
+		 .length = 48}}
+#else
+/* 8-bit BCH ECC */
+	.eccbytes = 104,
+	.eccpos = {
+		 24, 25, 26, 27, 28, 29, 30, 31,
+		 32, 33, 34, 35, 36, 37, 38, 39,
+		 40, 41, 42, 43, 44, 45, 46, 47,
+		 48, 49, 50, 51, 52, 53, 54, 55,
+		 56, 57, 58, 59, 60, 61, 62, 63,
+		 64, 65, 66, 67, 68, 69, 70, 71,
+		 72, 73, 74, 75, 76, 77, 78, 79,
+		 80, 81, 82, 83, 84, 85, 86, 87,
+		 88, 89, 90, 91, 92, 93, 94, 95,
+		 96, 97, 98, 99, 100, 101, 102, 103,
+		 104, 105, 106, 107, 108, 109, 110, 111,
+		 112, 113, 114, 115, 116, 117, 118, 119,
+		 120, 121, 122, 123, 124, 125, 126, 127,},
+	.oobfree = {
+		 {.offset = 2,
+		  .length = 22}}
+
+#endif
+#else
+/* HW&SW Hamming ECC */
+	.eccbytes = 48,
+	.eccpos = {
+		   80, 81, 82, 83, 84, 85, 86, 87,
+		   88, 89, 90, 91, 92, 93, 94, 95,
+		   96, 97, 98, 99, 100, 101, 102, 103,
+		   104, 105, 106, 107, 108, 109, 110, 111,
+		   112, 113, 114, 115, 116, 117, 118, 119,
+		   120, 121, 122, 123, 124, 125, 126, 127},
+	.oobfree = {
+		{.offset = 2,
+		 .length = 78}}
+#endif
+};
+
+static struct nand_ecclayout nand_oob_436 = {
+/* 24-bit BCH ECC */
+	.eccbytes = 104,
+	.eccpos = {
+		 24, 25, 26, 27, 28, 29, 30, 31,
+		 32, 33, 34, 35, 36, 37, 38, 39,
+		 40, 41, 42, 43, 44, 45, 46, 47,
+		 48, 49, 50, 51, 52, 53, 54, 55,
+		 56, 57, 58, 59, 60, 61, 62, 63,
+		 64, 65, 66, 67, 68, 69, 70, 71,
+		 72, 73, 74, 75, 76, 77, 78, 79,
+		 80, 81, 82, 83, 84, 85, 86, 87,
+		 88, 89, 90, 91, 92, 93, 94, 95,
+		 96, 97, 98, 99, 100, 101, 102, 103,
+		 104, 105, 106, 107, 108, 109, 110, 111,
+		 112, 113, 114, 115, 116, 117, 118, 119,
+		 120, 121, 122, 123, 124, 125, 126, 127,},
+	.oobfree = {
+		 {.offset = 2,
+		  .length = 22}}
+
+};
+
+int get_flash_num(void);
+
 static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
 			   int new_state);
 
@@ -605,6 +704,20 @@ void nand_wait_ready(struct mtd_info *mtd)
 	led_trigger_event(nand_led_trigger, LED_OFF);
 }
 EXPORT_SYMBOL_GPL(nand_wait_ready);
+
+void buffer_dump(uint8_t *buffer, int length, const char *comment, char *file, char *function, int line)
+{
+	int i;
+	uint8_t *temp = buffer;
+	printk("BufferDump: %s %d %s %s %d\n", comment, length, file, function, line);
+	for(i = 0; i < length; i++) {
+		if (i % 16 == 0) printk("\n");
+		printk("%02x ", *temp++);
+	}
+	printk("\nOk.\n");
+}
+
+EXPORT_SYMBOL_GPL(buffer_dump);
 
 /**
  * nand_command - [DEFAULT] Send command to NAND device
@@ -1494,8 +1607,7 @@ static int nand_read(struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len,
 
 int nand_sw_bch_ops(struct mtd_info *mtd, u8 *oobdata, int ops)
 {
-#if !defined(CONFIG_SOC_JZ4750) && !defined(CONFIG_SOC_JZ4750D) && !defined(CONFIG_SOC_JZ4760)
-	//dprintk("%s: Not using jz4750 or jz4760\n", __FUNCTION__);
+#if !defined(CONFIG_SOC_JZ4750) && !defined(CONFIG_SOC_JZ4750D) && !defined(CONFIG_SOC_JZ4760) && !defined(CONFIG_SOC_JZ4760B)
 	return 0;
 #endif
 	
@@ -1684,9 +1796,6 @@ static int nand_do_read_oob(struct mtd_info *mtd, loff_mtd_t from,
 	int len;
 	uint8_t *buf = ops->oobbuf;
 
-	DEBUG(MTD_DEBUG_LEVEL3, "nand_read_oob: from = 0x%08Lx, len = %i\n",
-	      (unsigned long long)from, readlen);
-
 	if (ops->mode == MTD_OOB_AUTO)
 		len = chip->ecc.layout->oobavail;
 	else
@@ -1793,6 +1902,9 @@ static int nand_read_oob(struct mtd_info *mtd, loff_mtd_t from,
 	default:
 		goto out;
 	}
+
+	DEBUG(MTD_DEBUG_LEVEL3, "nand_read_oob: from = 0x%08Lx,ooblen= %ld,len:%ld,oobretlen:%ld,ops->mode = %d\n",
+	      (unsigned long long)from, ops->ooblen,ops->len,ops->oobretlen,ops->mode);
 
 	if (!ops->datbuf)
 		ret = nand_do_read_oob(mtd, from, ops);
@@ -2020,7 +2132,11 @@ static int nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	/* Send command to read back the data */
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
 
+#if !defined(CONFIG_SOC_JZ4760B)
 	if (chip->verify_buf(mtd, buf, mtd->writesize))
+#else
+	if (chip->verify_buf(mtd, buf, mtd->validsize))
+#endif
 		return -EIO;
 #endif
 	return 0;
@@ -2100,14 +2216,23 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 		return 0;
 
 	/* reject writes, which are not page aligned */
+#if !defined(CONFIG_SOC_JZ4760B)
 	if (NOTALIGNED(to) || NOTALIGNED(ops->len)) {
+#else
+	if (NOTALIGNED(to)) {
+#endif
 		printk(KERN_NOTICE "nand_write: "
 		       "Attempt to write not page aligned data\n");
 		return -EINVAL;
 	}
 
 	column = to & (mtd->writesize - 1);
+
+#if !defined(CONFIG_SOC_JZ4760B)
 	subpage = column || (writelen & (mtd->writesize - 1));
+#else
+	subpage = column || (writelen % mtd->validsize != 0);
+#endif
 
 	if (subpage && oob)
 		return -EINVAL;
@@ -2133,9 +2258,17 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 		memset(chip->oob_poi, 0xff, mtd->oobsize);
 
 	while(1) {
+
+#if !defined(CONFIG_SOC_JZ4760B)
 		int bytes = mtd->writesize;
+#else
+		int bytes = mtd->validsize;
+#endif
+
 		int cached = writelen > bytes && page != blockmask;
 		uint8_t *wbuf = buf;
+
+		memset(chip->oob_poi, 0xff, mtd->oobsize);
 
 		/* Partial page write ? */
 		if (unlikely(column || writelen < (mtd->writesize - 1))) {
@@ -2147,9 +2280,10 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_mtd_t to,
 			wbuf = chip->buffers->databuf;
 		}
 
-		if (unlikely(oob))
+		if (unlikely(oob)) {
 			oob = nand_fill_oob(chip, oob, ops);
-
+			
+		}
 		ret = chip->write_page(mtd, chip, wbuf, page, cached,
 				       (ops->mode == MTD_OOB_RAW));
 		if (ret)
@@ -2444,6 +2578,8 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 	if (nand_check_wp(mtd)) {
 		DEBUG(MTD_DEBUG_LEVEL0, "nand_erase: "
 		      "Device is write protected!!!\n");
+		printk("nand_erase: "
+		      "Device is write protected!!!\n");
 		instr->state = MTD_ERASE_FAILED;
 		goto erase_exit;
 	}
@@ -2497,6 +2633,8 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 		/* See if block erase succeeded */
 		if (status & NAND_STATUS_FAIL) {
 			DEBUG(MTD_DEBUG_LEVEL0, "nand_erase: "
+			      "Failed erase, page 0x%08x\n", page);
+			printk("nand_erase: "
 			      "Failed erase, page 0x%08x\n", page);
 			instr->state = MTD_ERASE_FAILED;
 			instr->fail_addr =
@@ -2689,6 +2827,26 @@ static void nand_set_defaults(struct nand_chip *chip, int busw)
 
 }
 
+#if defined(CONFIG_MTD_HW_BCH_ECC)
+static uint32_t calc_free_size(struct mtd_info *mtd)
+{
+	struct nand_chip *this = (struct nand_chip *)mtd->priv;
+	uint32_t freesize;
+	uint32_t pagesize = mtd->writesize;
+	uint32_t oobsize = mtd->oobsize;
+	uint32_t eccsize = this->ecc.size;
+	uint32_t eccbytes = this->ecc.bytes;
+	uint32_t eccpos = this->ecc.layout->eccpos[0];
+
+	if ((pagesize / eccsize + 1) * eccbytes + eccpos > oobsize)
+		freesize = 512;
+	else
+		freesize = 0;
+
+	return freesize;
+} 
+#endif
+
 /*
  * Get the flash and manufacturer id and lookup if the type is supported
  */
@@ -2699,6 +2857,9 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	struct nand_flash_dev *type = NULL;
 	int i, dev_id, maf_idx;
 	int tmp_id, tmp_manf;
+	uint8_t ext_id[4] = {0};
+	uint32_t *ext_id_p = ext_id;
+	int flash_num;
 
 	/* Select the device */
 	chip->select_chip(mtd, 0);
@@ -2715,6 +2876,9 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	/* Read manufacturer and device IDs */
 	*maf_id = chip->read_byte(mtd);
 	dev_id = chip->read_byte(mtd);
+
+	chip->read_buf(mtd, ext_id, 4);
+	printk("ext_id:0x%08x\n",*ext_id_p);
 
 	/* Try again to make sure, as some systems the bus-hold or other
 	 * interface concerns can cause random data which looks like a
@@ -2736,9 +2900,16 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		return ERR_PTR(-ENODEV);
 	}
 
+	flash_num = get_flash_num();
+
+	dev_id |= (*maf_id << 8);
+	printk("dev_id:0x%08x\n",dev_id);
+
+	#define EXTID_MASK	0x00ffffff
+
 	/* Lookup the flash id */
-	for (i = 0; nand_flash_ids[i].name != NULL; i++) {
-		if (dev_id == nand_flash_ids[i].id) {
+	for (i = 0; i < flash_num; i++) {
+		if ((dev_id == nand_flash_ids[i].id) && ((*ext_id_p & EXTID_MASK) == (nand_flash_ids[i].extid & EXTID_MASK))) {
 			type =  &nand_flash_ids[i];
 			break;
 		}
@@ -2750,51 +2921,25 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	if (!mtd->name)
 		mtd->name = type->name;
 
-	chip->chipsize = (uint64_t)type->chipsize << 20;
+	chip->chipsize = (uint64_t)(type->erasesize * type->maxvalidblocks);
 
-	/* Newer devices have all the information in additional id bytes */
-	if (!type->pagesize) {
-		int extid;
-		/* The 3rd id byte holds MLC / multichip data */
-		chip->cellinfo = chip->read_byte(mtd);
-		/* The 4th id byte is the important one */
-		extid = chip->read_byte(mtd);
-		/* Calc pagesize */
-		mtd->writesize = 1024 << (extid & 0x3);
-		extid >>= 2;
-		/* Calc oobsize */
-		mtd->oobsize = (8 << (extid & 0x01)) * (mtd->writesize >> 9);
-		extid >>= 2;
-		/* Calc blocksize. Blocksize is multiples of 64KiB */
-		mtd->erasesize = (64 * 1024) << (extid & 0x03);
-		extid >>= 2;
-		/* Get buswidth information */
-		busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
-		/* The 5th id byte */
+	mtd->writesize = type->pagesize;
+	mtd->erasesize = type->erasesize;
+	mtd->oobsize = type->oobsize;
+
 #if defined(CONFIG_MTD_NAND_MULTI_PLANE)
-		extid = chip->read_byte(mtd);
-		chip->realplanenum = 1 << ((extid & 0x0c) >> 2);
+	chip->realplanenum = type->realplanenum;
 #else
-		chip->realplanenum = 1;
+	chip->realplanenum = 1;
 #endif
 
-		if (chip->realplanenum > 1) {     /* use muti planes mode */
-			chip->planenum = 2;
-			mtd->writesize *= 2;  /* two pages as one page */
-			mtd->oobsize *= 2;
-			mtd->erasesize *= 2;  /* two blocks as one block */
-		} else
-			chip->planenum = 1;
-	} else {
-		/*
-		 * Old devices have chip data hardcoded in the device id table
-		 */
-		chip->realplanenum = 1;
-		mtd->erasesize = type->erasesize;
-		mtd->writesize = type->pagesize;
-		mtd->oobsize = mtd->writesize / 32;
-		busw = type->options & NAND_BUSWIDTH_16;
-	}
+	if (chip->realplanenum > 1) {     /* use muti planes mode */
+		chip->planenum = 2;
+		mtd->writesize *= 2;  /* two pages as one page */
+		mtd->erasesize *= 2;  /* two blocks as one block */
+		mtd->oobsize *= 2;
+	} else
+		chip->planenum = 1;
 
 	/* Try to identify manufacturer */
 	for (maf_idx = 0; nand_manuf_ids[maf_idx].id != 0x0; maf_idx++) {
@@ -2956,9 +3101,15 @@ int nand_scan_tail(struct mtd_info *mtd)
 			else
 				chip->ecc.layout = &nand_oob_128;
 			break;
+		case 218:
+			chip->ecc.layout = &nand_oob_218;
+			break;
 		case 256:
 			if (chip->planenum > 1)
 				chip->ecc.layout = &nand_oob_128;
+			break;
+		case 436:
+			chip->ecc.layout = &nand_oob_436;
 			break;
 		default:
 			printk(KERN_WARNING "No oob scheme defined for "
@@ -2966,6 +3117,14 @@ int nand_scan_tail(struct mtd_info *mtd)
 			BUG();
 		}
 	}
+
+#if defined(CONFIG_MTD_HW_BCH_ECC)
+	mtd->freesize = calc_free_size(mtd);
+#else
+	mtd->freesize = 0;
+#endif
+
+	mtd->validsize = mtd->writesize - mtd->freesize;
 
 	if (!chip->write_page)
 		chip->write_page = nand_write_page;
@@ -3076,8 +3235,13 @@ int nand_scan_tail(struct mtd_info *mtd)
 	 * Set the number of read / write steps for one page depending on ECC
 	 * mode
 	 */
+#if !defined(CONFIG_SOC_JZ4760B)
 	chip->ecc.steps = mtd->writesize / chip->ecc.size;
 	if(chip->ecc.steps * chip->ecc.size != mtd->writesize) {
+#else
+	chip->ecc.steps = mtd->validsize / chip->ecc.size;
+	if(chip->ecc.steps * chip->ecc.size != mtd->validsize) {
+#endif
 		printk(KERN_WARNING "Invalid ecc parameters\n");
 		BUG();
 	}
@@ -3126,8 +3290,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 	mtd->unlock = NULL;
 	mtd->suspend = NULL;
 	mtd->resume = NULL;
-//	mtd->suspend = nand_suspend;
-//	mtd->resume = nand_resume;
 	mtd->block_isbad = nand_block_isbad;
 	mtd->block_markbad = nand_block_markbad;
 
@@ -3192,6 +3354,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 #if defined(CONFIG_ALLOCATE_MTDBLOCK_JZ_EARLY) && !defined(CONFIG_SOC_JZ4730)
         /* Allocate a block cache for every partitions which works over mtdblock-jz */
 	{
+		printk("CONFIG_ALLOCATE_MTDBLOCK_JZ_EARLY.\n");
 		extern int nr_partitions;
 
 		jz_mtdblock_cache = kzalloc(nr_partitions * sizeof(unsigned char *), GFP_KERNEL);

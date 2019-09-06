@@ -47,11 +47,7 @@ struct i2c_driver;
 union i2c_smbus_data;
 struct i2c_board_info;
 
-#define EEPROM_DEVICE_NUMBER   0x50   /*eeprom device number.20091027*/
-
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-
-extern void i2c_jz_setclk(struct i2c_client *client,unsigned long i2cclk);
 /*
  * The master routines are the ones normally used to transmit data to devices
  * on a bus (or read from them). Apart from two basic transfer functions to

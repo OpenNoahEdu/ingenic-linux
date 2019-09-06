@@ -354,6 +354,8 @@ static struct mtd_part *add_one_partition(struct mtd_info *master,
 	slave->mtd.size = part->size;
 	slave->mtd.writesize = master->writesize;
 	slave->mtd.oobsize = master->oobsize;
+	slave->mtd.validsize = master->validsize;
+	slave->mtd.freesize = master->freesize;
 	slave->mtd.oobavail = master->oobavail;
 	slave->mtd.subpage_sft = master->subpage_sft;
 
@@ -528,6 +530,7 @@ int add_mtd_partitions(struct mtd_info *master,
 		       int nbparts)
 {
 	struct mtd_part *slave;
+	struct mtd_partition *temp_part;
 	uint64_t cur_offset = 0;
 	int i;
 
@@ -537,7 +540,8 @@ int add_mtd_partitions(struct mtd_info *master,
 		slave = add_one_partition(master, parts + i, i, cur_offset);
 		if (!slave)
 			return -ENOMEM;
-		cur_offset = slave->offset + slave->mtd.size;
+		temp_part = parts + i + 1;
+		cur_offset = temp_part->offset;
 	}
 
 	return 0;

@@ -14,6 +14,7 @@
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
+#include <linux/wait.h>
 #include <linux/delay.h>
 #include <linux/poll.h>
 #include <linux/string.h>
@@ -30,16 +31,16 @@ MODULE_AUTHOR("Lucifer Liu <yliu@ingenic.cn>");
 MODULE_DESCRIPTION("Ingenic MPEG2-TS interface Driver");
 MODULE_LICENSE("GPL");
 
-#define TSSI_NAME "JZ MPEG2-TS SI"
+#define TSSI_NAME "tssi"
 #define TSSI_MINOR 204         /* MAJOR: 10, MINOR: 16 */
 #define TSSI_IRQ   IRQ_TSSI
 #define PFX        TSSI_NAME
-#define RING_BUF_NUM  100
+#define RING_BUF_NUM 4
+#define OUT_BUF_LEN	10	/* 4M */
+#define IN_BUF_LEN	9	/* 2^9*4K=2M */
 
-#define USE_DMA
-#define TRIG_PIN    ( 32 * 2 + 15 )
-#define DMA_ID_TSSI 5
 //#define JZ_TSSI_DEBUG
+#define DEBUG 0
 
 #ifdef JZ_TSSISI_DEBUG
 #define dbg(format, arg...) printk(KERN_DEBUG PFX ": " format "\n" , ## arg)
@@ -51,154 +52,73 @@ MODULE_LICENSE("GPL");
 #define warn(format, arg...) printk(KERN_WARNING PFX ": " format "\n" , ## arg)
 
 static struct jz_tssi_t jz_tssi_g;
-static struct jz_tssi_buf_ring_t jz_tssi_ring_g;
-static int tssi_dma_reinit(int dma_chan, unsigned char *dma_buf, int size);
+static struct jz_tssi_buf_ring jz_tssi_ring_g;
+static struct jz_tssi_desc_t g_tssi_desc0;
+static struct jz_tssi_desc_t g_tssi_desc1;
+static unsigned char *in_buf0, *in_buf1;
+static unsigned char *out_buf;
 
-static void print_reg( void )
+static void dump_tssi_regs( void )
 {
-	printk("REG_TSSI_ENA   %8x \n ",    REG8( TSSI_ENA ));
-	printk("REG_TSSI_CFG   %8x \n ",    REG16( TSSI_CFG ));
-	printk("REG_TSSI_CTRL  %8x \n ",    REG8( TSSI_CTRL ));
-	printk("REG_TSSI_STAT  %8x \n ",    REG8( TSSI_STAT ));
-	printk("REG_TSSI_FIFO  %8x \n ",    REG32( TSSI_FIFO ));
-	printk("REG_TSSI_PEN   %8x \n ",    REG32( TSSI_PEN ));
-	printk("REG_TSSI_PID0  %8x \n ",    REG32( TSSI_PID0 ));
-	printk("REG_TSSI_PID1  %8x \n ",    REG32( TSSI_PID1 ));
-	printk("REG_TSSI_PID2  %8x \n ",    REG32( TSSI_PID2 ));
-	printk("REG_TSSI_PID3  %8x \n ",    REG32( TSSI_PID3 ));
-	printk("REG_TSSI_PID4  %8x \n ",    REG32( TSSI_PID4 ));
-	printk("REG_TSSI_PID5  %8x \n ",    REG32( TSSI_PID5 ));
-	printk("REG_TSSI_PID6  %8x \n ",    REG32( TSSI_PID6 ));
-	printk("REG_TSSI_PID7  %8x \n ",    REG32( TSSI_PID7 ));
+        printk("REG_TSSI_ENA   %8x \n", REG_TSSI_ENA);
+        printk("REG_TSSI_NUM   %8x \n", REG_TSSI_NUM);
+        printk("REG_TSSI_DTR   %8x \n", REG_TSSI_DTR);
+        printk("REG_TSSI_CFG   %8x \n", REG_TSSI_CFG);
+        printk("REG_TSSI_CTRL  %8x \n", REG_TSSI_CTRL);
+        printk("REG_TSSI_STAT  %8x \n", REG_TSSI_STAT);
+        printk("REG_TSSI_FIFO  %8x \n", REG_TSSI_FIFO);
+        printk("REG_TSSI_PEN   %8x \n", REG_TSSI_PEN);
+        printk("REG_TSSI_PID0  %8x \n", REG_TSSI_PID0);
+        printk("REG_TSSI_PID1  %8x \n", REG_TSSI_PID1);
+        printk("REG_TSSI_PID2  %8x \n", REG_TSSI_PID2);
+        printk("REG_TSSI_PID3  %8x \n", REG_TSSI_PID3);
+        printk("REG_TSSI_PID4  %8x \n", REG_TSSI_PID4);
+        printk("REG_TSSI_PID5  %8x \n", REG_TSSI_PID5);
+        printk("REG_TSSI_PID6  %8x \n", REG_TSSI_PID6);
+        printk("REG_TSSI_PID7  %8x \n", REG_TSSI_PID7);
 }
 
-void dump_dma_channel(unsigned int dmanr)
+static void tssi_free_buf(struct jz_tssi_buf_ring * ring)
 {
-	printk("DMA%d Registers:\n", dmanr);
-	printk("  DMACR  = 0x%8x\n", REG_DMAC_DMACR(0));
-	printk("  DSAR   = 0x%8x\n", REG_DMAC_DSAR(dmanr));
-	printk("  DTAR   = 0x%8x\n", REG_DMAC_DTAR(dmanr));
-	printk("  DTCR   = 0x%8x\n", REG_DMAC_DTCR(dmanr));
-	printk("  DRSR   = 0x%8x\n", REG_DMAC_DRSR(dmanr));
-	printk("  DCCSR  = 0x%8x\n", REG_DMAC_DCCSR(dmanr));
-	printk("  DCMD  = 0x%8x\n", REG_DMAC_DCMD(dmanr));
-	printk("  DDA  = 0x%8x\n", REG_DMAC_DDA(dmanr));
-	printk("  DMADBR = 0x%8x\n", REG_DMAC_DMADBR(1));
-}
-
-static int tssi_buf_init( struct jz_tssi_buf_ring_t * ring ) 	
-{
-	int i;
-	struct jz_tssi_buf * bp,* ap, *cp;
-
-	ap = cp = bp = (struct jz_tssi_buf *)kmalloc( sizeof( struct jz_tssi_buf ) ,GFP_KERNEL );  //the first
-	if ( !bp ) { 
-		printk("Can not malloc buffer! \n");
-		return -1;
-	}
-
-	for ( i = 0; i < RING_BUF_NUM; i ++ ) {
-		bp = ap;
-		bp->buf = (unsigned int *) kmalloc(MPEG2_TS_PACHAGE_SIZE / 4 * sizeof(unsigned int) ,GFP_KERNEL);
-		if ( !bp->buf ) {        
-			printk("Can not malloc buffer! \n");
-			return -1;
-		}
-		bp->index = i;
-		bp->pos = 0;
-		ap = (struct jz_tssi_buf *)kmalloc( sizeof( struct jz_tssi_buf ) ,GFP_KERNEL );
-		if ( !ap ) { 
-			printk("Can not malloc buffer! \n");
-			return -1;
-		}
-
-		bp->next = ap;      //point to next !
-	}
-
-	bp->next = cp;                  //point loop to first!
-	ring->front = cp;
-	ring->rear  = cp;
-	ring->fu_num = 0;
-	kfree(ap);
-	return 0;
-}
-
-static void tssi_free_buf( struct jz_tssi_buf_ring_t * ring )
-{
-	int i;
-	struct jz_tssi_buf * ap;
-	for ( i = 0; i < RING_BUF_NUM; i ++ ) 
-	{
+        int i;
+        struct jz_tssi_buf * ap;
+        for ( i = 0; i < RING_BUF_NUM; i++) {
 		ap = ring->front;
-		ring->front = ring->front->next;
-		kfree( ap );
-	}
+                ring->front = ring->front->next;
+                kfree(ap);
+        }
 }
-
-#if 0
-static void tssi_read_fifo(void *dev_id)
-{
-	struct jz_tssi_t* tssi = ( struct jz_tssi_t* )dev_id;
-	struct jz_tssi_buf_ring_t * ring = tssi->cur_buf;
-	struct jz_tssi_buf *buf = ring->rear;
-	int i;
-#if 0
-	if ( ring->fu_num > RING_BUF_NUM )
-	{
-		printk("Ring buffer full ! %d \n",ring->fu_num);
-		return;
-	}
-#endif
-	
-	for ( i = 0; i < 8 ; i ++ )
-	{
-		ring->front->buf[ring->front->pos++] = REG_TSSI_FIFO;
-	}
-
-	if ( ring->front->pos >= MPEG2_TS_PACHAGE_SIZE ) 
-	{
-		ring->fu_num ++;
-		ring->front = ring->front->next;
-		ring->front->pos = 0;
-	}
-}
-#endif
 
 static void tssi_config_filting( void )
 {
-	__tssi_soft_reset();
 	__gpio_as_tssi();
-	__tssi_disable_ovrn_irq();         //use dma ,no need irq
-	__tssi_disable_trig_irq();
-	__tssi_set_tigger_num( 8 );        //trig is 4 word!
-//	__tssi_filter_enable();
-	__tssi_clear_state();
-	__tssi_filter_disable();
-	__tssi_state_clear_overrun();
-//	__tssi_clear_trig_irq_flag();
-#ifdef USE_DMA
+	__tssi_disable_ctrl_irq();
 	__tssi_dma_enable();
-#else
-	__tssi_dma_disable();
+	__tssi_set_tigger_num(96);        //trig is 4 word!
+	__tssi_filter_disable_pid0();
+	__tssi_filter_enable();
+//	__tssi_filter_disable();
+	__tssi_set_wd_1();
+	__tssi_set_data_pola_high();
+	__tssi_select_paral_mode();
+//	__tssi_select_clk_fast();
+	__tssi_select_clk_slow(); 
+	REG_TSSI_CTRL = 7;
+
+#if 1
+/* no add data 0 */
+	REG_TSSI_CFG &= ~(1 << 10);
+	REG_TSSI_CFG |= (2 << 10);
 #endif
 
-	__tssi_enable_ovrn_irq();
-//	__tssi_enable_trig_irq();
 
-	//set config
-//	__tssi_set_bt_1();
-	__tssi_set_wd_1();
-	__tssi_set_data_use_data7();
-	__tssi_set_data_pola_high();
-//	__tssi_select_serail_mode();
-	__tssi_select_paral_mode();
-	__tssi_select_clk_fast();
+
+
 	__tssi_select_clk_posi_edge();
 	__tssi_select_frm_act_high();
 	__tssi_select_str_act_high();
 	__tssi_select_fail_act_high();
 //	__tssi_select_fail_act_low();
-	__tssi_disable_filte_pid0();     //we disable pid0 filter for ever!
 }
 
 static void tssi_add_pid(int pid_num, int pid)
@@ -219,121 +139,127 @@ static void tssi_add_pid(int pid_num, int pid)
 	}
 }
 
-static irqreturn_t tssi_dma_irq(int irq, void * dev_id)
-{
-	struct jz_tssi_t *tssi = (struct jz_tssi_t *)dev_id;
-	struct jz_tssi_buf_ring_t *buf = tssi->cur_buf;
-
-	REG_DMAC_DCCSR(tssi->dma_chan) &= ~DMAC_DCCSR_EN;  /* disable DMA */
-
-	if (__dmac_channel_transmit_end_detected(tssi->dma_chan)) {
-		__dmac_channel_clear_transmit_end(tssi->dma_chan);
-		if ( buf->fu_num < RING_BUF_NUM )
-		{
-			buf->front = buf->front->next;
-			REG_DMAC_DSAR(tssi->dma_chan) = CPHYSADDR(TSSI_FIFO);
-			REG_DMAC_DTAR(tssi->dma_chan) = CPHYSADDR((unsigned int)buf->front->buf);
-			REG_DMAC_DTCR(tssi->dma_chan) = MPEG2_TS_PACHAGE_SIZE / 32;
-			REG_DMAC_DCCSR(tssi->dma_chan) = DMAC_DCCSR_NDES | DMAC_DCCSR_EN;
-			buf->fu_num ++;
-		}
-		__tssi_clear_state();
-	}
-
-	if (__dmac_channel_transmit_halt_detected(tssi->dma_chan)) {
-		printk("DMA HALT\n");
-		__dmac_channel_clear_transmit_halt(tssi->dma_chan);
-	}
-
-	if (__dmac_channel_address_error_detected(tssi->dma_chan)) {
-		printk("DMA ADDR ERROR\n");
-		__dmac_channel_clear_address_error(tssi->dma_chan);
-	}
-
-	if (__dmac_channel_descriptor_invalid_detected(tssi->dma_chan)) {
-		printk("DMA DESC INVALID\n");
-		__dmac_channel_clear_descriptor_invalid(tssi->dma_chan);
-	}
-
-	if (__dmac_channel_count_terminated_detected(tssi->dma_chan)) {
-		printk("DMA CT\n");
-		__dmac_channel_clear_count_terminated(tssi->dma_chan);
-	}
-
-	return IRQ_HANDLED;
-}
-
 static irqreturn_t tssi_interrupt(int irq, void * dev_id)
 {
+	unsigned char *tmp;
+	int num = REG_TSSI_NUM;
+	int did = (REG_TSSI_DST & TSSI_DST_DID_MASK) >> TSSI_DST_DID_BIT;
+	
+
+	struct jz_tssi_t *tssi = (struct jz_tssi_t *)dev_id;
+	struct jz_tssi_buf_ring *cur_buf = tssi->cur_buf;
+	struct jz_tssi_desc_t *tssi_desc0 = &g_tssi_desc0;
+	struct jz_tssi_desc_t *tssi_desc1 = &g_tssi_desc1;
+
 	__intc_mask_irq(TSSI_IRQ);
-#if 1
-	if ( REG_TSSI_STAT & TSSI_STAT_OVRN )
-	{
-		printk("tssi over run occur! %x\n",REG8( TSSI_STAT ));
+
+	__tssi_clear_desc_end_flag();
+
+	if (REG_TSSI_STAT & TSSI_STAT_OVRN) {
+		printk("tssi over run occur! %x, num = %d\n",REG8( TSSI_STAT ), num);
 		__tssi_clear_state();
-		printk("clear ! %x\n",REG8( TSSI_STAT ));
+	}
+
+#if 1
+	/* exchange the in_buf0/1 <=> cur_buf->front->buf */
+	if (did == 0) {
+		tmp = cur_buf->front->buf;
+		cur_buf->front->buf = in_buf0;
+		in_buf0 = tmp;	
+		tssi_desc0->dst_addr = (unsigned int)virt_to_phys((void *)in_buf0);
+		dma_cache_wback((unsigned int)(&tssi_desc0), sizeof(struct jz_tssi_desc_t));
+		
+	} else if (did == 1) {
+		tmp = cur_buf->front->buf;
+		cur_buf->front->buf = in_buf1;
+		in_buf1 = tmp;	
+		tssi_desc1->dst_addr = (unsigned int)virt_to_phys((void *)in_buf1);
+		dma_cache_wback((unsigned int)(&tssi_desc1), sizeof(struct jz_tssi_desc_t));
+	} else {
+		printk("DMA Transfer fault, no souch did value: %d\n", did);
+		__intc_ack_irq(TSSI_IRQ);
+		__intc_unmask_irq(TSSI_IRQ);
+
+		return IRQ_HANDLED;
 	}
 #endif
-	if ( REG_TSSI_STAT & TSSI_STAT_TRIG )
-	{
-		printk("tssi trig irq occur! \n");
-		tssi_read_fifo( dev_id );
+
+	cur_buf->front = cur_buf->front->next;
+	cur_buf->fu_num += 1;
+
+	printk("num = %d, did = %d\n", cur_buf->fu_num, did);
+
+	if (cur_buf->fu_num == 1)
+		wake_up(&tssi->wait);
+
+/* used for test */
+#if DEBUG
+/* it will be over run the buf */
+	if (cur_buf->fu_num == 5) {
+		__tssi_dma_enable();
+		__tssi_disable();
+		__intc_ack_irq(TSSI_IRQ);
+		__intc_unmask_irq(TSSI_IRQ);
+		return IRQ_HANDLED;
 	}
+#endif
 
 	__intc_ack_irq(TSSI_IRQ);
 	__intc_unmask_irq(TSSI_IRQ);
+
 	return IRQ_HANDLED;
 }
-
-static ssize_t jz_read(struct file * filp, char * buffer, size_t count, loff_t * ppos)
+static ssize_t jz_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
 {
 	jz_char_dev_t *adev = (jz_char_dev_t *)filp->private_data;
-	struct jz_tssi_t* tssi = (struct jz_tssi_t*)adev->private;
-	struct jz_tssi_buf_ring_t* ring = tssi->cur_buf;
-
+        struct jz_tssi_t* tssi = (struct jz_tssi_t*)adev->private;
+        struct jz_tssi_buf_ring* ring = tssi->cur_buf;
 	int i;
+	unsigned long flags;
 
-	count /= MPEG2_TS_PACHAGE_SIZE;
+	count /= MPEG2_PACKET_SIZE;
 
-	if ( count > ring->fu_num )
+	wait_event_interruptible(tssi->wait, ring->fu_num != 0);
+
+	spin_lock_irqsave(&tssi->lock, flags);
+	if (count > ring->fu_num) {
 		count = ring->fu_num;
-
-	for ( i = 0; i < count; i ++ )
-	{
-		memcpy( buffer + ( i * MPEG2_TS_PACHAGE_SIZE),
-			ring->rear->buf, MPEG2_TS_PACHAGE_SIZE );
-		ring->rear->pos = 0;
-		ring->rear = ring->rear->next;
 	}
-	ring->fu_num -= count;
-	return count * MPEG2_TS_PACHAGE_SIZE;
-}
+	spin_unlock_irqrestore(&tssi->lock, flags);
 
-static int tssi_dma_reinit(int dma_chan, unsigned char *dma_buf, int size)
-{
-	static unsigned int dma_src_phys_addr, dma_dst_phys_addr;
-	REG_DMAC_DMACKE(0) = 0xff;
-	dma_src_phys_addr = CPHYSADDR(TSSI_FIFO);
-	dma_dst_phys_addr = CPHYSADDR((unsigned int)dma_buf);
-	REG_DMAC_DMACR(dma_chan/HALF_DMA_NUM) = 0;
-	REG_DMAC_DCCSR(dma_chan) = 0;
-	REG_DMAC_DRSR(dma_chan) = DMAC_DRSR_RS_TSSIIN;
-	REG_DMAC_DSAR(dma_chan) = dma_src_phys_addr;
-	REG_DMAC_DTAR(dma_chan) = dma_dst_phys_addr;
-	REG_DMAC_DTCR(dma_chan) = size / 32;                 
-	REG_DMAC_DCMD(dma_chan) = DMAC_DCMD_DAI | DMAC_DCMD_SWDH_32 | DMAC_DCMD_DWDH_32 | DMAC_DCMD_DS_32BYTE | DMAC_DCMD_TIE;
-	REG_DMAC_DCCSR(dma_chan) = DMAC_DCCSR_NDES | DMAC_DCCSR_EN;
-	REG_DMAC_DMACR(dma_chan/HALF_DMA_NUM) = DMAC_DMACR_DMAE; /* global DMA enable bit */
-	return 0;
+	for (i = 0; i < count; i++) {
+#if DEBUG
+	int j;
+		copy_to_user(buffer+i*MPEG2_PACKET_SIZE, in_buf0, MPEG2_PACKET_SIZE);
+		for (j = 0; j < MPEG2_PACKET_SIZE; j++) {
+			if (j % 192 == 0) {
+				printk("\n\n");
+			}
+		//	printk(" %02x ", ring->rear->buf[j]);
+			printk("%02x ", in_buf0[j]);
+		}
+#endif
+		copy_to_user(buffer+i*MPEG2_PACKET_SIZE, ring->rear->buf, MPEG2_PACKET_SIZE);
+		ring->rear = ring->rear->next;
+		ring->rear->pos = 0;
+	}
+
+	spin_lock_irqsave(&tssi->lock, flags);
+	ring->fu_num -= count;
+	spin_unlock_irqrestore(&tssi->lock, flags);
+	
+
+	return count*MPEG2_PACKET_SIZE;
 }
 
 static int jz_open(struct inode * inode, struct file * filp)
 {
 	try_module_get(THIS_MODULE);
 
-	__tssi_soft_reset();
 	__intc_mask_irq(TSSI_IRQ);
 	tssi_config_filting();
+	__tssi_soft_reset();
+	__tssi_clear_state();
 
 	return 0;
 }
@@ -353,14 +279,19 @@ static int jz_ioctl(struct inode *inode, struct file *file, unsigned int cmd, un
 	switch (cmd)
 	{
 	case IOCTL_TSSI_ENABLE :
+		__tssi_disable();
+		__tssi_soft_reset();
+		__tssi_clear_state();
+		dump_tssi_regs();
 		__intc_ack_irq(TSSI_IRQ);
 		__intc_unmask_irq(TSSI_IRQ);
 		__tssi_enable();
-		print_reg();
 
         	break;
 	case IOCTL_TSSI_DISABLE :
 		__tssi_disable();
+		__tssi_soft_reset();
+		__tssi_clear_state();
 
         	break;
 	case IOCTL_TSSI_SOFTRESET :
@@ -374,7 +305,7 @@ static int jz_ioctl(struct inode *inode, struct file *file, unsigned int cmd, un
 		__tssi_filter_disable();
         	break;
 	case IOCTL_TSSI_ADDPID :           //add one pid to filter
-		if ( tssi->pid_num < 15 )
+		if ( tssi->pid_num < 31 )
 		{
 			tssi_add_pid(tssi->pid_num, arg);
 			tssi->pid_num ++ ;
@@ -394,10 +325,8 @@ static int jz_ioctl(struct inode *inode, struct file *file, unsigned int cmd, un
 		break;
 
 	case IOCTL_TSSI_INIT_DMA:
-  		tssi_dma_reinit(tssi->dma_chan, tssi->cur_buf->front->buf, MPEG2_TS_PACHAGE_SIZE);
 		break;
 	case IOCTL_TSSI_DISABLE_DMA:
-		REG_DMAC_DCCSR(tssi->dma_chan) &= ~DMAC_DCCSR_EN;  /* disable DMA */
 		break;
 	}
 
@@ -405,51 +334,134 @@ static int jz_ioctl(struct inode *inode, struct file *file, unsigned int cmd, un
 }
 
 static struct file_operations tssi_fops = {
-	owner:          THIS_MODULE,
-	read:           jz_read,
-	poll:           NULL,
-	fasync:         NULL,
-	ioctl:          jz_ioctl,
-	open:		jz_open,
-	release:	jz_release,
+	.owner	= THIS_MODULE,
+	.read	= jz_read,
+	.poll	= NULL,
+	.fasync	= NULL,
+	.ioctl	= jz_ioctl,
+	.open	= jz_open,
+//	.mmap	= jz_mmap,
+	.release= jz_release,
 };
+
+static void tssi_dma_desc_init(void)
+{
+	struct jz_tssi_desc_t *tssi_desc0 = &g_tssi_desc0;
+	struct jz_tssi_desc_t *tssi_desc1 = &g_tssi_desc1;
+	
+	tssi_desc0->next_desc = (unsigned int)virt_to_phys((void *)tssi_desc1);
+	tssi_desc0->dst_addr = (unsigned int)virt_to_phys((void *)in_buf0);
+	tssi_desc0->did = 0;
+
+	 /* TLEN:1Mbytes TEFE:1 TSZ:32 TEIE:1 LINK:0 */
+	tssi_desc0->cmd = ((MPEG2_PACKET_SIZE/4) << TSSI_DCMD_TLEN_BIT) | TSSI_DCMD_TEFE | TSSI_DCMD_TSZ_32 |
+		  TSSI_DCMD_TEIE | TSSI_DCMD_LINK;
+
+
+	tssi_desc1->next_desc = (unsigned int)virt_to_phys((void *)tssi_desc0);
+	tssi_desc1->dst_addr = (unsigned int)virt_to_phys((void *)in_buf1);
+	tssi_desc1->did = 1;
+
+	 /* TLEN:1Mbytes TEFE:1 TSZ:32 TEIE:1 LINK:1 */
+	tssi_desc1->cmd = ((MPEG2_PACKET_SIZE/4) << TSSI_DCMD_TLEN_BIT) | TSSI_DCMD_TEFE | TSSI_DCMD_TSZ_32 |
+			  TSSI_DCMD_TEIE | TSSI_DCMD_LINK;
+
+	REG_TSSI_DDA = (unsigned int)virt_to_phys((void*)tssi_desc0);
+	dma_cache_wback((unsigned int)(&tssi_desc0), sizeof(struct jz_tssi_desc_t));
+	dma_cache_wback((unsigned int)(&tssi_desc1), sizeof(struct jz_tssi_desc_t));
+	
+}
+static int tssi_buf_init(struct jz_tssi_buf_ring * ring)
+{
+	int i;
+	struct jz_tssi_buf *ap, *bp, *cp;
+
+	/* used for dma desc0 and desc1 transfer buf total 2M=2^9*4K */
+	in_buf0 = (unsigned char*)__get_free_pages(GFP_KERNEL, IN_BUF_LEN);
+	if (!in_buf0) {
+		printk("Alloc in_buf memory failed.\n");
+		return -ENOMEM;
+	}
+
+	in_buf1 = in_buf0 + (PAGE_SIZE << (IN_BUF_LEN - 1));
+	memset(in_buf0, 0, PAGE_SIZE << IN_BUF_LEN);
+
+	/* used for save the data for the user space */
+	out_buf = (unsigned char*)__get_free_pages(GFP_KERNEL, OUT_BUF_LEN);
+	if (!out_buf) {
+		printk("Alloc out_buf memory failed.\n");
+		return -ENOMEM;
+	}
+	memset(out_buf, 0, PAGE_SIZE << OUT_BUF_LEN);
+	
+	ap = bp = cp = (struct jz_tssi_buf*)kmalloc(sizeof(struct jz_tssi_buf), GFP_KERNEL);
+	if (!ap) {
+		printk("Alloc tssi buf memory failed.\n");
+		return -ENOMEM;
+	}
+	
+	for (i = 0; i < RING_BUF_NUM; i++) {
+		bp = ap;
+		ap->buf = out_buf + i * (PAGE_SIZE << (OUT_BUF_LEN -2));
+
+		ap = (struct jz_tssi_buf*)kmalloc(sizeof(struct jz_tssi_buf), GFP_KERNEL);
+		if (!ap) {
+			printk("Alloc the %dth buf ring failed.\n", i);
+			return -ENOMEM;
+		}
+
+		bp->pos = 0;
+		bp->next = ap;
+	}
+
+	bp->next = cp;
+	ring->front = cp;
+	ring->rear = cp;
+	ring->fu_num = 0;
+	kfree(ap);	
+
+	return 0;
+}
 
 static int __init jztssi_init_module(void)
 {
 	int retval;
 	struct jz_tssi_t *tssi = &jz_tssi_g;
 
-	__cpm_start_tssi();
-	__cpm_start_dmac();
-	tssi_buf_init( &jz_tssi_ring_g );
+//	cpm_start_clock(CGM_TSSI);
+
+	retval = tssi_buf_init(&jz_tssi_ring_g);
+	if (retval) {
+		printk("tssi buf init failed.\n");
+		return -1;
+	}
+	
 	tssi->cur_buf = &jz_tssi_ring_g;
 	tssi->pid_num = 0;
-	retval = request_irq(TSSI_IRQ, tssi_interrupt, IRQF_DISABLED, TSSI_NAME, &jz_tssi_g);
 
+	tssi_dma_desc_init();
+
+	spin_lock_init(&tssi->lock);
+	init_waitqueue_head(&tssi->wait);
+
+	retval = request_irq(TSSI_IRQ, tssi_interrupt, IRQF_DISABLED, TSSI_NAME, (void*)&jz_tssi_g);
 	if (retval) {
 		printk("unable to get IRQ %d",TSSI_IRQ);
 		return retval;
 	}
 
-	tssi->dma_chan = jz_request_dma(DMA_ID_TSSI, "tssi", tssi_dma_irq,
-				  IRQF_DISABLED, &jz_tssi_g);
-	if ( tssi->dma_chan < 0 )
-	{
-		printk("MPEG2-TS request irq fail! \n");
-		return -1;
-	}
+	jz_register_chrdev(TSSI_MINOR, TSSI_NAME, &tssi_fops, (void *)&jz_tssi_g);	
 
-	jz_register_chrdev(TSSI_MINOR, TSSI_NAME, &tssi_fops, &jz_tssi_g);	
-
-	printk(JZ_SOC_NAME": MPEG2-TS interface driver registered %x %d\n",&jz_tssi_g,tssi->dma_chan);
+	printk(JZ_SOC_NAME": MPEG2-TS interface driver registered %x\n",(unsigned int)&jz_tssi_g);
 	return 0;
 }
 
 static void jztssi_cleanup_module(void)
 {
 	free_irq(TSSI_IRQ,0);
-	jz_free_dma(jz_tssi_g.dma_chan);
-	tssi_free_buf( &jz_tssi_ring_g );
+	tssi_free_buf(&jz_tssi_ring_g);
+	kfree(in_buf0);
+	kfree(out_buf);
 	jz_unregister_chrdev(TSSI_MINOR, TSSI_NAME);
 }
 

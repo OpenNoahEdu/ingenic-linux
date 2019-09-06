@@ -502,7 +502,7 @@ endchoice
 
 config FB_JZ4760_LCD
 	tristate "JZ4760 LCD Controller support"
-	depends on FB_JZSOC && (SOC_JZ4760)
+	depends on FB_JZSOC && (SOC_JZ4760 || SOC_JZ4760B)
 	---help---
 	   JZ4760 LCD Controller driver.
 	   JZ4760 LCD Controller support OSD function(refer jz4760_lcdc_spec.pdf).JZ4760 LCD OSD implement 2 framebuffer layers: foreground0 and foreground1. JZ4760 LCD driver support only foreground0 default.
@@ -516,6 +516,11 @@ config FB_JZ4760_LCD_USE_2LAYER_FRAMEBUFFER
 
 config FB_JZ4760_TVE
 	tristate "JZ4760 TV Encode support"
+	depends on FB_JZSOC && FB_JZ4760_LCD
+	default n
+	
+config JZ4760_HDMI_DISPLAY
+	tristate "HDMI display support"	
 	depends on FB_JZSOC && FB_JZ4760_LCD
 	default n
 
@@ -571,14 +576,103 @@ config JZ4760_SLCD_KGM701A3_TFT_SPFD5420A
 	select FB_JZ4750_SLCD
 
 config JZ4760_VGA_DISPLAY
-	depends on SOC_JZ4760
+	depends on SOC_JZ4760 || SOC_JZ4760B
 	bool "Jz4760 VGA Display"
+endchoice
+
+config JZ4810_AOSD
+        bool "JZ4810 osd alpha blending support."
+	depends on FB_JZSOC && (SOC_JZ4810)
+	default n
+	---help---
+		JZ4810 ALPHA OSD driver,if you use compress founction,this should not be selected.
+
+config JZ4810_COMPRESS
+        bool "JZ4810 COMPRESS  support."
+	depends on FB_JZSOC && (SOC_JZ4810)
+	default n
+	---help---
+		JZ4810 compress driver,if you use alpha osd founction,this should not be selected.
+
+config FB_JZ4810_LCD
+	tristate "JZ4810 LCD Controller support"
+	depends on FB_JZSOC && (SOC_JZ4810)
+	---help---
+	   JZ4810 LCD Controller driver.
+	   JZ4810 LCD Controller support OSD function(refer jz4810_lcdc_spec.pdf).JZ4810 LCD OSD implement 2 framebuffer layers: foreground0 and foreground1. JZ4810 LCD driver support only foreground0 default.
+
+config FB_JZ4810_LCD_USE_2LAYER_FRAMEBUFFER
+	bool "JZ4810 LCD driver 2 layers framebuffer support."
+	depends on FB_JZ4810_LCD
+	---help---
+	   JZ4810 LCD driver support only foreground0 by default.
+	   If you need both foreground0 and foreground1, please select this.
+
+config FB_JZ4810_TVE
+	tristate "JZ4810 TV Encode support"
+	depends on FB_JZSOC && FB_JZ4810_LCD
+	default n
+
+config JZ4810_IPU_MM
+	tristate "JZ4810 IPU MM support"
+	depends on FB_JZSOC && FB_JZ4810_LCD
+	default y
+	---help---
+	   Enable IPU Memory Management system. 
+	   It will reserve 16MB / 16MB + 4MB as IPU Framebuffer on JZ4750 / JZ4755. 
+	   Enable this if you want to use IPU.
+
+config FB_JZ4810_SLCD
+	bool
+	depends on FB_JZ4810_LCD
+	default n
+choice
+	depends on FB_JZ4810_LCD
+	prompt "JZ4810 LCD Panels Support"
+	default JZ4810_LCD_SAMSUNG_LTP400WQF02
+	---help---
+	   Please select the lcd panel in you board
+
+config JZ4810_LCD_SAMSUNG_LTP400WQF01
+	bool "SAMSUNG LTP400WQF01 TFT panel (480x272)(16bits)"
+
+config JZ4810_LCD_SAMSUNG_LTP400WQF02
+	bool "SAMSUNG LTP400WQF02 TFT panel (480x272)(18bits)"
+
+config JZ4810_LCD_AUO_A043FL01V2
+	bool "AUO A043FL01V2 TFT panel (480x272)(24bits)"
+
+config JZ4810_LCD_FOXCONN_PT035TN01
+     	bool "FOXCONN PT035TN01 TFT panel (320x240,3.5in)(18bit-parallel mode)"
+
+config JZ4810_LCD_INNOLUX_PT035TN01_SERIAL
+     	bool "INNOLUX PT035TN01 TFT panel (320x240,3.5in)(8bit-serial mode)"
+
+config JZ4810_LCD_TOPPOLY_TD025THEA7_RGB_DELTA
+	bool "TOPPOLY_TD025THEA7 TFT panel(320x240)(serial RGB delta mode)"
+
+config JZ4810_LCD_TOPPOLY_TD043MGEB1
+	bool "TOPPOLY_TD043MGEB1 TFT panel(800x480)(24bit mode)"
+
+config JZ4810_LCD_TRULY_TFTG320240DTSW_18BIT
+	bool "TRULY_TFTG320240DTSW TFT panel (320x240) (Parallel 18bit mode)"
+
+config JZ4810_LCD_TRULY_TFT_GG1P0319LTSW_W
+	bool "TRULY_TFT_GG1P0319LTSW_W (240x320) (Smart LCD 16bit)"
+
+config JZ4810_SLCD_KGM701A3_TFT_SPFD5420A
+	bool "KGM701A3_TFT_SPFD5420A (400x240) (Smart LCD 18bit)"
+	select FB_JZ4750_SLCD
+
+config JZ4810_VGA_DISPLAY
+	depends on SOC_JZ4810
+	bool "Jz4810 VGA Display"
 endchoice
 
 
 config FB_JZ4760_EPD
 	tristate "JZ4760 EPD Controller support"
-	depends on FB_JZSOC && (SOC_JZ4760)
+	depends on FB_JZSOC && (SOC_JZ4760 || SOC_JZ4760B)
 	---help---
 	   JZ4760 EPD Controller driver.
 	   JZ4760 EPD Controller support OSD function(refer jz4760_epdc_spec.pdf).JZ4760 EPD OSD implement 2 framebuffer layers: foreground0 and foreground1. JZ4760 EPD driver support only foreground0 default.

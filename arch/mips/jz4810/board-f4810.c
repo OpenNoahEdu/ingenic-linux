@@ -65,6 +65,24 @@ static void __init board_gpio_setup(void)
 	 */
 }
 
+static struct i2c_board_info falcon_i2c0_devs[] __initdata = {
+        {
+                I2C_BOARD_INFO("cm3511", 0x30),
+        },
+        {
+                I2C_BOARD_INFO("ov3640", 0x3c),
+        },
+        {
+                I2C_BOARD_INFO("ov7690", 0x21),
+        },
+        {
+        },
+};
+
+void __init board_i2c_init(void) {
+        i2c_register_board_info(0, falcon_i2c0_devs, ARRAY_SIZE(falcon_i2c0_devs));
+}
+
 void __init jz_board_setup(void)
 {
 

@@ -1,7 +1,7 @@
 /*
  * YAFFS: Yet another FFS. A NAND-flash specific file system.
  *
- * makeyaffsimage.c 
+ * makeyaffsimage.c
  *
  * Makes a YAFFS file system image that can be used to load up a file system.
  *
@@ -18,13 +18,13 @@
  * Nick Bane modifications flagged NCB
  *
  * Endian handling patches by James Ng.
- * 
+ *
  * mkyaffs2image hacks by NCB
  *
  * Changes by Sergey Kubushin flagged KSI
  *
  */
- 
+
 /* KSI:
  * All this nightmare should be rewritten from ground up. Why save return
  * values if nobody checks them? The read/write function returns only one
@@ -38,7 +38,7 @@
  * And BTW, what was one supposed to do with that file that this horror
  * occasionally managed to generate?
  */
- 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -52,6 +52,7 @@
 #include "yaffs_guts.h"
 
 #include "yaffs_packedtags2.h"
+#include "mtd/mtd_bch4bit_n8.h"
 
 unsigned yaffs_traceMask=0;
 
@@ -92,9 +93,9 @@ static struct nand_oobinfo oob_layout[] = {
         	.eccbytes = 36,
         	.eccpos = {
 			28, 29, 30, 31,
-			32, 33, 34, 35, 36, 37, 38, 39, 
-			40, 41, 42, 43, 44, 45, 46, 47, 
-			48, 49, 50, 51, 52, 53, 54, 55, 
+			32, 33, 34, 35, 36, 37, 38, 39,
+			40, 41, 42, 43, 44, 45, 46, 47,
+			48, 49, 50, 51, 52, 53, 54, 55,
 			56, 57, 58, 59, 60, 61, 62, 63},
 		.oobfree = {{2, 26}}
         },
@@ -167,15 +168,15 @@ void process_file(char *file_name);
 static int obj_compare(const void *a, const void * b)
 {
   objItem *oa, *ob;
-  
+
   oa = (objItem *)a;
   ob = (objItem *)b;
-  
+
   if(oa->dev < ob->dev) return -1;
   if(oa->dev > ob->dev) return 1;
   if(oa->ino < ob->ino) return -1;
   if(oa->ino > ob->ino) return 1;
-  
+
   return 0;
 }
 
@@ -189,7 +190,7 @@ static void add_obj_to_list(dev_t dev, ino_t ino, int obj)
 		obj_list[n_obj].obj = obj;
 		n_obj++;
 		qsort(obj_list,n_obj,sizeof(objItem),obj_compare);
-		
+
 	}
 	else
 	{
@@ -207,7 +208,7 @@ static int find_obj_in_list(dev_t dev, ino_t ino)
 
 	test.dev = dev;
 	test.ino = ino;
-	
+
 	if(n_obj > 0)
 	{
 		i = bsearch(&test,obj_list,n_obj,sizeof(objItem),obj_compare);
@@ -263,7 +264,7 @@ void nandmtd2_pt2buf(unsigned char *buf, yaffs_PackedTags2 *pt)
 {
 	int		i, j = 0, k, n;
 	unsigned char	pt2_byte_buf[PT2_BYTES];
-	
+
 	*((unsigned int *) &pt2_byte_buf[0]) = pt->t.sequenceNumber;
 	*((unsigned int *) &pt2_byte_buf[4]) = pt->t.objectId;
 	*((unsigned int *) &pt2_byte_buf[8]) = pt->t.chunkId;
@@ -280,12 +281,12 @@ void nandmtd2_pt2buf(unsigned char *buf, yaffs_PackedTags2 *pt)
 
 	k = oob_layout[layout_no].oobfree[j][0];
 	n = oob_layout[layout_no].oobfree[j][1];
-		
+
 	if (n == 0) {
 		fprintf(stderr, "No OOB space for tags");
 		exit(-1);
 	}
-                                
+
 	for (i = 0; i < PT2_BYTES; i++) {
 		if (n == 0) {
 			j++;
@@ -312,13 +313,13 @@ static int write_chunk(__u8 *data, __u32 objId, __u32 chunkId, __u32 nBytes)
 	if(error < 0) return error;
 
 	yaffs_InitialiseTags(&t);
-	
+
 	t.chunkId = chunkId;
 //	t.serialNumber = 0;
 	t.serialNumber = 1;	// **CHECK**
 	t.byteCount = nBytes;
 	t.objectId = objId;
-	
+
 	t.sequenceNumber = YAFFS_LOWEST_SEQUENCE_NUMBER;
 
 // added NCB **CHECK**
@@ -337,16 +338,23 @@ static int write_chunk(__u8 *data, __u32 objId, __u32 chunkId, __u32 nBytes)
 	yaffs_PackTags2(&pt,&t);
 
         memset(spare_buf, 0xff, spareSize);
-        
+
         if (layout_no == 0) {
                 memcpy(spare_buf, &pt, sizeof(yaffs_PackedTags2));
         } else {
                 nandmtd2_pt2buf(spare_buf, &pt);
-        }	
+        }
+	/* In oob area, bad block status: 2 Bytes, yaffs info: 16 Bytes. 
+	   We use software 4-bit bch algorithm to encode yaffs info, and 
+	   put the 4-Bytes parity data in (spare_buf + 2 + 16) area.  */
 
 #ifdef CONFIG_MTD_HW_BCH_ECC
 	/* When programming using usb boot, the data in oob after eccpos should be
 	   0xff to make programming check easy. And eccpos = 24 when using BCH. */
+	memset(spare_buf + 18, 0xff, spareSize - 18);
+	do_bch_encode(spare_buf + 2, spare_buf + 2 + 16, 16);
+
+
 	memset(spare_buf + 24, 0xff, spareSize - 24);
 #endif
 	return write(outFile,spare_buf,spareSize);
@@ -359,7 +367,7 @@ static int write_chunk(__u8 *data, __u32 objId, __u32 chunkId, __u32 nBytes)
 
 #define SWAP16(x)   ((((x) & 0x00FF) << 8) | \
                      (((x) & 0xFF00) >> 8))
-        
+
 /* KSI: Removed for now. TBD later when the proper util (from scratch) is written */
 #if 0
 // This one is easier, since the types are more standard. No funky shifts here.
@@ -370,7 +378,7 @@ static void object_header_little_to_big_endian(yaffs_ObjectHeader* oh)
     oh->sum__NoLongerUsed = SWAP16(oh->sum__NoLongerUsed); // __u16 - Not used, but done for completeness.
     // name = skip. Char array. Not swapped.
     oh->yst_mode = SWAP32(oh->yst_mode);
-#ifdef CONFIG_YAFFS_WINCE // WinCE doesn't implement this, but we need to just in case. 
+#ifdef CONFIG_YAFFS_WINCE // WinCE doesn't implement this, but we need to just in case.
     // In fact, WinCE would be *THE* place where this would be an issue!
     oh->notForWinCE[0] = SWAP32(oh->notForWinCE[0]);
     oh->notForWinCE[1] = SWAP32(oh->notForWinCE[1]);
@@ -424,19 +432,19 @@ static void object_header_little_to_big_endian(yaffs_ObjectHeader* oh)
 static int write_object_header(int objId, yaffs_ObjectType t, struct stat *s, int parent, const char *name, int equivalentObj, const char * alias)
 {
 	__u8 bytes[MAX_CHUNKSIZE];
-	
-	
+
+
 	yaffs_ObjectHeader *oh = (yaffs_ObjectHeader *)bytes;
-	
+
 	memset(bytes,0xff,chunkSize);
-	
+
 	oh->type = t;
 
 	oh->parentObjectId = parent;
-	
+
 	strncpy(oh->name,name,YAFFS_MAX_NAME_LENGTH);
-	
-	
+
+
 	if(t != YAFFS_OBJECT_TYPE_HARDLINK)
 	{
 		oh->yst_mode = s->st_mode;
@@ -448,17 +456,17 @@ static int write_object_header(int objId, yaffs_ObjectType t, struct stat *s, in
 		oh->yst_ctime = s->st_ctime;
 		oh->yst_rdev  = s->st_rdev;
 	}
-	
+
 	if(t == YAFFS_OBJECT_TYPE_FILE)
 	{
 		oh->fileSize = s->st_size;
 	}
-	
+
 	if(t == YAFFS_OBJECT_TYPE_HARDLINK)
 	{
 		oh->equivalentObjectId = equivalentObj;
 	}
-	
+
 	if(t == YAFFS_OBJECT_TYPE_SYMLINK)
 	{
 		strncpy(oh->alias,alias,YAFFS_MAX_ALIAS_LENGTH);
@@ -471,9 +479,9 @@ static int write_object_header(int objId, yaffs_ObjectType t, struct stat *s, in
     		object_header_little_to_big_endian(oh);
 	}
 #endif
-	
+
 	return write_chunk(bytes,objId,0,0xffff);
-	
+
 }
 
 
@@ -484,14 +492,14 @@ static int process_directory(int parent, const char *path)
 	struct dirent *entry;
 
 	nDirectories++;
-	
+
 	dir = opendir(path);
 
 	if(dir)
 	{
 		while((entry = readdir(dir)) != NULL)
 		{
-		
+
 			/* Ignore . and .. */
 			if(strcmp(entry->d_name,".") &&
 			   strcmp(entry->d_name,".."))
@@ -500,11 +508,11 @@ static int process_directory(int parent, const char *path)
 				struct stat stats;
 				int equivalentObj;
 				int newObj;
-				
+
 				sprintf(full_name,"%s/%s",path,entry->d_name);
-				
+
 				lstat(full_name,&stats);
-				
+
 				if(S_ISLNK(stats.st_mode) ||
 				    S_ISREG(stats.st_mode) ||
 				    S_ISDIR(stats.st_mode) ||
@@ -513,12 +521,12 @@ static int process_directory(int parent, const char *path)
 				    S_ISCHR(stats.st_mode) ||
 				    S_ISSOCK(stats.st_mode))
 				{
-				
+
 					newObj = obj_id++;
 					nObjects++;
-					
+
 					printf("Object %d, %s is a ",newObj,full_name);
-					
+
 					/* We're going to create an object for it */
 					if((equivalentObj = find_obj_in_list(stats.st_dev, stats.st_ino)) > 0)
 					{
@@ -526,20 +534,20 @@ static int process_directory(int parent, const char *path)
 					 	printf("hard link to object %d\n",equivalentObj);
 						error =  write_object_header(newObj, YAFFS_OBJECT_TYPE_HARDLINK, &stats, parent, entry->d_name, equivalentObj, NULL);
 					}
-					else 
+					else
 					{
-						
+
 						add_obj_to_list(stats.st_dev,stats.st_ino,newObj);
-						
+
 						if(S_ISLNK(stats.st_mode))
 						{
-					
+
 							char symname[500];
-						
+
 							memset(symname,0, sizeof(symname));
-					
+
 							readlink(full_name,symname,sizeof(symname) -1);
-						
+
 							printf("symlink to \"%s\"\n",symname);
 							error =  write_object_header(newObj, YAFFS_OBJECT_TYPE_SYMLINK, &stats, parent, entry->d_name, -1, symname);
 
@@ -555,7 +563,7 @@ static int process_directory(int parent, const char *path)
 								__u8 bytes[MAX_CHUNKSIZE];
 								int nBytes;
 								int chunk = 0;
-								
+
 								h = open(full_name,O_RDONLY);
 								if(h >= 0)
 								{
@@ -566,9 +574,9 @@ static int process_directory(int parent, const char *path)
 										write_chunk(bytes,newObj,chunk,nBytes);
 										memset(bytes,0xff,chunkSize);
 									}
-									if(nBytes < 0) 
+									if(nBytes < 0)
 									   error = nBytes;
-									   
+
 									printf("%d data chunks written\n",chunk);
         								close(h);
 								}
@@ -576,9 +584,9 @@ static int process_directory(int parent, const char *path)
 								{
 									perror("Error opening file");
 								}
-								
-							}							
-														
+
+							}
+
 						}
 						else if(S_ISSOCK(stats.st_mode))
 						{
@@ -623,7 +631,7 @@ static int process_directory(int parent, const char *path)
 		 */
 		closedir(dir);
 	}
-	
+
 	return 0;
 
 }
@@ -631,12 +639,12 @@ static int process_directory(int parent, const char *path)
 void process_file(char *file_name)
 {
 	printf("file, ");
-	
+
 	int h;
 	__u8 bytes[MAX_CHUNKSIZE];
 	int nBytes;
 	int chunk = 0;
-	
+
 	h = open(file_name,O_RDONLY);
 	if(h >= 0)
 	{
@@ -662,8 +670,8 @@ void process_file(char *file_name)
 
 void usage(void)
 {
-        /* ECC for oob should conform with CONFIG_YAFFS_ECC_XX when building linux kernel, but ecc 
-	   for oob isn't required when using BCH ECC, as oob will be corrected together with data 
+        /* ECC for oob should conform with CONFIG_YAFFS_ECC_XX when building linux kernel, but ecc
+	   for oob isn't required when using BCH ECC, as oob will be corrected together with data
 	   when using BCH ECC. */
 #if defined(CONFIG_YAFFS_ECC_RS)
 	printf("Reed-solomn ECC will be used for checking 16 bytes for yaffs2 information in oob area.\n"
@@ -679,7 +687,8 @@ void usage(void)
 	       "                    0 - nand_oob_raw, no used, \n"
                "                    1 - nand_oob_64, for 2KB pagesize, \n"
                "                    2 - nand_oob_128, for 2KB pagesize using multiple planes or 4KB pagesize,\n"
-	       "                    3 - nand_oob_256, for 4KB pagesize using multiple planes\n");
+               "                    3 - nand_oob_218, for 2KB pagesize using multiple planes or 4KB pagesize,\n"
+	       "                    4 - nand_oob_256, for 4KB pagesize using multiple planes\n");
 	printf("	source      the directory tree or file to be converted\n");
 	printf("	image_file  the output file to hold the image\n");
 	printf("	'convert'   make a big-endian img on a little-endian machine. BROKEN !\n");
@@ -695,9 +704,9 @@ int main(int argc, char *argv[])
 {
 	struct stat stats;
 	int	i;
-	
+
 	printf("mkyaffs2image: image building tool for YAFFS2 built "__DATE__"\n");
-	
+
 	if ((argc < 4) || (sscanf(argv[1], "%u", &layout_no) != 1))
 	{
 	        usage();
@@ -716,6 +725,10 @@ int main(int argc, char *argv[])
 		spareSize = 128;
 		break;
 	case 3:
+		chunkSize = 4096;
+		spareSize = 218;
+		break;
+	case 4:
 		chunkSize = 8192;
 		spareSize = 256;
 		break;
@@ -724,10 +737,10 @@ int main(int argc, char *argv[])
 	}
 
 	i = 0;
-	
+
 	while (oob_layout[i].useecc != -1)
 	        i++;
-	        
+
         if (layout_no >= i)
                 usage();
 
@@ -737,13 +750,13 @@ int main(int argc, char *argv[])
 	        usage();
                 convert_endian = 1;
         }
-    
+
 	if(stat(argv[2],&stats) < 0)
 	{
 		printf("Could not stat %s\n",argv[2]);
 		exit(1);
 	}
-	
+
 	if(!S_ISDIR(stats.st_mode))
 	{
 		printf(" %s is not a directory. For a file, just pad oob to data area.\n",argv[2]);
@@ -751,8 +764,8 @@ int main(int argc, char *argv[])
 	}
 
 	outFile = open(argv[3],O_CREAT | O_TRUNC | O_WRONLY, S_IREAD | S_IWRITE);
-	
-	
+
+
 	if(outFile < 0)
 	{
 		printf("Could not open output file %s\n",argv[3]);
@@ -772,9 +785,9 @@ int main(int argc, char *argv[])
 
 	if(error)
 	error = process_directory(YAFFS_OBJECTID_ROOT,argv[2]);
-	
+
 	close(outFile);
-	
+
 	if(error < 0)
 	{
 		perror("operation incomplete");
@@ -786,9 +799,9 @@ int main(int argc, char *argv[])
 		       "%d objects in %d directories\n"
 		       "%d NAND pages\n",nObjects, nDirectories, nPages);
 	}
-	
+
 	close(outFile);
-	
+
 	exit(0);
-}	
+}
 

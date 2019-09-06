@@ -196,7 +196,7 @@ static void cable_detect(struct uh_data *uh)
 /* USB is active ? */
 static int usb_is_active(void)
 {
-	unsigned long timeout = NR_UDC_WAIT_INTR_LOOP;	
+	unsigned volatile long timeout = NR_UDC_WAIT_INTR_LOOP;	
 	unsigned long frame_no = REG16(USB_REG_FRAME);
 
 	/* 

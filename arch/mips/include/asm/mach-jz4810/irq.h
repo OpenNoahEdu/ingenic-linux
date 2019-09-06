@@ -16,6 +16,6 @@
 #define __ASM_JZ4810_IRQ_H__
 
 /* we need 256 irq levels at least */
-#define NR_IRQS	256
+#define NR_IRQS	384
 
 #endif

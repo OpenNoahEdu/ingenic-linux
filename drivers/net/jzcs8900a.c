@@ -2,7 +2,7 @@
 /*
  * linux/drivers/net/jzcs8900a.c
  *
- * Author: Lucifer  <yliu@ingenic> 
+ * Author: Lucifer  <yliu@ingenic>
  *
  * A Cirrus Logic CS8900A driver for Linux
  * based on the cs89x0 driver written by Russell Nelson,
@@ -55,14 +55,14 @@
 
 #include "jzcs8900a.h"
 
-#define FULL_DUPLEX 
+#define FULL_DUPLEX
 #define INT_PIN                 0
 
 #ifdef CONFIG_SOC_JZ4740
 #define CIRRUS_DEFAULT_IO	0xa8000000
 #define CIRRUS_DEFAULT_IRQ	107
 
-#elif CONFIG_SOC_JZ4750
+#elif defined(CONFIG_SOC_JZ4750)
 #define CIRRUS_DEFAULT_IO	0xac000000
 
 #ifdef CONFIG_JZ4750_FUWA
@@ -71,10 +71,10 @@
 #define CIRRUS_DEFAULT_IRQ	(32*2 +6+48)
 #endif
 
-#elif CONFIG_SOC_JZ4760
-#ifdef CONFIG_JZ4760_LEPUS
+#elif defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
+#if defined(CONFIG_JZ4760_LEPUS) || defined(CONFIG_JZ4760B_LEPUS)
 #define CIRRUS_DEFAULT_IO	0xb4000000
-#elif CONFIG_JZ4760_CYGNUS
+#elif defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760B_CYGNUS)
 #define CIRRUS_DEFAULT_IO	0xb5000000
 #endif
 #define CIRRUS_DEFAULT_IRQ	(GPIO_NET_INT + IRQ_GPIO_0)
@@ -91,20 +91,20 @@ static struct net_device *dev;
 
 /*
  * I/O routines
- */  
+ */
 static void gpio_init_cs8900(void)
 {
 #ifdef CONFIG_SOC_JZ4740
-	__gpio_as_func0(60);             //CS4# 
+	__gpio_as_func0(60);             //CS4#
 	__gpio_as_func0(61);             //RD#
-	__gpio_as_func0(62);             //WR# 
+	__gpio_as_func0(62);             //WR#
 	__gpio_as_irq_high_level(59);    //irq
 	__gpio_disable_pull(59);         //disable pull
 	REG_EMC_SMCR4 |= (1 << 6);       //16bit
-#elif CONFIG_SOC_JZ4750
+#elif defined(CONFIG_SOC_JZ4750)
 	__gpio_as_func0(32*2+23);             //CS3#
-	__gpio_as_func0(32*2+25);             //RD# 
-	__gpio_as_func0(32*2+26);             //WR# 
+	__gpio_as_func0(32*2+25);             //RD#
+	__gpio_as_func0(32*2+26);             //WR#
 
 #ifdef CONFIG_JZ4750_FUWA
 	__gpio_as_irq_high_level(32*4+20);    //irq
@@ -116,26 +116,50 @@ static void gpio_init_cs8900(void)
 
 	REG_EMC_SMCR3 |= (1 << 6);            //16bit
 
-#elif CONFIG_SOC_JZ4760
+#elif defined(CONFIG_SOC_JZ4760) || defined(CONFIG_SOC_JZ4760B)
 
-#ifdef CONFIG_JZ4760_LEPUS
-	/* We use CS6 with 16-bit data width */
-	__gpio_as_func0(32 * 0 + 26);		/* GPA26 CS6# */
-	__gpio_as_func0(32 * 0 + 16);		/* GPA16 RD#  */
-	__gpio_as_func0(32 * 0 + 17);		/* GPA17 WE#  */
- 
-	REG_EMC_SMCR6 &= ~EMC_SMCR_BW_MASK;
-	REG_EMC_SMCR6 |= EMC_SMCR_BW_16BIT;
+#define RD_N_PIN (32*0 +16)  //gpa16
+#define WE_N_PIN (32*0 +17)  //gpa17
 
-#elif CONFIG_JZ4760_CYGNUS
-        /* We use CS5 with 16-bit data width */
-	__gpio_as_func0(32 * 0 + 25);		/* GPA25 CS5# */
-	__gpio_as_func0(32 * 0 + 16);		/* GPA16 RD#  */
-	__gpio_as_func0(32 * 0 + 17);		/* GPA17 WE#  */
- 
-	REG_EMC_SMCR5 &= ~EMC_SMCR_BW_MASK;
-	REG_EMC_SMCR5 |= EMC_SMCR_BW_16BIT;
+#if defined(CONFIG_JZ4760_LEPUS) ||  defined(CONFIG_JZ4760B_LEPUS)
+#define WAIT_N (32*0 + 27)   //WAIT_N--->gpa27
+#define CS_PIN (32*0 + 26)   //CS6--->gpa26
+
+#elif defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760B_CYGNUS)
+#define CS_PIN (32*0 + 25)   //CS5--->gpa25
+#define WAIT_N (32*0 + 27)   //WAIT_N--->gpa27
+#define CS8900_RESET_PIN (32 * 1 +23)  //gpb23
 #endif
+	__gpio_as_func0(CS_PIN);
+	__gpio_as_func0(RD_N_PIN);
+	__gpio_as_func0(WE_N_PIN);
+
+	__gpio_as_func0(32 * 1 + 2);
+	__gpio_as_func0(32 * 1 + 3);
+
+
+#if defined(CONFIG_JZ4760_LEPUS) ||  defined(CONFIG_JZ4760B_LEPUS)
+	REG_GPIO_PXFUNS(0) = 0x0000ffff;
+	REG_GPIO_PXTRGC(0) = 0x0000ffff;
+	REG_GPIO_PXSELC(0) = 0x0000ffff;
+
+	__gpio_as_func0(WAIT_N);
+
+	REG_NEMC_SMCR6 &= ~EMC_SMCR_BW_MASK;
+	REG_NEMC_SMCR6 |= EMC_SMCR_BW_16BIT;
+
+#elif defined(CONFIG_JZ4760_CYGNUS)
+	__gpio_as_output(CS8900_RESET_PIN);
+	__gpio_set_pin(CS8900_RESET_PIN);
+	udelay(10000);
+	__gpio_clear_pin(CS8900_RESET_PIN);
+
+	__gpio_as_func0(WAIT_N);
+
+	REG_NEMC_SMCR5 &= ~EMC_SMCR_BW_MASK;
+	REG_NEMC_SMCR5 |= EMC_SMCR_BW_16BIT;
+#endif
+
 	__gpio_as_irq_high_level(GPIO_NET_INT);	/* irq */
 	__gpio_disable_pull(GPIO_NET_INT);	/* disable pull */
 #endif
@@ -590,8 +614,8 @@ int __init cirrus_probe(void)
 		printk(KERN_ERR " Cannot register net device\n");
 		free_netdev(dev);
 		return -ENOMEM;
-	}	
-	
+	}
+
 	return (0);
 }
 

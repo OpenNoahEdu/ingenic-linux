@@ -293,6 +293,8 @@ static int ft5x0x_ts_resume(struct i2c_client *client)
 #define ft5x0x_ts_resume NULL
 #endif  //CONFIG_PM
 
+extern void i2c_jz_setclk(struct i2c_client *client,unsigned long i2cclk);
+
 static int
 ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {

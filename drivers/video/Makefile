@@ -29,6 +29,7 @@ obj-$(CONFIG_FB_DEFERRED_IO)   += fb_defio.o
 
 # Hardware specific drivers go first
 obj-$(CONFIG_FB_JZ475X)		+= jz475x/
+obj-$(CONFIG_JZ4760_HDMI_DISPLAY) += ep932/
 
 obj-$(CONFIG_FB_JZLCD_4730_4740)  += jzlcd.o
 obj-$(CONFIG_FB_JZ4740_SLCD)      += jz4740_slcd.o
@@ -36,8 +37,15 @@ obj-$(CONFIG_FB_JZ4750_LCD)       += jz4750_lcd.o
 obj-$(CONFIG_FB_JZ4750_TVE)       += jz4750_tve.o
 obj-$(CONFIG_FB_JZ4760_LCD)       += jz4760_lcd.o
 obj-$(CONFIG_FB_JZ4760_TVE)       += jz4760_tve.o
+obj-$(CONFIG_JZ4760_AOSD)         += jz4760_aosd.o 
+obj-$(CONFIG_JZ4760_COMPRESS)     += jz4760_aosd.o
 
-obj-$(CONFIG_FB_JZ4760_EPD)       += jz4760_epd.o
+obj-$(CONFIG_FB_JZ4810_LCD)       += jz4810_lcd.o
+obj-$(CONFIG_FB_JZ4810_TVE)       += jz4810_tve.o
+obj-$(CONFIG_JZ4810_AOSD)         += jz4810_aosd.o 
+obj-$(CONFIG_JZ4810_COMPRESS)     += jz4810_aosd.o
+
+#obj-$(CONFIG_FB_JZ4760_EPD)       += jz4760_epd.o
 obj-$(CONFIG_FB_AMIGA)            += amifb.o c2p_planar.o
 obj-$(CONFIG_FB_ARC)              += arcfb.o
 obj-$(CONFIG_FB_CLPS711X)         += clps711xfb.o

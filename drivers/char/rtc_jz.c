@@ -465,9 +465,124 @@ static struct miscdevice rtc_dev=
 	&rtc_fops
 };
 
+/* The divider is decided by the RTC clock frequency. */
+#define RTC_FREQ_DIVIDER	(32768 - 1)
+#define ms2clycle(x)  (((x) * RTC_FREQ_DIVIDER) / 1000)
+
+#define RTC_CFG (((unsigned int)('R') << 24) | ((unsigned int)('T') << 16) | ((unsigned int)('C') << 8))
+#define CAL_RTC_CFG(x)				\
+  ({						\
+    unsigned int x1,x2,x3;			\
+    x1 = ((x) >> 24) & 0xff;			\
+    x2 = ((x) >> 16) & 0xff;			\
+    x3 = ((x) >> 8) & 0xff;			\
+  ((x & (~0xff)) | (x1 + x2 + x3));		\
+  })
+#define SET_RTC_REG(reg,x)				\
+  do{							\
+    unsigned int rcr;					\
+    do{							\
+      rcr = reg;					\
+    }while(rcr != reg);					\
+    rcr |= (x);						\
+    while ( !__rtc_write_ready());			\
+    reg = rcr;						\
+  }while(0);
+
+#define CLR_RTC_REG(reg,x)				\
+  do{							\
+    unsigned int rcr;					\
+    do{							\
+      rcr = reg;					\
+    }while(rcr != reg);					\
+    rcr &= ~(x);					\
+    while ( !__rtc_write_ready());			\
+    reg = rcr;						\
+  }while(0);
+
+#define OUT_RTC_REG(reg,x)				\
+  do{							\
+    while ( !__rtc_write_ready());			\
+    reg = x;						\
+  }while(0);
+
+#define IN_RTC_REG(reg)					\
+  ({							\
+    unsigned int dat;					\
+    do{							\
+      dat = reg;					\
+    }while(reg != dat);					\
+    dat;						\
+  })
+
+
+ /* Default time for the first-time power on */
+static struct rtc_time default_tm = {
+	.tm_year = (2009 - 1900), // year 2009
+	.tm_mon = (10 - 1),       // month 10
+	.tm_mday = 1,             // day 1
+	.tm_hour = 12,
+	.tm_min = 0,
+	.tm_sec = 0
+}; 
+static void rtc_first_power_on()
+{
+	unsigned int rcr,cfc,hspr,rgr_1hz;
+	/*
+	 * When we are powered on for the first time, init the rtc and reset time.
+	 *
+	 * For other situations, we remain the rtc status unchanged.
+	 */
+	 
+	__cpm_select_rtcclk_rtc();
+
+	//unsigned int ppr = IN_RTC_REG(REG_RTC_HWRSR);   
+	cfc = 0x12345678;//CAL_RTC_CFG(RTC_CFG);
+	hspr = IN_RTC_REG(REG_RTC_HSPR);
+	rgr_1hz  = IN_RTC_REG(REG_RTC_RGR) & RTC_RGR_NC1HZ_MASK;
+	
+	if((hspr != cfc) || (rgr_1hz != RTC_FREQ_DIVIDER))
+	{
+	//if ((ppr >> RTC_HWRSR_PPR) & 0x1) {
+		/* We are powered on for the first time !!! */
+
+		printk("jz4750-rtc: rtc status reset by power-on\n");
+
+		/* init rtc status */
+		
+		rcr = IN_RTC_REG(REG_RTC_RCR);
+		rcr &= ~(RTC_RCR_1HZ | RTC_RCR_1HZIE | RTC_RCR_AF | RTC_RCR_AE | RTC_RCR_AIE);
+		
+
+		/* Set 32768 rtc clocks per seconds */
+		OUT_RTC_REG(REG_RTC_RGR,RTC_FREQ_DIVIDER);
+
+		/* Set minimum wakeup_n pin low-level assertion time for wakeup: 100ms */
+
+		OUT_RTC_REG(REG_RTC_HWFCR,ms2clycle(100) << RTC_HWFCR_BIT);
+
+		//REG_RTC_HWFCR = (100 << RTC_HWFCR_BIT);
+		//while ( !__rtc_write_ready());
+	
+		/* Set reset pin low-level assertion time after wakeup: must  > 60ms */
+		//REG_RTC_HRCR = (60 << RTC_HRCR_BIT);
+		//while ( !__rtc_write_ready());
+
+		OUT_RTC_REG(REG_RTC_HRCR,ms2clycle(60) <<  RTC_HRCR_BIT);
+                /* Reset to the default time */
+		set_rtc_time( &default_tm);
+		/* start rtc */
+		rcr |= RTC_RCR_RTCE;
+		OUT_RTC_REG(REG_RTC_RCR,rcr);
+		OUT_RTC_REG(REG_RTC_HSPR,cfc);
+		/* select external 32K crystal as RTC clock */
+	}
+}
 int __init Jz_rtc_init(void)
 {
 
+	printk("jz4750-rtc: Jz_rtc_init\n");
+	rtc_first_power_on();
 	INIT_WORK(&rtc_alarm_task, rtc_alarm_task_handler);
 
 	/* Enabled rtc function, enable rtc alarm function */

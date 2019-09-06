@@ -171,7 +171,11 @@ int nandmtd2_WriteChunkWithTagsToNAND(yaffs_Device * dev, int chunkInNAND,
 	size_t dummy;
 #endif
 	int retval = 0;
+#if !defined(CONFIG_SOC_JZ4760B)
 	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * dev->nDataBytesPerChunk;
+#else
+	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * mtd->writesize;
+#endif
 	yaffs_PackedTags2 pt;
 
 	T(YAFFS_TRACE_MTD,
@@ -188,6 +192,7 @@ int nandmtd2_WriteChunkWithTagsToNAND(yaffs_Device * dev, int chunkInNAND,
 	if (data) {
      		nandmtd2_pt2buf(dev, &pt, 0);         //modify
 		ops.mode = MTD_OOB_AUTO;
+//		ops.mode = MTD_OOB_PLACE;
 		ops.ooblen = sizeof(pt);
 		ops.len = dev->nDataBytesPerChunk;
 		ops.ooboffs = 0;
@@ -195,6 +200,7 @@ int nandmtd2_WriteChunkWithTagsToNAND(yaffs_Device * dev, int chunkInNAND,
 //		ops.oobbuf = (void *)&pt;              //modify
 		ops.oobbuf = (void *)dev->spareBuffer; //modify
 		retval = mtd->write_oob(mtd, addr, &ops);
+//		printk("YAFFS2:%s %s %d addr:0x%08p retval:%d\n",__FILE__,__func__,__LINE__,addr,retval);
 	} else
 		BUG(); /* both tags and data should always be present */
 #else
@@ -240,9 +246,14 @@ int nandmtd2_ReadChunkWithTagsFromNAND(yaffs_Device * dev, int chunkInNAND,
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 	struct mtd_oob_ops ops;
 #endif
+//	dump_stack();
 	size_mtd_t dummy;
 	int retval = 0;
+#if !defined(CONFIG_SOC_JZ4760B)
 	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * dev->nDataBytesPerChunk;
+#else
+	loff_mtd_t addr = ((loff_mtd_t) chunkInNAND) * mtd->writesize;
+#endif
 	yaffs_PackedTags2 pt;
 
 	T(YAFFS_TRACE_MTD,
@@ -255,7 +266,9 @@ int nandmtd2_ReadChunkWithTagsFromNAND(yaffs_Device * dev, int chunkInNAND,
 		retval = mtd->read(mtd, addr, dev->nDataBytesPerChunk,
 				&dummy, data);
 	else if (tags) {
+//		printk("YAFFS2:%s %s %d\n",__FILE__,__func__,__LINE__);
 		ops.mode = MTD_OOB_AUTO;
+//		ops.mode = MTD_OOB_PLACE;
 		ops.ooblen = sizeof(pt);
 		ops.len = data ? dev->nDataBytesPerChunk : sizeof(pt);
 		ops.ooboffs = 0;
@@ -298,6 +311,8 @@ int nandmtd2_ReadChunkWithTagsFromNAND(yaffs_Device * dev, int chunkInNAND,
 	
 	if(tags && retval == -EBADMSG && tags->eccResult == YAFFS_ECC_RESULT_NO_ERROR)
 		tags->eccResult = YAFFS_ECC_RESULT_UNFIXED;
+		
+//	printk("retval:%d tags.eccResult:%d\n",retval,tags->eccResult);
 
 	if (retval == 0)
 		return YAFFS_OK;

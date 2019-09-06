@@ -10,6 +10,10 @@ ifeq ($(CONFIG_SOC_JZ4760),y)
 	musb_hdrc-objs	+= jz4760.o
 endif
 
+ifeq ($(CONFIG_SOC_JZ4760B),y)
+	musb_hdrc-objs	+= jz4760.o
+endif
+
 ifeq ($(CONFIG_ARCH_DAVINCI),y)
 	musb_hdrc-objs	+= davinci.o
 endif

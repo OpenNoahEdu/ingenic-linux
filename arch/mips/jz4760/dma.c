@@ -3,7 +3,7 @@
  *
  * Support functions for the JZ4760 internal DMA channels.
  * No-descriptor transfer only.
- * Descriptor transfer should also call jz_request_dma() to get a free 
+ * Descriptor transfer should also call jz_request_dma() to get a free
  * channel and call jz_free_dma() to free the channel. And driver should
  * build the DMA descriptor and setup the DMA channel by itself.
  *
@@ -47,7 +47,7 @@
  */
 
 struct jz_dma_chan jz_dma_table[MAX_DMA_NUM] = {
-	{ dev_id: DMA_ID_BCH_ENC, },	/* DMAC0 channel 0, reserved for BCH */
+	{ dev_id: DMA_ID_MSC0, },	/* DMAC0 channel 0, reserved for MSC0 */
 	{ dev_id: -1, },		/* DMAC0 channel 1 */
 	{ dev_id: -1, },		/* DMAC0 channel 2 */
 	{ dev_id: -1, },		/* DMAC0 channel 3 */
@@ -57,8 +57,7 @@ struct jz_dma_chan jz_dma_table[MAX_DMA_NUM] = {
 	/* To avoid bug, reserved channel 6 & 7 for AIC_TX & AIC_RX */
 	{ dev_id: DMA_ID_AIC_TX, },	/* DMAC1 channel 0 */
 	{ dev_id: DMA_ID_AIC_RX, },	/* DMAC1 channel 1 */
-
-	{ dev_id: -1, },		/* DMAC1 channel 2 */
+	{ dev_id: DMA_ID_MSC1, },	/* DMAC1 channel 2, reserved for MSC1 */
 	{ dev_id: -1, },		/* DMAC1 channel 3 */
 	{ dev_id: -1, },		/* DMAC0 channel 4 */
 	{ dev_id: 0, },			/* DMAC0 channel 5 --- unavailable */
@@ -70,41 +69,46 @@ static const struct {
 	unsigned int dma_mode;
 	unsigned int dma_source;
 } dma_dev_table[DMA_ID_MAX] = {
-	{0, DMA_AUTOINIT, DMAC_DRSR_RS_EXT}, /* External request with DREQn */
-	{0x18000000, DMA_AUTOINIT, DMAC_DRSR_RS_NAND}, /* NAND request */
-	{CPHYSADDR(BCH_DR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_BCH_ENC},
-	{CPHYSADDR(BCH_DR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_BCH_DEC},
-	{0, DMA_AUTOINIT, DMAC_DRSR_RS_AUTO},
+	[DMA_ID_AUTO] = {0, DMA_AUTOINIT, DMAC_DRSR_RS_AUTO},
 //	{CPHYSADDR(TSSI_FIFO), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_TSSIIN},
-	{CPHYSADDR(UART3_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART3OUT},
-	{CPHYSADDR(UART3_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART3IN},
-	{CPHYSADDR(UART2_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART2OUT},
-	{CPHYSADDR(UART2_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART2IN},
-	{CPHYSADDR(UART1_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART1OUT},
-	{CPHYSADDR(UART1_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART1IN},
-	{CPHYSADDR(UART0_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART0OUT},
-	{CPHYSADDR(UART0_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART0IN},
-	{CPHYSADDR(SSI_DR(0)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_SSI0OUT},
-	{CPHYSADDR(SSI_DR(0)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SSI0IN},
-	
+	[DMA_ID_UART3_TX] = {CPHYSADDR(UART3_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART3OUT},
+	[DMA_ID_UART3_RX] = {CPHYSADDR(UART3_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART3IN},
+	[DMA_ID_UART2_TX] = {CPHYSADDR(UART2_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART2OUT},
+	[DMA_ID_UART2_RX] = {CPHYSADDR(UART2_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART2IN},
+	[DMA_ID_UART1_TX] = {CPHYSADDR(UART1_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART1OUT},
+	[DMA_ID_UART1_RX] = {CPHYSADDR(UART1_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART1IN},
+	[DMA_ID_UART0_TX] = {CPHYSADDR(UART0_TDR), DMA_8BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_UART0OUT},
+	[DMA_ID_UART0_RX] = {CPHYSADDR(UART0_RDR), DMA_8BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_UART0IN},
+	[DMA_ID_SSI0_TX] = {CPHYSADDR(SSI_DR(0)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_SSI0OUT},
+	[DMA_ID_SSI0_RX] = {CPHYSADDR(SSI_DR(0)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SSI0IN},
+
 	/*spdif used */
 	//{CPHYSADDR(SPDIF_FIFO), DMA_16BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_AICOUT},
 	/*aic unpack used*/
-	{CPHYSADDR(AIC_DR), DMA_AIC_TX_CMD_UNPACK | DMA_MODE_WRITE, DMAC_DRSR_RS_AICOUT},
+	[DMA_ID_AIC_TX] = {CPHYSADDR(AIC_DR), DMA_AIC_TX_CMD_UNPACK | DMA_MODE_WRITE, DMAC_DRSR_RS_AICOUT},
 	/*aic pack used*/
 	//{CPHYSADDR(AIC_DR), DMA_AIC_TX_CMD_PACK | DMA_MODE_WRITE, DMAC_DRSR_RS_AICOUT},
-	{CPHYSADDR(AIC_DR), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_AICIN},
-	{CPHYSADDR(MSC_TXFIFO(0)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_MSC0OUT},
-	{CPHYSADDR(MSC_RXFIFO(0)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_MSC0IN},
-	{0, DMA_AUTOINIT, DMAC_DRSR_RS_TCU},
-	{CPHYSADDR(SADC_ADTCH), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SADC},/* Touch Screen Data Register */
-	{CPHYSADDR(MSC_TXFIFO(1)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_MSC1OUT}, /* SSC1 TX */
-	{CPHYSADDR(MSC_RXFIFO(1)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_MSC1IN},	/* SSC1 RX */
-	{CPHYSADDR(SSI_DR(1)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_SSI1OUT},
-	{CPHYSADDR(SSI_DR(1)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SSI1IN},
-	{CPHYSADDR(PCM_PDP), DMA_16BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_PMOUT},
-	{CPHYSADDR(PCM_PDP), DMA_16BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_PMIN},
-	{},
+	[DMA_ID_AIC_RX] = {CPHYSADDR(AIC_DR), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_AICIN},
+	[DMA_ID_MSC0] = {0, 0, 0},
+	/* Just for compitable with SD8686 msc driver */
+	[DMA_ID_MSC0_TX] = {CPHYSADDR(MSC_TXFIFO(0)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_MSC0OUT},
+	[DMA_ID_MSC0_RX] = {CPHYSADDR(MSC_RXFIFO(0)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_MSC0IN},
+	[DMA_ID_TCU_OVERFLOW] = {0, DMA_AUTOINIT, DMAC_DRSR_RS_TCU},
+	[DMA_ID_SADC] = {CPHYSADDR(SADC_ADTCH), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SADC},/* Touch Screen Data Register */
+	[DMA_ID_MSC1] = {0, 0, 0},
+	/* Just for compitable with SD8686 msc driver */
+	[DMA_ID_MSC1_TX] = {CPHYSADDR(MSC_TXFIFO(1)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_MSC1OUT},
+	[DMA_ID_MSC1_RX] = {CPHYSADDR(MSC_RXFIFO(1)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_MSC1IN},
+	[DMA_ID_MSC2] = {0, 0, 0},
+	/* Just for compitable with SD8686 msc driver */
+	[DMA_ID_MSC2_TX] = {CPHYSADDR(MSC_TXFIFO(2)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_MSC2OUT},
+	[DMA_ID_MSC2_RX] = {CPHYSADDR(MSC_RXFIFO(2)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_MSC2IN},
+	[DMA_ID_SSI1_TX] = {CPHYSADDR(SSI_DR(1)), DMA_32BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_SSI1OUT},
+	[DMA_ID_SSI1_RX] = {CPHYSADDR(SSI_DR(1)), DMA_32BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_SSI1IN},
+	[DMA_ID_PCM_TX] = {CPHYSADDR(PCM_PDP), DMA_16BIT_TX_CMD | DMA_MODE_WRITE, DMAC_DRSR_RS_PMOUT},
+	[DMA_ID_PCM_RX] = {CPHYSADDR(PCM_PDP), DMA_16BIT_RX_CMD | DMA_MODE_READ, DMAC_DRSR_RS_PMIN},
+	[DMA_ID_AX88796C_RX] = { 0, 0, 0 },
+	[DMA_ID_AX88796C_TX] = { 0, 0, 0 },
 };
 
 
@@ -205,9 +209,16 @@ int jz_request_dma(int dev_id, const char *dev_str,
 	if (dev_id < 0 || dev_id >= DMA_ID_MAX)
 		return -EINVAL;
 
- 	for (i = 0; i < MAX_DMA_NUM; i++) {
-		if (jz_dma_table[i].dev_id < 0)
-			break;
+	for (i = 0; i < MAX_DMA_NUM; i++) {
+		    if (jz_dma_table[i].dev_id == dev_id)
+			    break;
+	}
+
+	if (i == MAX_DMA_NUM) {
+		for (i = 0; i < MAX_DMA_NUM; i++) {
+			if (jz_dma_table[i].dev_id < 0)
+				break;
+		}
 	}
 	if (i == MAX_DMA_NUM)  /* no free channel */
 		return -ENODEV;
@@ -237,10 +248,17 @@ int jz_request_dma(int dev_id, const char *dev_str,
 	chan->mode = dma_dev_table[dev_id].dma_mode;
 	chan->source = dma_dev_table[dev_id].dma_source;
 
-	if (i < HALF_DMA_NUM)
-		REG_DMAC_DMACKE(0) = 1 << i;
-	else
-		REG_DMAC_DMACKE(1) = 1 << (i - HALF_DMA_NUM);
+	if (i < HALF_DMA_NUM) {
+		if (i == 0)
+			REG_DMAC_DMACKE(0) = 0x2;
+		else
+			REG_DMAC_DMACKE(0) = 1 << i;
+	} else {
+		if (i == HALF_DMA_NUM)
+			REG_DMAC_DMACKE(1) = 0x2;
+		else
+			REG_DMAC_DMACKE(1) = 1 << (i - HALF_DMA_NUM);
+	}
 
 	return i;
 }
@@ -535,7 +553,7 @@ void jz_set_oss_dma(unsigned int dmanr, unsigned int mode, unsigned int audio_fm
 			chan->mode &= ~DMAC_DCMD_DAI;
 		} else
 			printk("oss_dma_burst_mode() just supports DMA_MODE_READ or DMA_MODE_WRITE!\n");
-		
+
 		REG_DMAC_DCMD(chan->io) = chan->mode & ~DMA_MODE_MASK;
 		REG_DMAC_DRSR(chan->io) = chan->source;
 		break;
@@ -569,7 +587,7 @@ void jz_set_alsa_dma(unsigned int dmanr, unsigned int mode, unsigned int audio_f
 			chan->mode &= ~DMAC_DCMD_DAI;
 		} else
 			printk("alsa_dma_burst_mode() just supports DMA_MODE_READ or DMA_MODE_WRITE!\n");
-		
+
 		REG_DMAC_DCMD(chan->io) = chan->mode & ~DMA_MODE_MASK;
 		REG_DMAC_DRSR(chan->io) = chan->source;
 		break;
@@ -788,7 +806,7 @@ void dma_desc_test(void)
 	desc->dsadr = dma_src_phys_addr + 8192;	/* DMA source address */
 	desc->dtadr = dma_dst_phys_addr + 8192;	/* DMA target address */
 	desc->ddadr = (next << 24) + 256;    /* size: 256*16 bytes = 4096 bytes */
-	
+
 	desc++;
 	next = (dma_desc_phys_addr + 4*(sizeof(jz_dma_desc))) >> 4;
 
@@ -829,6 +847,15 @@ void dma_desc_test(void)
 
 	/* free dma */
 	jz_free_dma(dma_chan);
+}
+
+/*
+ * channel 0: read
+ * channel 1: write
+ * read and write are simutanously
+ */
+void dma_two_desc_test(void) {
+
 }
 
 #endif

@@ -26,10 +26,18 @@
 #define	CIM_CMD			(CIM_BASE + 0x002C)
 #define	CIM_SIZE		(CIM_BASE + 0x0030)
 #define	CIM_OFFSET		(CIM_BASE + 0x0034)
+#define CIM_YFA			(CIM_BASE + 0x0038)
+#define CIM_YCMD		(CIM_BASE + 0x003C)
+#define CIM_CBFA		(CIM_BASE + 0x0040)
+#define CIM_CBCMD		(CIM_BASE + 0x0044)
+#define CIM_CRFA		(CIM_BASE + 0x0048)
+#define CIM_CRCMD		(CIM_BASE + 0x004C)
+#define CIM_CTRL2		(CIM_BASE + 0x0050)
 #define	CIM_RAM_ADDR		(CIM_BASE + 0x1000)
 
 #define	REG_CIM_CFG		REG32(CIM_CFG)
 #define	REG_CIM_CTRL		REG32(CIM_CTRL)
+#define REG_CIM_CTRL2		REG32(CIM_CTRL2)
 #define	REG_CIM_STATE		REG32(CIM_STATE)
 #define	REG_CIM_IID		REG32(CIM_IID)
 #define	REG_CIM_RXFIFO		REG32(CIM_RXFIFO)
@@ -39,7 +47,16 @@
 #define	REG_CIM_CMD		REG32(CIM_CMD)
 #define	REG_CIM_SIZE		REG32(CIM_SIZE)
 #define	REG_CIM_OFFSET		REG32(CIM_OFFSET)
+#define REG_CIM_YFA		REG32(CIM_YFA)
+#define REG_CIM_YCMD		REG32(CIM_YCMD)
+#define REG_CIM_CBFA		REG32(CIM_CBFA)
+#define REG_CIM_CBCMD		REG32(CIM_CBCMD)
+#define REG_CIM_CRFA		REG32(CIM_CRFA)
+#define REG_CIM_CRCMD		REG32(CIM_CRCMD)
 
+#define CIM_CFG_RXF_TRIG_BIT	24
+#define CIM_CFG_RXF_TRIG_MASK	(0x3f << CIM_CFG_RT_TRIG_MASK)
+#define CIM_CFG_SEP		(1 << 20)
 #define	CIM_CFG_ORDER_BIT	18
 #define	CIM_CFG_ORDER_MASK	(0x3 << CIM_CFG_ORDER_BIT)
   #define CIM_CFG_ORDER_0	  (0x0 << CIM_CFG_ORDER_BIT) 	/* Y0CbY1Cr; YCbCr */
@@ -60,6 +77,7 @@
   #define	CIM_CFG_DMA_BURST_INCR4		(0 << CIM_CFG_DMA_BURST_TYPE_BIT)
   #define	CIM_CFG_DMA_BURST_INCR8		(1 << CIM_CFG_DMA_BURST_TYPE_BIT)	/* Suggested */
   #define	CIM_CFG_DMA_BURST_INCR16	(2 << CIM_CFG_DMA_BURST_TYPE_BIT)	/* Suggested High speed AHB*/
+  #define	CIM_CFG_DMA_BURST_INCR32	(3 << CIM_CFG_DMA_BURST_TYPE_BIT)	/* Suggested High speed AHB*/
 #define	CIM_CFG_DUMMY_ZERO	(1 << 9)
 #define	CIM_CFG_EXT_VSYNC	(1 << 8)	/* Only for ITU656 Progressive mode */
 #define	CIM_CFG_PACK_BIT	4
@@ -103,7 +121,7 @@
   #define CIM_CTRL_FRC_15	  (0xE << CIM_CTRL_FRC_BIT) /* Sample 1/15 frame */
   #define CIM_CTRL_FRC_16	  (0xF << CIM_CTRL_FRC_BIT) /* Sample 1/16 frame */
 
-#define	CIM_CTRL_DMA_EEOF	(1 << 15)	/* Enable EEOF interrupt */
+#define	CIM_CTRL_DMA_EEOFM	(1 << 15)	/* Enable EEOF interrupt */
 #define	CIM_CTRL_WIN_EN		(1 << 14)
 #define	CIM_CTRL_VDDM		(1 << 13) /* VDD interrupt enable */
 #define	CIM_CTRL_DMA_SOFM	(1 << 12)
@@ -119,7 +137,27 @@
 #define	CIM_CTRL_RXF_RST	(1 << 1) /* RxFIFO reset */
 #define	CIM_CTRL_ENA		(1 << 0) /* Enable CIM */
 
+
+/* cim control2 */
+#define CIM_CTRL2_OPG_BIT	4
+#define CIM_CTRL2_OPG_MASK	(0x3 << CIM_CTRL2_OPG_BIT)
+#define CIM_CTRL2_OPE		(1 << 2)
+#define CIM_CTRL2_EME		(1 << 1)
+#define CIM_CTRL2_APM		(1 << 0)
+
 /* CIM State Register  (CIM_STATE) */
+#define CIM_STATE_CR_RF_OF	(1 << 27)
+#define CIM_STATE_CR_RF_TRIG	(1 << 26)
+#define CIM_STATE_CR_RF_EMPTY	(1 << 25)
+
+#define CIM_STATE_CB_RF_OF	(1 << 19)
+#define CIM_STATE_CB_RF_TRIG	(1 << 18)
+#define CIM_STATE_CB_RF_EMPTY	(1 << 17)
+
+#define CIM_STATE_Y_RF_OF	(1 << 11)
+#define CIM_STATE_Y_RF_TRIG	(1 << 10)
+#define CIM_STATE_Y_RF_EMPTY	(1 << 9)
+
 #define	CIM_STATE_DMA_EEOF	(1 << 7) /* DMA Line EEOf irq */
 #define	CIM_STATE_DMA_SOF	(1 << 6) /* DMA start irq */
 #define	CIM_STATE_DMA_EOF	(1 << 5) /* DMA end irq */
@@ -151,7 +189,6 @@
 #define	CIM_OFFSET_H_BIT	0 /* Horizontal offset, should be an enen number */
 #define	CIM_OFFSET_H_MASK	(0xfff << CIM_OFFSET_H_BIT) /*OFFSET_H should be even number*/
 
-
 #ifndef __MIPS_ASSEMBLER
 
 /***************************************************************************
@@ -160,6 +197,9 @@
 
 #define __cim_enable()	( REG_CIM_CTRL |= CIM_CTRL_ENA )
 #define __cim_disable()	( REG_CIM_CTRL &= ~CIM_CTRL_ENA )
+
+#define __cim_enable_sep() (REG_CIM_CFG |= CIM_CFG_SEP)
+#define __cim_disable_sep() (REG_CIM_CFG &= ~CIM_CFG_SEP)
 
 /* n = 0, 1, 2, 3 */
 #define __cim_set_input_data_stream_order(n)				\
@@ -302,11 +342,19 @@ do {						\
 	( REG_CIM_CTRL &= ~CIM_CTRL_RXF_OFM )
 
 /* n=4,8,12,16,20,24,28,32 */
-#define __cim_set_rxfifo_trigger(n) 		\
-do {						\
-	REG_CIM_CTRL &= ~CIM_CTRL_RXF_TRIG_MASK; 	\
-	REG_CIM_CTRL |= CIM_CTRL_RXF_TRIG_##n;		\
-} while (0)
+#define __cim_set_rxfifo_trigger(n)				\
+	do {							\
+		REG_CIM_CTRL &= ~CIM_CTRL_RXF_TRIG_MASK; 	\
+		REG_CIM_CTRL |= CIM_CTRL_RXF_TRIG_##n;		\
+	} while (0)
+
+
+#define __cim_set_eeof_line(n)						\
+	do {								\
+		REG_CIM_CTRL &= ~CIM_CTRL_EEOF_LINE_MASK;		\
+		REG_CIM_CTRL |= ( ((n) << CIM_CTRL_EEOF_LINE_BIT) & CIM_CTRL_EEOF_LINE_MASK ); \
+	} while (0)
+
 #define __cim_enable_fast_mode() 	( REG_CIM_CTRL |= CIM_CTRL_FAST_MODE )
 #define __cim_disable_fast_mode() 	( REG_CIM_CTRL &= ~CIM_CTRL_FAST_MODE )
 #define __cim_use_normal_mode() 	__cim_disable_fast_mode()
@@ -314,6 +362,25 @@ do {						\
 #define __cim_disable_dma()  ( REG_CIM_CTRL &= ~CIM_CTRL_DMA_EN )
 #define __cim_reset_rxfifo() ( REG_CIM_CTRL |= CIM_CTRL_RXF_RST )
 #define __cim_unreset_rxfifo() ( REG_CIM_CTRL &= ~CIM_CTRL_RXF_RST )
+
+/* cim control2 */
+#define __cim_enable_priority_control()		( REG_CIM_CTRL2 |= CIM_CTRL2_APM)
+#define __cim_disable_priority_control()	( REG_CIM_CTRL2 &= ~CIM_CTRL2_APM)
+#define __cim_enable_auto_priority()		( REG_CIM_CTRL2 |= CIM_CTRL2_OPE)
+#define __cim_disable_auto_priority()		( REG_CIM_CTRL2 &= ~CIM_CTRL2_OPE)
+#define __cim_enable_emergency()		( REG_CIM_CTRL2 |= CIM_CTRL2_EME)
+#define __cim_disable_emergency()		( REG_CIM_CTRL2 &= ~CIM_CTRL2_EME);
+/* 0, 1, 2, 3
+ * 0: highest priority
+ * 3: lowest priority
+ * 1 maybe best for SEP=1
+ * 3 maybe best for SEP=0
+ */
+#define __cim_set_opg(n)				\
+	do {								\
+		REG_CIM_CTRL2 &= ~CIM_CTRL2_OPG_MASK;			\
+		REG_CIM_CTRL2 |= ((n) << CIM_CTRL2_OPG_BIT) & CIM_CTRL2_OPG_MASK; \
+	} while (0)
 
 #define __cim_clear_state()   	     ( REG_CIM_STATE = 0 )
 

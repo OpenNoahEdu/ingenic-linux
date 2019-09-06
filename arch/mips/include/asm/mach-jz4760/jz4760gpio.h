@@ -408,6 +408,18 @@ do {						\
 	REG_GPIO_PXPES(4)  = 0x3ff00000;	\
 } while (0)
 
+
+#define __gpio_as_msc0_boot()			\
+do {						\
+	REG_GPIO_PXFUNS(0) = 0x00ec0000;	\
+	REG_GPIO_PXTRGC(0) = 0x00ec0000;	\
+	REG_GPIO_PXSELS(0) = 0x00ec0000;	\
+	REG_GPIO_PXPES(0)  = 0x00ec0000;	\
+	REG_GPIO_PXFUNS(0) = 0x00100000;	\
+	REG_GPIO_PXTRGC(0) = 0x00100000;	\
+	REG_GPIO_PXSELC(0) = 0x00100000;	\
+	REG_GPIO_PXPES(0)  = 0x00100000;	\
+} while (0)
 /*
  * MSC0_CMD, MSC0_CLK, MSC0_D0 ~ MSC0_D3
  */
@@ -430,35 +442,10 @@ do {						\
 	REG_GPIO_PXPES(3)  = 0x3f00000;	\
 } while (0)
 
-#if 0
-/*
- * MSC0_CMD, MSC0_CLK, MSC0_D0 ~ MSC0_D3
- */
-#define __gpio_as_msc0_4bit()			\
-do {						\
-	REG_GPIO_PXFUNS(2) = 0x38400300;	\
-	REG_GPIO_PXTRGC(2) = 0x38400300;	\
-	REG_GPIO_PXSELS(2) = 0x30400300;	\
-	REG_GPIO_PXSELC(2) = 0x08000000;	\
-	REG_GPIO_PXPES(2)  = 0x38400300;	\
-} while (0)
-
-/*
- * MSC1_CMD, MSC1_CLK, MSC1_D0 ~ MSC1_D3
- */
-#define __gpio_as_msc1_4bit()			\
-do {						\
-	REG_GPIO_PXFUNS(1) = 0xfc000000;	\
-	REG_GPIO_PXTRGC(1) = 0xfc000000;	\
-	REG_GPIO_PXSELC(1) = 0xfc000000;	\
-	REG_GPIO_PXPES(1)  = 0xfc000000;	\
-} while (0)
-#endif
-
 /* Port B
  * MSC2_CMD, MSC2_CLK, MSC2_D0 ~ MSC2_D3
  */
-#define __gpio_as_msc2_4bit_1()			\
+#define __gpio_as_msc2_4bit()			\
 do {						\
 	REG_GPIO_PXFUNS(1) = 0xf0300000;	\
 	REG_GPIO_PXTRGC(1) = 0xf0300000;	\
@@ -508,27 +495,104 @@ do {						\
 	REG_GPIO_PXSELS(0) = 0x00100000;	\
 	REG_GPIO_PXPES(0)  = 0x00100000;	\
 } while (0)
-
-/*
- * SSI_CE0, SSI_CE2, SSI_GPC, SSI_CLK, SSI_DT, SSI1_DR
- */
-#define __gpio_as_ssi_1()			\
+#define __gpio_as_ssi0()				\
 do {						\
-	REG_GPIO_PXFUNS(5) = 0x0000fc00;	\
-	REG_GPIO_PXTRGC(5) = 0x0000fc00;	\
-	REG_GPIO_PXSELC(5) = 0x0000fc00;	\
-	REG_GPIO_PXPES(5)  = 0x0000fc00;	\
+	REG_GPIO_PXFUNS(4) = 0x000fc000; /* SSI0: SSI0_CE0, SSI0_CE1, SSI0_CLK, SSI0_DT, SSI0_DR,SSI0_GPC*/\
+	REG_GPIO_PXTRGC(4) = 0x000fc000;	\
+	REG_GPIO_PXSELC(4) = 0x000fc000;	\
+	REG_GPIO_PXPES(4)  = 0x000fc000;	\
+} while (0)
+#define __gpio_as_ssi0_x()			\
+do {						\
+	REG_GPIO_PXFUNS(4) = 0x0002c000; /*  SSI0_CLK, SSI0_DT, SSI0_DR	*/ \
+	REG_GPIO_PXTRGC(4) = 0x0002c000;	\
+	REG_GPIO_PXSELC(4) = 0x0002c000;	\
+	REG_GPIO_PXPES(4)  = 0x0002c000;	\
 } while (0)
 
-/* Port B
- * SSI2_CE0, SSI2_CE2, SSI2_GPC, SSI2_CLK, SSI2_DT, SSI12_DR
- */
-#define __gpio_as_ssi2_1()			\
+#define __gpio_as_ssi0_1()				\
 do {						\
-	REG_GPIO_PXFUNS(5) = 0xf0300000;	\
-	REG_GPIO_PXTRGC(5) = 0xf0300000;	\
-	REG_GPIO_PXSELS(5) = 0xf0300000;	\
-	REG_GPIO_PXPES(5)  = 0xf0300000;	\
+	REG_GPIO_PXFUNS(1) = 0xf0300000; /* SSI0 */	\
+	REG_GPIO_PXTRGC(1) = 0xf0300000;	\
+	REG_GPIO_PXSELS(1) = 0xf0300000;	\
+	REG_GPIO_PXPES(1)  = 0xf0300000;	\
+} while (0)
+
+#define __gpio_as_ssi0_x1()				\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0x10300000; /* SSI0_CLK, SSI0_DT,SSI0_DR	*/ \
+	REG_GPIO_PXTRGS(1) = 0x10300000;	\
+	REG_GPIO_PXSELC(1) = 0x10300000;	\
+	REG_GPIO_PXPES(1)  = 0x10300000;	\
+} while (0)
+#define __gpio_as_ssi0_2()				\
+do {						\
+	REG_GPIO_PXFUNS(0) = 0x00100000; /* SSI0 */	\
+	REG_GPIO_PXTRGC(0) = 0x00100000;	\
+	REG_GPIO_PXSELS(0) = 0x00100000;	\
+	REG_GPIO_PXPES(0)  = 0x00100000;	\
+										\
+	REG_GPIO_PXFUNS(0) = 0x002c0000; /* SSI0_CE0, SSI0_CLK, SSI0_DT	*/ \
+	REG_GPIO_PXTRGS(0) = 0x002c0000;	\
+	REG_GPIO_PXSELC(0) = 0x002c0000;	\
+	REG_GPIO_PXPES(0)  = 0x002c0000;	\
+} while (0)
+#define __gpio_as_ssi0_x2()			\
+do {						\
+	REG_GPIO_PXFUNS(0) = 0x00240000; /*  SSI0_CLK, SSI0_DT	*/ \
+	REG_GPIO_PXTRGS(0) = 0x00240000;	\
+	REG_GPIO_PXSELC(0) = 0x00240000;	\
+	REG_GPIO_PXPES(0)  = 0x00240000;	\
+						\
+	REG_GPIO_PXFUNS(0) = 0x00100000; /* SSI0_DR */	\
+	REG_GPIO_PXTRGC(0) = 0x00100000;	\
+	REG_GPIO_PXSELS(0) = 0x00100000;	\
+	REG_GPIO_PXPES(0)  = 0x00100000;	\
+} while (0)
+/***************** SSI 1 ***********************/
+#define __gpio_as_ssi1()				\
+do {						\
+	REG_GPIO_PXFUNS(4) = 0x000fc000; /* SSI1: SSI1_CE0, SSI1_CE1, SSI1_CLK, SSI1_DT, SSI1_DR,SSI1_GPC*/	\
+	REG_GPIO_PXTRGC(4) = 0x000fc000;	\
+	REG_GPIO_PXSELS(4) = 0x000fc000;	\
+	REG_GPIO_PXPES(4)  = 0x000fc000;	\
+} while (0)
+#define __gpio_as_ssi1_x()			\
+do {						\
+	REG_GPIO_PXFUNS(4) = 0x0002c000; /*  SSI1_CLK, SSI1_DT, SSI1_DR	*/ \
+	REG_GPIO_PXTRGC(4) = 0x0002c000;	\
+	REG_GPIO_PXSELS(4) = 0x0002c000;	\
+	REG_GPIO_PXPES(4)  = 0x0002c000;	\
+} while (0)
+
+#define __gpio_as_ssi1_1()				\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0xf0300000; /* SSI1*/\
+	REG_GPIO_PXTRGC(1) = 0xf0300000;	\
+	REG_GPIO_PXSELS(1) = 0xf0300000;	\
+	REG_GPIO_PXPES(1)  = 0xf0300000;	\
+} while (0)
+#define __gpio_as_ssi1_x1()				\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0x10300000; /* SSI1_x*/\
+	REG_GPIO_PXTRGC(1) = 0x10300000;	\
+	REG_GPIO_PXSELS(1) = 0x10300000;	\
+	REG_GPIO_PXPES(1)  = 0x10300000;	\
+} while (0)
+
+#define __gpio_as_ssi1_2()				\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0x000003c0; /* SSI1*/\
+	REG_GPIO_PXTRGC(1) = 0x000003c0;	\
+	REG_GPIO_PXSELS(1) = 0x000003c0;	\
+	REG_GPIO_PXPES(1)  = 0x000003c0;	\
+} while (0)
+#define __gpio_as_ssi1_x2()				\
+do {						\
+	REG_GPIO_PXFUNS(1) = 0x000002c0; /* SSI1_x*/\
+	REG_GPIO_PXTRGC(1) = 0x000002c0;	\
+	REG_GPIO_PXSELS(1) = 0x000002c0;	\
+	REG_GPIO_PXPES(1)  = 0x000002c0;	\
 } while (0)
 
 /*

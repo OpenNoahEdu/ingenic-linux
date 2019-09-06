@@ -967,6 +967,7 @@ __cpuinit void cpu_probe(void)
 		break;
  	case PRID_COMP_INGENIC:
  	case 0xd80000: // used on fpga
+	case 0xd90000: //falcon	
 		cpu_probe_ingenic(c, cpu);
 		break;
 	}

@@ -1,3 +1,42 @@
+2011.03.11 <hpyang@ingenic.cn>
+*Note:Implement the NEW mechanism of ECC and SUPPORT 8k nand.
+Update file						Version after commit
+
+For Nand & Yaffs2
+
+linux-2.6.31.3/drivers/mtd/nand/nand_base.c
+
+linux-2.6.31.3/include/linux/mtd/mtd.h
+
+linux-2.6.31.3/include/linux/mtd/nand.h
+				
+linux-2.6.31.3/drivers/mtd/nand/nand_ids.c
+
+linux-2.6.31.3/drivers/mtd/nand/Makefile
+
+linux-2.6.31.3/drivers/mtd/nand/jz4760b_nand.c	(Add)
+	
+linux-2.6.31.3/fs/yaffs2/yaffs_fs.c
+
+linux-2.6.31.3/fs/yaffs2/yaffs_mtdif.c
+
+linux-2.6.31.3/fs/yaffs2/yaffs_mtdif2.c
+
+linux-2.6.31.3/drivers/mtd/mtdpart.c
+
+
+For VFAT
+
+linux-2.6.31.3/drivers/mtd/mtdblock-jz.c
+
+
+For Yaffs2 tool
+
+linux-2.6.31.3/fs/yaffs2/utils/Makefile
+
+linux-2.6.31.3/fs/yaffs2/utils/mkyaffs2image4760x.c (Add)
+*Note:Implement the NEW mechanism of ECC and SUPPORT 8k nand.
+
 2009.04.22
 * Which mode a partition works with, cpu mode or dma mode, could be determined by the 
   value of cpu_mode in partition_info[] in drivers/mtd/nand/jz47xx_nand.c

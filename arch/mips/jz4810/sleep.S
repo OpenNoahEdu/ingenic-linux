@@ -11,11 +11,11 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-
+#define __MIPS_ASSEMBLER
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
 #include <asm/mach-jz4810/jz4810cpm.h>
-#inclede <asm/mach-jz4810/jz4810emc.h>	
+#inclede <asm/mach-jz4810/jz4810emc.h>
 	.text
 	.set	noreorder
 	.set	noat
@@ -140,9 +140,9 @@ jz_cpu_sleep:
 	li	t0, 1
 	la	t1, EMC_RTCOR
 	sh	t0, 0(t1)
-	
 
-	
+
+
 	/* disable PLL */
 	la	t0, CPM_PLCR1
 	sw	$0, 0(t0)
@@ -171,9 +171,9 @@ jz_cpu_sleep:
 	nop
 
 	/* enter sleep mode */
-	.set	mips3	
+	.set	mips3
 	wait
-	nop	
+	nop
 	.set	mips0
 
 2:	j	2b		/* loop waiting for suspended */
@@ -189,7 +189,7 @@ jz_cpu_sleep:
 	.globl	jz_cpu_resume
 jz_cpu_resume:
 #if 0   /*60 no have */
-	
+
 	/* clear SCR.HGP */
 	la	t0, CPM_SCR
 	lw	t1, 0(t0)

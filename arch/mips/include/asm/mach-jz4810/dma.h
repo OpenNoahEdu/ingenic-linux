@@ -60,11 +60,7 @@ typedef struct {
 
 /* DMA Device ID's follow */
 enum {
-	DMA_ID_EXT = 0,		/* External request with DREQn */
-	DMA_ID_NAND,		/* NAND DMA request */
-	DMA_ID_BCH_ENC,		/* BCH Encoding DMA request */
-	DMA_ID_BCH_DEC,		/* BCH Decoding DMA request */
-	DMA_ID_AUTO,		/* Auto-request */
+	DMA_ID_AUTO = 0,		/* Auto-request */
 //	DMA_ID_TSSI_RX,		/* TSSI receive fifo full request */
 	DMA_ID_UART3_TX,	/* UART3 transmit-fifo-empty request */
 	DMA_ID_UART3_RX,	/* UART3 receve-fifo-full request */
@@ -78,17 +74,19 @@ enum {
 	DMA_ID_SSI0_RX,		/* SSI0 receive-fifo-empty request */
 	DMA_ID_AIC_TX,		/* AIC transmit-fifo-full request */
 	DMA_ID_AIC_RX,		/* AIC receive-fifo-empty request */
-	DMA_ID_MSC0_TX,		/* MSC0 transmit-fifo-full request */
-	DMA_ID_MSC0_RX,		/* MSC0 receive-fifo-empty request */
+	DMA_ID_MSC0,
 	DMA_ID_TCU_OVERFLOW,	/* TCU channel n overflow interrupt */
 	DMA_ID_SADC,		/* SADC transfer request */
-	DMA_ID_MSC1_TX,		/* MSC1 transmit-fifo-full request */
-	DMA_ID_MSC1_RX,		/* MSC1 receive-fifo-empty request */
+	DMA_ID_MSC1,
+	DMA_ID_MSC2,
 	DMA_ID_SSI1_TX,		/* SSI1 transmit-fifo-full request */
 	DMA_ID_SSI1_RX,		/* SSI1 receive-fifo-empty request */
 	DMA_ID_PCM_TX,		/* PM transmit-fifo-full request */
 	DMA_ID_PCM_RX,		/* PM receive-fifo-empty request */
 	DMA_ID_RAW_SET,
+	DMA_ID_I2C0,
+	DMA_ID_I2C1,
+	DMA_ID_I2C2,
 	DMA_ID_MAX
 };
 
@@ -99,7 +97,7 @@ enum {
 #define DMA_MODE_MASK	0x3
 
 struct jz_dma_chan {
-	int dev_id;	/* DMA ID: this channel is allocated if >=0, free otherwise */ 
+	int dev_id;	/* DMA ID: this channel is allocated if >=0, free otherwise */
 	unsigned int io;        /* DMA channel number */
 	const char *dev_str;    /* string describes the DMA channel */
 	int irq;                /* DMA irq number */

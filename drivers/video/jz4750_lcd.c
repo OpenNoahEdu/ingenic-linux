@@ -323,8 +323,17 @@ struct jz4750lcd_info jz4750_info_tve = {
 };
 
 struct jz4750lcd_info *jz4750_lcd_info = &jz4750_lcd_panel; /* default output to lcd panel */
+static struct lcd_cfb_info *jz4750fb_info;
+static struct jz4750_lcd_dma_desc *dma_desc_base;
+static struct jz4750_lcd_dma_desc *dma0_desc_palette, *dma0_desc0, *dma0_desc1, *dma1_desc0, *dma1_desc1;
 
 #if JZ_FB_DEBUG
+static unsigned char *lcd_frame_test;
+static unsigned char *lcd_frame_test1;
+static int lcd_frame_size=0;
+
+static void display_h_color_bar(int w, int h, int bpp) ;
+
 static void print_lcdc_registers(void)	/* debug */
 {
 	/* LCD Controller Resgisters */
@@ -405,12 +414,12 @@ static void print_lcdc_registers(void)	/* debug */
 	if ( 1 ) {
 		unsigned int * pii = (unsigned int *)dma_desc_base;
 		int i, j;
-		for (j=0;j< DMA_DESC_NUM ; j++) {
+		/*for (j=0;j< DMA_DESC_NUM ; j++) {
 			printk("dma_desc%d(0x%08x):\n", j, (unsigned int)pii);
 			for (i =0; i<8; i++ ) {
 				printk("\t\t0x%08x\n", *pii++);
 			}
-		}
+		}*/
 	}
 }
 #else
@@ -427,10 +436,6 @@ struct lcd_cfb_info {
 	int b_lcd_pwm;
 	int backlight_level;
 };
-
-static struct lcd_cfb_info *jz4750fb_info;
-static struct jz4750_lcd_dma_desc *dma_desc_base;
-static struct jz4750_lcd_dma_desc *dma0_desc_palette, *dma0_desc0, *dma0_desc1, *dma1_desc0, *dma1_desc1;
 
 #define DMA_DESC_NUM 		6
 
@@ -1172,11 +1177,20 @@ static int jz4750fb_map_smem(struct lcd_cfb_info *cfb)
 			break;
 	lcd_palette = (unsigned char *)__get_free_pages(GFP_KERNEL, 0);
 	lcd_frame0 = (unsigned char *)__get_free_pages(GFP_KERNEL, page_shift);
+#if JZ_FB_DEBUG
+	lcd_frame_test = (unsigned char * )__get_free_pages(GFP_KERNEL,page_shift);
+	lcd_frame_test1 = (unsigned char * )__get_free_pages(GFP_KERNEL,page_shift);
+	lcd_frame_size = PAGE_SIZE<<page_shift;
+#endif
 
 	if ((!lcd_palette) || (!lcd_frame0))
 		return -ENOMEM;
 	memset((void *)lcd_palette, 0, PAGE_SIZE);
 	memset((void *)lcd_frame0, 0, PAGE_SIZE << page_shift);
+#if JZ_FB_DEBUG
+	memset((void *)lcd_frame_test,0,PAGE_SIZE<<page_shift);
+	memset((void *)lcd_frame_test1,0,PAGE_SIZE<<page_shift);
+#endif
 
 	dma_desc_base = (struct jz4750_lcd_dma_desc *)((void*)lcd_palette + ((PALETTE_SIZE+3)/4)*4);
 
@@ -1282,6 +1296,10 @@ static void jz4750fb_unmap_smem(struct lcd_cfb_info *cfb)
 			clear_bit(PG_reserved, &map->flags);
 		}
 		free_pages((int)lcd_frame0, page_shift);
+	#if JZ_FB_DEBUG
+		free_pages((int)lcd_frame_test,page_shift);
+		free_pages((int)lcd_frame_test1,page_shift);
+	#endif
 	}
 }
 
@@ -1903,14 +1921,13 @@ static int jz4750_fb_resume(struct platform_device *pdev)
 	printk("%s(): called.\n", __func__);
 
 	__cpm_start_lcd();
-
-	__gpio_set_pin(GPIO_DISP_OFF_N); 
-	__lcd_special_on();
-	__lcd_set_ena();
-	mdelay(200);
-
-	__lcd_set_backlight_level(cfb->backlight_level);
-
+	ctrl_enable();
+	screen_on();		
+	
+#if JZ_FB_DEBUG
+	display_h_color_bar(jz4750_lcd_info->osd.fg0.w, jz4750_lcd_info->osd.fg0.h, jz4750_lcd_info->osd.fg0.bpp);
+	mdelay(1000);
+#endif
 	return 0;
 }
 
@@ -2040,6 +2057,45 @@ static void display_v_color_bar(int w, int h, int bpp) {
 		}
 	}
 }
+#if 1
+extern void jz_flush_cache_all(void);
+static void display_h_color_bar(int w, int h, int bpp) 
+{
+	int i, j,data = 0;
+	unsigned int *ptr;
+	unsigned int *ptr1;
+	int wpl; //word_per_line
+	ptr = (unsigned int *)lcd_frame_test;
+	ptr1 = (unsigned int *)lcd_frame_test1;
+	
+	
+		
+	while(1)
+	{
+		for(i=0;i<272;i++)
+		for(j=0;j<480;j++)
+		{
+			*(ptr+i*480+j) =0xff0000; 		
+		}
+		//memcpy((void *)lcd_frame0,(void *)lcd_frame_test,lcd_frame_size);mdelay(1000);
+		dma0_desc0->databuf = (unsigned int)virt_to_phys((void *)lcd_frame_test);
+		dma_cache_wback((unsigned int)(dma0_desc0), sizeof(struct jz4750_lcd_dma_desc));
+		mdelay(1000);
+
+		for(i=0;i<272;i++)
+		for(j=0;j<480;j++)
+		{
+			*(ptr1+i*480+j) =0x00ff00; 		
+		}
+		//memcpy((void *)lcd_frame0,(void *)lcd_frame_test,lcd_frame_size);mdelay(1000);
+		dma0_desc0->databuf = (unsigned int)virt_to_phys((void *)lcd_frame_test1);
+		dma_cache_wback((unsigned int)(dma0_desc0), sizeof(struct jz4750_lcd_dma_desc));
+		mdelay(1000);
+		
+	}
+
+}
+#else
 static void display_h_color_bar(int w, int h, int bpp) {
 	int i, data = 0;
 	int *ptr;
@@ -2124,6 +2180,7 @@ static void display_h_color_bar(int w, int h, int bpp) {
 	}
 
 }
+#endif
 #endif	
 
 /* Backlight Control Interface via sysfs 
@@ -2160,7 +2217,7 @@ static int screen_on(void)
 	struct lcd_cfb_info *cfb = jz4750fb_info;
 	
 	__lcd_display_on();
-	
+	mdelay(200);//必须延时，否则会白屏
 	/* Really restore LCD backlight when LCD backlight is turned on. */
 	if (cfb->backlight_level) {
 #ifdef HAVE_LCD_PWM_CONTROL
@@ -2168,8 +2225,9 @@ static int screen_on(void)
 			__lcd_pwm_start();
 			cfb->b_lcd_pwm = 1;
 		}
-#endif		
+#endif	
 		__lcd_set_backlight_level(cfb->backlight_level);
+		
 	}
 
 	cfb->b_lcd_display = 1;
@@ -2405,7 +2463,7 @@ static int __devinit jz4750_fb_probe(struct platform_device *dev)
 #if JZ_FB_DEBUG
 	display_h_color_bar(jz4750_lcd_info->osd.fg0.w, jz4750_lcd_info->osd.fg0.h, jz4750_lcd_info->osd.fg0.bpp);
 
-	print_lcdc_registers();
+	//print_lcdc_registers();
 #endif
 
 	return 0;

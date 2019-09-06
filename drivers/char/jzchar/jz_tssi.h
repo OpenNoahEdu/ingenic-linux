@@ -30,47 +30,36 @@
 #endif
 
 #define MAX_PID_NUM                     15
-#define MPEG2_TS_PACHAGE_SIZE           19200
+//#define MPEG2_PACKET_SIZE          (1024 * 960) /* bytes */
+#define MPEG2_PACKET_SIZE          (1024 * 940) /* bytes */
 
-struct jz_tssi_cfg_t
+struct jz_tssi_desc_t
 {
-	unsigned char wordorder;
-	unsigned char byteorder;
-	unsigned char dataploa;
-	unsigned char use0;
-	unsigned char clkch;
-	unsigned char mode;
-	unsigned char clkpola;
-	unsigned char frmpola;
-	unsigned char strpola;
-	unsigned char failpola;
-	unsigned char trignum;
-
-	unsigned short pid;
-	unsigned char pid_index;          //0 to 15
+	unsigned int next_desc;
+	unsigned int dst_addr;
+	unsigned int did;
+	unsigned int cmd;
 };
 
-struct jz_tssi_buf
-{
-	unsigned int *buf;
-	unsigned int   pos;
-	unsigned int   index;
+struct jz_tssi_buf {
+	unsigned char *buf;
 	struct jz_tssi_buf *next;
+	int pos;
 };
 
-struct jz_tssi_buf_ring_t
-{
-	struct jz_tssi_buf	*front;
-	struct jz_tssi_buf	*rear;
-	unsigned int  fu_num;
+struct jz_tssi_buf_ring {
+	struct jz_tssi_buf *front;
+	struct jz_tssi_buf *rear;
+	unsigned int fu_num;
 };
 
 struct jz_tssi_t
 {
-	struct jz_tssi_cfg_t cur_config;
-	struct jz_tssi_buf_ring_t *cur_buf;
-	struct semaphore	tssi_sem;
-	int dma_chan, pid_num;
+	struct jz_tssi_desc_t tssi_desc;
+	struct jz_tssi_buf_ring *cur_buf;
+	spinlock_t lock;
+	wait_queue_head_t wait;
+	int pid_num;
 };
 
 #endif /* __JZ_TSSI_H__ */

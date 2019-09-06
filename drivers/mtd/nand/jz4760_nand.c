@@ -1,6 +1,6 @@
 /*
  * linux/drivers/mtd/nand/jz4760_nand.c
- * 
+ *
  * JZ4760 NAND driver
  *
  * Copyright (c) 2005 - 2007 Ingenic Semiconductor Inc.
@@ -90,14 +90,12 @@
 #endif
 
 #define NAND_DATA_PORT1	       0xBA000000	/* read-write area in static bank 1 */
-#define NAND_DATA_PORT2	       0xB4000000	/* read-write area in static bank 2 */
-#define NAND_DATA_PORT3	       0xAC000000	/* read-write area in static bank 3 */
-#define NAND_DATA_PORT4	       0xA8000000	/* read-write area in static bank 4 */
+#define NAND_DATA_PORT2	       0xB8000000	/* read-write area in static bank 2 */
+#define NAND_DATA_PORT3	       0xB7000000	/* read-write area in static bank 3 */
+#define NAND_DATA_PORT4	       0xB6000000	/* read-write area in static bank 4 */
 
-#define NAND_ADDR_OFFSET0       0x00800000      /* address port offset for share mode */
-#define NAND_CMD_OFFSET0        0x00400000      /* command port offset for share mode */
-#define NAND_ADDR_OFFSET1       0x00000008      /* address port offset for unshare mode */
-#define NAND_CMD_OFFSET1        0x00000004      /* command port offset for unshare mode */
+#define NAND_ADDR_OFFSET       0x00800000      /* address port offset for unshare mode */
+#define NAND_CMD_OFFSET        0x00400000      /* command port offset for unshare mode */
 
 #if defined(CONFIG_MTD_NAND_DMA)
 #define  USE_IRQ      1
@@ -147,10 +145,10 @@ static struct mtd_info *jz_mtd = NULL;
 extern struct mtd_info *jz_mtd1;
 extern char all_use_planes;
 
-/* 
+/*
  * Define partitions for flash devices
  */
-#if defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760_LEPUS)
+#if defined(CONFIG_JZ4760_CYGNUS) || defined(CONFIG_JZ4760_LEPUS) || defined(CONFIG_JZ4760B_CYGNUS) || defined(CONFIG_JZ4760B_LEPUS) || defined(CONFIG_JZ4760_HTB80)
 static struct mtd_partition partition_info[] = {
 	{name:"NAND BOOT partition",
 	 offset:0 * 0x100000LL,
@@ -162,13 +160,9 @@ static struct mtd_partition partition_info[] = {
 	 use_planes: 0},
 	{name:"NAND ROOTFS partition",
 	 offset:8 * 0x100000LL,
-	 size:120 * 0x100000LL,
+	 size:504 * 0x100000LL,
 	 use_planes: 0},
-	{name:"NAND DATA1 partition",
-	 offset:128 * 0x100000LL,
-	 size:384 * 0x100000LL,
-	 use_planes: 1},
-	{name:"NAND DATA2 partition",
+	{name:"NAND DATA partition",
 	 offset:512 * 0x100000LL,
 	 size:512 * 0x100000LL,
 	 use_planes: 1},
@@ -197,7 +191,7 @@ static int partition_reserved_badblocks[] = {
 };				/* reserved blocks of mtd5 */
 #endif				/* CONFIG_JZ4760_CYGNUS || CONFIG_JZ4760_LEPUS */
 
-#if defined(CONFIG_JZ4760_ALTAIR)
+#if defined(CONFIG_JZ4760_ALTAIR) || defined(CONFIG_JZ4760B_ALTAIR)
 
 /* Reserve 32MB for bootloader, splash1, splash2 and radiofw */
 #define MISC_OFFSET		(32  * 0x100000LL)
@@ -375,9 +369,9 @@ static void jz_device_setup(void)
 //	22		CS2#		-
 //	23		CS3#		-
 //	24		CS4#		-
-#define GPIO_CS2_N (32*2+22)
-#define GPIO_CS3_N (32*2+23)
-#define GPIO_CS4_N (32*2+24)
+#define GPIO_CS2_N (32*0+22)
+#define GPIO_CS3_N (32*0+23)
+#define GPIO_CS4_N (32*0+24)
 
 #ifdef CONFIG_MTD_NAND_BUS_WIDTH_16
 #define SMCR_VAL   0x0d444440
@@ -473,7 +467,7 @@ static void bch_correct(struct mtd_info *mtd, u8 * dat, int idx)
  * jzsoc_nand_bch_correct_data
  * @mtd:	mtd info structure
  * @dat:        data to be corrected
- * @errs0:      pointer to the dma target buffer of bch decoding which stores BHINTS and 
+ * @errs0:      pointer to the dma target buffer of bch decoding which stores BHINTS and
  *              BHERR0~3(8-bit BCH) or BHERR0~1(4-bit BCH)
  * @calc_ecc:   no used
  */
@@ -482,7 +476,7 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 	u32 stat, i;
 	u32 *errs = (u32 *)errs0;
 	int ret = 0;
-	
+
 	if (REG_BDMAC_DCCSR(0) & BDMAC_DCCSR_BERR) {
 		stat = errs[0];
 		dprintk("stat=%x err0:%x err1:%x \n", stat, errs[1], errs[2]);
@@ -497,10 +491,19 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 				  printk("NAND:err count[%d] is too big\n",errcnt);
 				else
 				{
+					/*begin at the second DWORD*/
+					errs = (u32 *)&errs0[4];
 					for(i = 0;i < errcnt;i++)
 					{
-						/*errs[i>>2] >> ((i % 2) << 4) means when errcnt is even, errs[index] >> 16*/
-						bch_correct(mtd, dat, ((errs[i>>2] >> ((i % 2) << 4))) & BCH_ERR_INDEX_MASK);
+						/* errs[i>>1] get the error report regester value,
+						* (i+1) the error bit index.
+						* errs[i>>1] >> (((i + 1) % 2) << 4) means when error
+						* bit index is even, errs[i>>1] >> 16*/
+#if defined(CONFIG_MTD_NAND_JZ4760B)
+						bch_correct(mtd, dat, ((errs[i>>1] >> ((i % 2) << 4))) & BCH_ERR_INDEX_MASK);
+#else
+						bch_correct(mtd, dat, ((errs[i>>1] >> (((i + 1) % 2) << 4))) & BCH_ERR_INDEX_MASK);
+#endif
 					}
 				}
 			}
@@ -530,7 +533,7 @@ static int jzsoc_nand_bch_correct_data(struct mtd_info *mtd, u_char * dat, u_cha
 	short k;
 	u32 stat;
 	int ret = 0;
-	
+
 	/* Write data to REG_BCH_DR */
 	for (k = 0; k < eccsize; k++) {
 		REG_BCH_DR = ((struct buf_be_corrected *)dat)->data[k];
@@ -670,6 +673,8 @@ static int jzsoc_nand_calculate_bch_ecc(struct mtd_info *mtd, const u_char * dat
 	return 0;
 }
 
+extern int nand_sw_bch_ops(struct mtd_info *mtd, u8 *oobdata, int ops);
+
 #if defined(CONFIG_MTD_NAND_DMA)
 
 /**
@@ -691,6 +696,8 @@ static void nand_write_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *c
 	const u8 *databuf;
 	u8 *oobbuf;
 	jz_bdma_desc_8word *desc;
+
+	nand_sw_bch_ops(mtd, chip->oob_poi, 1);
 
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	memcpy(prog_buf, buf, pagesize);
@@ -786,7 +793,7 @@ static void nand_write_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *c
 		do {
 			err = wait_event_interruptible_timeout(nand_prog_wait_queue, dma_ack1, 3 * HZ);
 		}while(err == -ERESTARTSYS);
-		
+
 		nand_status = NAND_NONE;
 		dprintk("nand prog after wake up\n");
 		if (!err) {
@@ -856,6 +863,8 @@ static void nand_write_page_hwecc_bch(struct mtd_info *mtd, struct nand_chip *ch
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
 	static struct buf_be_corrected buf_calc0;
 	struct buf_be_corrected *buf_calc = &buf_calc0;
+
+	nand_sw_bch_ops(mtd, chip->oob_poi, 1);
 
 	for (i = 0; i < eccsteps; i++, p += eccsize) {
 		buf_calc->data = (u8 *)buf + eccsize * i;
@@ -1006,7 +1015,11 @@ static int nand_read_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *chi
 #if USE_PN
 	REG_BDMAC_DRSR(nand_dma_chan) = BDMAC_DRSR_RS_AUTO;
 #else
+#if defined(CONFIG_MTD_NAND_JZ4760B)
+	REG_BDMAC_DRSR(nand_dma_chan) = BDMAC_DRSR_RS_NAND0;
+#else
 	REG_BDMAC_DRSR(nand_dma_chan) = BDMAC_DRSR_RS_NAND;
+#endif
 #endif
 	REG_BDMAC_DRSR(bch_dma_chan) = BDMAC_DRSR_RS_BCH_DEC;
 
@@ -1042,7 +1055,7 @@ static int nand_read_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *chi
 
 	if (pagesize != 512)
 		__nand_cmd(NAND_CMD_READSTART);
-	
+
 #if USE_IRQ
 	do {
 		err = wait_event_interruptible_timeout(nand_read_wait_queue, dma_ack, 3 * HZ);
@@ -1081,7 +1094,7 @@ static int nand_read_page_hwecc_bch0(struct mtd_info *mtd, struct nand_chip *chi
 		else
 			mtd->ecc_stats.corrected += stat;
 	}
-	
+
 #if defined(CONFIG_MTD_NAND_DMABUF)
 	memcpy(buf, read_buf, pagesize);
 	memcpy(chip->oob_poi, read_buf + pagesize, oobsize);
@@ -1194,6 +1207,8 @@ static int nand_read_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chip
 		chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
 	}
 	chip->read_buf(mtd, chip->oob_poi, oobsize);
+	nand_sw_bch_ops(mtd, chip->oob_poi, 0);
+
 	/* Read second page OOB */
 	page += ppb;
 	if (sndcmd) {
@@ -1201,6 +1216,8 @@ static int nand_read_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chip
 		sndcmd = 0;
 	}
 	chip->read_buf(mtd, chip->oob_poi+oobsize, oobsize);
+	nand_sw_bch_ops(mtd, chip->oob_poi + oobsize, 0);
+
 	return 0;
 }
 
@@ -1227,6 +1244,7 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 	else
 		chip->cmdfunc(mtd, 0x80, pagesize, page & (1 << (chip->chip_shift - chip->page_shift)));
 
+	nand_sw_bch_ops(mtd, buf, 1);
 	chip->write_buf(mtd, buf, oobsize);
 	/* Send first command to program the OOB data */
 	chip->cmdfunc(mtd, 0x11, -1, -1);
@@ -1236,6 +1254,7 @@ static int nand_write_oob_std_planes(struct mtd_info *mtd, struct nand_chip *chi
 	page += ppb;
 	buf += oobsize;
 	chip->cmdfunc(mtd, 0x81, pagesize, page);
+	nand_sw_bch_ops(mtd, buf, 1);
 	chip->write_buf(mtd, buf, oobsize);
 	/* Send command to program the OOB data */
 	chip->cmdfunc(mtd, NAND_CMD_PAGEPROG, -1, -1);
@@ -1255,7 +1274,7 @@ static void single_erase_cmd_planes(struct mtd_info *mtd, int global_page)
 	page = (global_page / ppb) * ppb + global_page; /* = global_page%ppb + (global_page/ppb)*ppb*2 */
 
 	/* send cmd 0x60, the MSB should be valid if realplane is 4 */
-	if (chip->realplanenum == 2) 
+	if (chip->realplanenum == 2)
 	{
 		if(global_mafid == 0x2c)
 			chip->cmdfunc(mtd, 0x60, -1, page);
@@ -1303,17 +1322,6 @@ static irqreturn_t nand_dma_irq(int irq, void *dev_id)
 		wakeup = 1;
 		printk("DMA address error!\n");
 	}
-
-#if 0
-
-	while (!__bdmac_channel_transmit_end_detected(dma_chan));
-
-	if (__bdmac_channel_count_terminated_detected(dma_chan)) {
-		dprintk("DMA CT\n");
-		__bdmac_channel_clear_count_terminated(dma_chan);
-		wakeup = 0;
-	}
-#endif
 
 	if (__bdmac_channel_transmit_end_detected(dma_chan)) {
 		dprintk("DMA TT\n");
@@ -1377,7 +1385,7 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	dma_desc_pPN = (jz_bdma_desc_8word *)__get_free_page(GFP_KERNEL);
 	dma_desc_rPN = (jz_bdma_desc_8word *)__get_free_page(GFP_KERNEL);
 	pn_buf = kmalloc(2 * sizeof(unsigned int), GFP_KERNEL);
-	
+
 	memset(dma_desc_pPN, 0, 4096);
 	memset(dma_desc_rPN, 0, 4096);
 	memset(pn_buf, 0, 2 * sizeof(unsigned int));
@@ -1390,7 +1398,7 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	#else
 		*pn_buf = PN_ENABLE;
 	#endif
-	
+
 	*(pn_buf + 1) = PN_DISABLE;
 	dma_cache_wback_inv((unsigned int)pn_buf, 2 * sizeof(unsigned int));
 #endif	/* USE_PN */
@@ -1407,7 +1415,7 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	if (!read_buf)
 		return -ENOMEM;
 #endif
-	/* space for the error reports of bch decoding((4 * ERRS_SIZE * eccsteps) bytes), and the space for the value 
+	/* space for the error reports of bch decoding((4 * ERRS_SIZE * eccsteps) bytes), and the space for the value
      * of ddr and dcs of channel 0 and channel nand_dma_chan (4 * (2 + 2) bytes) */
 	errs = (u32 *)kmalloc(4 * (2 + 2 + ERRS_SIZE * eccsteps), GFP_KERNEL);
 	if (!errs)
@@ -1519,7 +1527,7 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	desc->dcnt = 1;	/* size: 1 word */
 	desc->dreqt = BDMAC_DRSR_RS_AUTO;
 	dprintk("*pval_nand_dcs=0x%x\n", *pval_nand_dcs);
-	
+
 #if USE_PN
 	desc = dma_desc_pPN;
 	next = CPHYSADDR((u32)dma_desc_nand_prog);
@@ -1599,21 +1607,25 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	/* set descriptor for __nand_sync() */
 	desc++;
 #if USE_IRQ
-	desc->dcmd = 
+	desc->dcmd =
 		BDMAC_DCMD_SWDH_32 | BDMAC_DCMD_DWDH_32 | BDMAC_DCMD_DS_32BIT | BDMAC_DCMD_TIE;
 #else
-	desc->dcmd = 
+	desc->dcmd =
 		BDMAC_DCMD_SWDH_32 | BDMAC_DCMD_DWDH_32 | BDMAC_DCMD_DS_32BIT;
 #endif
 	desc->dsadr = CPHYSADDR((u32)pval_nand_ddr);	/* DMA source address */
 	desc->dtadr = CPHYSADDR((u32)dummy);        	/* DMA target address, the content is useless */
 	desc->dcnt = 1;             	/* size: 1 word */
 	desc->dnt = 1;
+#if defined(CONFIG_MTD_NAND_JZ4760B)
+	desc->dreqt = BDMAC_DRSR_RS_NAND0;
+#else
 	desc->dreqt = BDMAC_DRSR_RS_NAND;
+#endif
 	dprintk("1cmd:%x sadr:%x tadr:%x dadr:%x\n", desc->dcmd, desc->dsadr, desc->dtadr, desc->ddadr);
 
-	/* eccsteps*2 + 2 + 2 + 2: 
-		dma_desc_enc + dma_desc_enc1 + dma_desc_nand_prog(oob) + dma_desc_nand_ddr(csr) 
+	/* eccsteps*2 + 2 + 2 + 2:
+		dma_desc_enc + dma_desc_enc1 + dma_desc_nand_prog(oob) + dma_desc_nand_ddr(csr)
 		+ dma_desc_nand_cmd_pgprog(sync) */
 	dma_cache_wback_inv((u32)dma_desc_enc, (eccsteps * 2 + 2 + 2 + 2) * (sizeof(jz_bdma_desc_8word)));
 	/* 4*6: pval_nand_ddr, pval_nand_dcs, pval_bch_ddr, pval_bch_dcs, dummy, pval_nand_cmd_pgprog */
@@ -1654,7 +1666,11 @@ static int jz4760_nand_dma_init(struct mtd_info *mtd)
 	desc->dtadr = CPHYSADDR((u32)read_buf);	/* DMA target address */
 #endif
 	desc->dcnt = pagesize / DIV_DS_NAND;	/* size: eccsize bytes */
+#if defined(CONFIG_MTD_NAND_JZ4760B)
+	desc->dreqt = BDMAC_DRSR_RS_NAND0;
+#else
 	desc->dreqt = BDMAC_DRSR_RS_NAND;
+#endif
 	desc->ddadr = next;
 	dprintk("cmd:%x sadr:%x tadr:%x dadr:%x\n", desc->dcmd, desc->dsadr, desc->dtadr, desc->ddadr);
 
@@ -1804,7 +1820,7 @@ int __init jznand_init(void)
 #else
 	printk(KERN_INFO " CPU mode.\n");
 #endif
-	
+
 	cpm_start_clock(CGM_BDMA);
 
 	/* Allocate memory for MTD device structure and private data */
@@ -1837,8 +1853,8 @@ int __init jznand_init(void)
 	jz_mtd->priv = this;
 
 
-	addr_offset = NAND_ADDR_OFFSET0;
-	cmd_offset = NAND_CMD_OFFSET0;
+	addr_offset = NAND_ADDR_OFFSET;
+	cmd_offset = NAND_CMD_OFFSET;
 
 	/* Set & initialize NAND Flash controller */
 	jz_device_setup();
@@ -1953,11 +1969,11 @@ static int jz4760_nand_dma_exit(struct mtd_info *mtd)
 #endif
 
 	/* space for the error reports of bch decoding((4 * 5 * eccsteps) bytes),
-     * and the space for the value of ddr and dcs of channel 0 and channel 
+     * and the space for the value of ddr and dcs of channel 0 and channel
      * nand_dma_chan (4 * (2 + 2) bytes) */
 	kfree(errs);
 
-	/* space for dma_desc_nand_read contains dma_desc_nand_prog, 
+	/* space for dma_desc_nand_read contains dma_desc_nand_prog,
 	 * dma_desc_enc and dma_desc_dec */
 	free_page((u32)dma_desc_nand_read);
 

@@ -41,7 +41,7 @@ config USB_MUSB_SOC
 	default y if ARCH_OMAP34XX
 	default y if (BF54x && !BF544)
 	default y if (BF52x && !BF522 && !BF523)
-	default y if (SOC_JZ4760)
+	default y if (SOC_JZ4760 || SOC_JZ4760B)
 
 comment "DaVinci 35x and 644x USB support"
 	depends on USB_MUSB_HDRC && ARCH_DAVINCI
@@ -56,7 +56,7 @@ comment "Blackfin high speed USB Support"
 	depends on USB_MUSB_HDRC && ((BF54x && !BF544) || (BF52x && !BF522 && !BF523))
 
 comment "Ingenic OTG USB support"
-	depends on USB_MUSB_HDRC && SOC_JZ4760
+	depends on USB_MUSB_HDRC && (SOC_JZ4760 || SOC_JZ4760B)
 
 config USB_TUSB6010
 	boolean "TUSB 6010 support"
@@ -127,7 +127,7 @@ config USB_MUSB_OTG
 endchoice
 config USB_MUSB_PERIPHERAL_HOTPLUG
         bool "Support Ingenic USB Device Controller Hotplug"
-        depends on SOC_JZ4760 && USB_GADGET_MUSB_HDRC
+        depends on (SOC_JZ4760 || SOC_JZ4760B) && USB_GADGET_MUSB_HDRC
 
 # enable peripheral support (including with OTG)
 config USB_GADGET_MUSB_HDRC
@@ -161,7 +161,7 @@ config MUSB_PIO_ONLY
 config USB_INVENTRA_DMA
 	bool
 	depends on USB_MUSB_HDRC && !MUSB_PIO_ONLY
-	default ARCH_OMAP2430 || ARCH_OMAP34XX || BLACKFIN || SOC_JZ4760
+	default ARCH_OMAP2430 || ARCH_OMAP34XX || BLACKFIN || SOC_JZ4760 || SOC_JZ4760B
 	help
 	  Enable DMA transfers using Mentor's engine.
 
